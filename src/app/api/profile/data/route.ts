@@ -46,6 +46,10 @@ export async function PUT(req: NextRequest) {
         await connectToDatabase();
         const { name, username, gender, address, bio, allowEmailContact } = await req.json();
 
+        if (name && (name.trim().length < 3 || name.trim().length > 30)) {
+            return NextResponse.json({ error: 'Name must be between 3 and 30 characters' }, { status: 400 });
+        }
+
         // Check if username is already taken by another user
         if (username) {
             const existingUser = await User.findOne({

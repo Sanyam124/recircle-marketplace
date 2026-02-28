@@ -15,17 +15,21 @@ export async function POST(req: NextRequest) {
 
         const { name, username, email, password, emailToken, googleToken } = await req.json();
 
-        if (!name || !username || !email || !password || (!emailToken && !googleToken)) {
+        if (!name || name.trim().length < 3 || name.trim().length > 30) {
+            return NextResponse.json({ error: 'Name must be between 3 and 30 characters' }, { status: 400 });
+        }
+
+        if (!username || !email || !password || (!emailToken && !googleToken)) {
             return NextResponse.json(
                 { error: 'Missing required fields. Verification is mandatory.' },
                 { status: 400 }
             );
         }
 
-        const USERNAME_REGEX = /^[a-z](?!.*[._]{2})[a-z0-9._]{2,18}[a-z0-9]$/;
-        if (!USERNAME_REGEX.test(username)) {
+        const USERNAME_REGEX = /^(?![0-9]+$)(?!.*\.\.)[a-z0-9_][a-z0-9._]{1,18}[a-z0-9_]$/;
+        if (username.length < 3 || username.length > 20 || !USERNAME_REGEX.test(username)) {
             return NextResponse.json(
-                { error: 'Invalid username format. Must be 4-20 chars, start with a letter, and contain no consecutive special characters.' },
+                { error: 'Username must be 3-20 chars, lowercase alphanumeric, underscores, or dots. Cannot start/end with a dot, contain consecutive dots, or be only numbers.' },
                 { status: 400 }
             );
         }
@@ -62,12 +66,31 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // REMOVED: Phone Token Verification (Moved to Profile later)
+        const normalizedEmail = email.trim().toLowerCase();
+
+        // Check if this Google ID is already registered to ANOTHER email
+        if (verifiedGoogleId) {
+            const existingGoogleUser = await User.findOne({ googleId: verifiedGoogleId });
+            if (existingGoogleUser) {
+                // If it's the same email, it's a duplicate registration attempt
+                if (existingGoogleUser.email === normalizedEmail) {
+                    return NextResponse.json(
+                        { error: 'This Google account is already registered. Please log in.' },
+                        { status: 409 }
+                    );
+                }
+                // If it's a different email, it's an identity collision
+                return NextResponse.json(
+                    { error: `This Google account is already linked to another email (${existingGoogleUser.email}).` },
+                    { status: 409 }
+                );
+            }
+        }
 
         // REMOVED: Strict Domain Check (@paruluniversity.ac.in)
 
         // Final Check for Uniqueness (Race condition protection)
-        const existingEmail = await User.findOne({ email });
+        const existingEmail = await User.findOne({ email: normalizedEmail });
         if (existingEmail) {
             if (existingEmail.isVerified) {
                 return NextResponse.json({ error: 'Email already registered.' }, { status: 409 });
@@ -92,7 +115,7 @@ export async function POST(req: NextRequest) {
             gender: 'none', // Default Gender
             isVerified: true,
             authProvider: googleToken ? 'google' : 'email',
-            googleId: verifiedGoogleId
+            ...(verifiedGoogleId && { googleId: verifiedGoogleId })
         });
 
         // Generate Login Token
@@ -120,11 +143,17 @@ export async function POST(req: NextRequest) {
         return response;
 
     } catch (error: any) {
-        console.error('Registration Error:', error);
+        console.error('Registration Error Details:', {
+            message: error.message,
+            code: error.code,
+            keyPattern: error.keyPattern,
+            keyValue: error.keyValue
+        });
         // Duplicate key error handling (backup for race conditions)
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern)[0];
-            return NextResponse.json({ error: `${field} already exists.` }, { status: 409 });
+            const msg = field === 'googleId' ? 'This Google account is already registered.' : `${field} already exists.`;
+            return NextResponse.json({ error: msg }, { status: 409 });
         }
         return NextResponse.json(
             { error: 'Internal Server Error' },

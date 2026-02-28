@@ -7,8 +7,8 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const username = searchParams.get('username');
 
-        const USERNAME_REGEX = /^[a-z](?!.*[._]{2})[a-z0-9._]{2,18}[a-z0-9]$/;
-        if (!username || !USERNAME_REGEX.test(username)) {
+        const USERNAME_REGEX = /^(?![0-9]+$)(?!.*\.\.)[a-z0-9_][a-z0-9._]{1,18}[a-z0-9_]$/;
+        if (!username || username.length < 3 || username.length > 20 || !USERNAME_REGEX.test(username)) {
             return NextResponse.json({ available: false, error: 'Invalid format' }, { status: 200 });
         }
 

@@ -97,10 +97,15 @@ export default function EditProfilePage() {
                     <input 
                         type="text" 
                         name="name"
+                        required
+                        maxLength={30}
                         value={formData.name} 
                         onChange={handleChange}
                         className="mt-1 block w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     />
+                    {formData.name.length > 0 && formData.name.length < 3 && (
+                        <p className="mt-1.5 text-xs text-red-500 font-medium font-outfit">Name should be between 3-30 characters</p>
+                    )}
                 </div>
 
                 <div>
@@ -166,7 +171,10 @@ export default function EditProfilePage() {
                     </button>
                     <button
                         type="submit"
-                        className="inline-flex justify-center rounded-md border border-transparent shadow-sm px-6 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:text-sm font-bold uppercase tracking-wide"
+                        disabled={formData.name.trim().length < 3 || formData.name.trim().length > 30}
+                        className={`inline-flex justify-center rounded-md border border-transparent shadow-sm px-6 py-2 text-base font-medium text-white focus:outline-none sm:text-sm font-bold uppercase tracking-wide transition-all ${
+                            (formData.name.trim().length < 3 || formData.name.trim().length > 30) ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
+                        }`}
                     >
                         Save Improvements
                     </button>
