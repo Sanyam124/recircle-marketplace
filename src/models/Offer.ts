@@ -19,9 +19,9 @@ const OfferSchema: Schema<IOffer> = new Schema(
         seller: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
         product: { type: Schema.Types.ObjectId, ref: 'Product' },
         service: { type: Schema.Types.ObjectId, ref: 'Service' },
-        offeredPrice: { type: Number, required: true },
-        originalPrice: { type: Number, required: true },
-        message: { type: String },
+        offeredPrice: { type: Number, required: true, min: 0 },
+        originalPrice: { type: Number, required: true, min: 0 },
+        message: { type: String, trim: true },
         status: {
             type: String,
             enum: ['Pending', 'Accepted', 'Declined', 'Withdrawn'],
@@ -31,6 +31,9 @@ const OfferSchema: Schema<IOffer> = new Schema(
     },
     { timestamps: true }
 );
+
+// Optimization: Optimize fetching pending offers for a seller
+OfferSchema.index({ seller: 1, status: 1, createdAt: -1 });
 
 const Offer: Model<IOffer> =
     mongoose.models.Offer || mongoose.model<IOffer>('Offer', OfferSchema);

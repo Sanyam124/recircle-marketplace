@@ -46,6 +46,10 @@ const OrderSchema: Schema<IOrder> = new Schema(
     { timestamps: true }
 );
 
+// Optimization: Speed up order history lookups for buyers and sellers
+OrderSchema.index({ buyer: 1, status: 1, createdAt: -1 });
+OrderSchema.index({ seller: 1, status: 1, createdAt: -1 });
+
 const Order: Model<IOrder> =
     mongoose.models.Order || mongoose.model<IOrder>('Order', OrderSchema);
 

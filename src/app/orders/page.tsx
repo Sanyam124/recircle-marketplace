@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Loader from '@/components/Loader';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
@@ -53,13 +54,28 @@ function PaginationControls({
 
 export default function OrdersPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'buyer' | 'seller'>('buyer');
   
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tabOption = urlParams.get('tab');
+    const orderId = urlParams.get('orderId');
+    
     if (tabOption === 'buyer' || tabOption === 'seller') {
       setActiveTab(tabOption);
+    }
+
+    if (orderId) {
+      // Small delay to ensure items are rendered
+      setTimeout(() => {
+        const el = document.getElementById(`order-${orderId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-4', 'dark:ring-offset-gray-900');
+          setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-4', 'dark:ring-offset-gray-900'), 3000);
+        }
+      }, 800);
     }
   }, []);
 
@@ -124,6 +140,16 @@ export default function OrdersPage() {
     const action = otpModalData.type === 'Product' ? 'complete_delivery' : 'complete_appointment';
     
     try {
+      // Optimistic Update
+      const oldBuyerOrders = [...buyerOrders];
+      const oldSellerOrders = [...sellerOrders];
+      const targetList = activeTab === 'buyer' ? buyerOrders : sellerOrders;
+      const setList = activeTab === 'buyer' ? setBuyerOrders : setSellerOrders;
+      
+      setList(targetList.map(o => o._id === otpModalData.id ? { ...o, status: 'Completed' } : o));
+      setOtpModalData(null);
+      setOtpCode('');
+
       const res = await fetch(`/api/orders/${otpModalData.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -132,11 +158,13 @@ export default function OrdersPage() {
       const data = await res.json();
       
       if (res.ok) {
+        // Refresh silently in background to ensure sync
         if (activeTab === 'buyer') fetchBuyerOrders(buyerPagination.page);
         else fetchSellerOrders(sellerPagination.page);
-        setOtpModalData(null);
-        setOtpCode('');
       } else {
+        // Rollback
+        setBuyerOrders(oldBuyerOrders);
+        setSellerOrders(oldSellerOrders);
         alert(data.error || 'Failed to verify code.');
       }
     } catch (err) {
@@ -147,20 +175,38 @@ export default function OrdersPage() {
     }
   };
 
-  const handleCancelOrder = async (orderId: string, role: 'buyer' | 'seller') => {
+  const handleCancelOrder = async (orderId: string, role: 'buyer' | 'seller', otherPartyId: string, itemId: string, isProduct: boolean) => {
     if (!confirm('Are you sure you want to cancel this order?')) return;
     
     try {
+      // Optimistic Update
+      const oldBuyerOrders = [...buyerOrders];
+      const oldSellerOrders = [...sellerOrders];
+      const targetList = role === 'buyer' ? buyerOrders : sellerOrders;
+      const setList = role === 'buyer' ? setBuyerOrders : setSellerOrders;
+
+      setList(targetList.map(o => o._id === orderId ? { ...o, status: 'Cancelled' } : o));
+
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'cancel' }),
       });
       if (res.ok) {
-        if (role === 'buyer') fetchBuyerOrders(buyerPagination.page);
-        else fetchSellerOrders(sellerPagination.page);
+        // Redirection with validation
+        if (otherPartyId && itemId) {
+          router.push(`/chat/${otherPartyId}?${isProduct ? 'productId' : 'serviceId'}=${itemId}`);
+        } else {
+          console.warn('Missing IDs for redirection:', { otherPartyId, itemId });
+          // Fallback to refresh if redirection fails
+          if (role === 'buyer') fetchBuyerOrders(buyerPagination.page);
+          else fetchSellerOrders(sellerPagination.page);
+        }
       } else {
         const data = await res.json();
+        // Rollback
+        setBuyerOrders(oldBuyerOrders);
+        setSellerOrders(oldSellerOrders);
         alert(data.error || 'Failed to cancel order.');
       }
     } catch (err) {
@@ -221,9 +267,19 @@ export default function OrdersPage() {
               }
               return (
                 <div className="space-y-4">
-                  {buyerOrders.map(order => (
-                    <OrderRow key={order._id} order={order} role="buyer" onCancel={() => handleCancelOrder(order._id, 'buyer')} onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'buyer', order })} />
-                  ))}
+                  {buyerOrders.map(order => {
+                    const otherPartyId = order.seller?._id || order.seller;
+                    const itemId = (order.product?._id || order.product) || (order.service?._id || order.service);
+                    return (
+                      <OrderRow 
+                        key={order._id} 
+                        order={order} 
+                        role="buyer" 
+                        onCancel={() => handleCancelOrder(order._id, 'buyer', otherPartyId, itemId, order.orderType === 'Product')} 
+                        onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'buyer', order })} 
+                      />
+                    );
+                  })}
                   <PaginationControls page={buyerPagination.page} totalPages={buyerPagination.totalPages} onPageChange={(p) => setBuyerPagination({ ...buyerPagination, page: p })} scrollTargetId="orders-top" />
                 </div>
               );
@@ -239,9 +295,19 @@ export default function OrdersPage() {
               }
               return (
                 <div className="space-y-4">
-                  {sellerOrders.map(order => (
-                    <OrderRow key={order._id} order={order} role="seller" onCancel={() => handleCancelOrder(order._id, 'seller')} onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'seller', order })} />
-                  ))}
+                  {sellerOrders.map(order => {
+                    const otherPartyId = order.buyer?._id || order.buyer;
+                    const itemId = (order.product?._id || order.product) || (order.service?._id || order.service);
+                    return (
+                      <OrderRow 
+                        key={order._id} 
+                        order={order} 
+                        role="seller" 
+                        onCancel={() => handleCancelOrder(order._id, 'seller', otherPartyId, itemId, order.orderType === 'Product')} 
+                        onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'seller', order })} 
+                      />
+                    );
+                  })}
                   <PaginationControls page={sellerPagination.page} totalPages={sellerPagination.totalPages} onPageChange={(p) => setSellerPagination({ ...sellerPagination, page: p })} scrollTargetId="orders-top" />
                 </div>
               );
@@ -311,7 +377,7 @@ function OrderRow({ order, role, onCancel, onOpenOtpModal }: { order: any; role:
   if (!item) return null;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col md:flex-row">
+    <div id={`order-${order._id}`} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col md:flex-row shadow-indigo-100/50 dark:shadow-none transition-all">
       <div className="p-5 flex-1 flex flex-col sm:flex-row gap-5">
         
         {/* Item Image */}

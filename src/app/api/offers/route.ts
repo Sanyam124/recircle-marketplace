@@ -15,7 +15,9 @@ export async function POST(req: NextRequest) {
         if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const decoded = verifyToken(token) as { userId: string };
 
-        const { productId, serviceId, offeredPrice, message } = await req.json();
+        const { productId, serviceId, offeredPrice: rawPrice, message: rawMessage } = await req.json();
+        const offeredPrice = Math.round(rawPrice);
+        const message = rawMessage?.trim();
 
         if (!offeredPrice || (!productId && !serviceId)) {
             return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
@@ -40,16 +42,23 @@ export async function POST(req: NextRequest) {
             sellerId = item.provider.toString();
         }
 
-        // Check for existing pending offer from same buyer
-        const existing = await Offer.findOne({
-            buyer: decoded.userId,
-            ...(productId ? { product: productId } : { service: serviceId }),
-            status: 'Pending',
-        });
-        if (existing) {
-            // Auto-cancel the old offer in the backend so logic flows correctly
-            await Offer.updateOne({ _id: existing._id }, { $set: { status: 'Declined' } });
+        // Price Validation
+        if (offeredPrice <= 0) {
+            return NextResponse.json({ error: 'Offer must be greater than 0' }, { status: 400 });
         }
+        if (offeredPrice > item.price * 2) {
+            return NextResponse.json({ error: `Offer cannot exceed 200% of listed price (₹${item.price * 2})` }, { status: 400 });
+        }
+
+        // Atomically decline existing pending offer from same buyer to prevent race conditions
+        await Offer.findOneAndUpdate(
+            {
+                buyer: decoded.userId,
+                ...(productId ? { product: productId } : { service: serviceId }),
+                status: 'Pending',
+            },
+            { $set: { status: 'Declined' } }
+        );
 
         const offer = await Offer.create({
             buyer: decoded.userId,

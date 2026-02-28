@@ -35,6 +35,10 @@ const MessageSchema: Schema<IMessage> = new Schema(
     { timestamps: true }
 );
 
+// Optimization: Speed up context-specific conversation fetches
+MessageSchema.index({ sender: 1, recipient: 1, product: 1, createdAt: -1 });
+MessageSchema.index({ sender: 1, recipient: 1, service: 1, createdAt: -1 });
+
 // Index for fetching conversation history between two users
 MessageSchema.index({ sender: 1, recipient: 1, createdAt: -1 });
 

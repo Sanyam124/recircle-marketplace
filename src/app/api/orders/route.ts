@@ -82,7 +82,6 @@ export async function POST(req: NextRequest) {
             deliveryAddress: deliveryAddress,
             status: 'Paid', // Assuming direct coordination now
         });
-
         // Notify Seller
         await Notification.create({
             recipient: product.seller._id,
@@ -116,21 +115,30 @@ export async function GET(req: NextRequest) {
 
         const { searchParams } = new URL(req.url);
         const role = searchParams.get('role');
+        const productId = searchParams.get('productId');
+        const serviceId = searchParams.get('serviceId');
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '15');
         const skip = (page - 1) * limit;
 
-        let query = {};
+        let query: any = {
+            status: { $ne: 'Pending_Payment' }
+        };
+
+        // If specific item is requested, add to query
+        if (productId) query.product = productId;
+        if (serviceId) query.service = serviceId;
+
         if (role === 'seller') {
-            query = {
-                seller: decoded.userId,
-                status: { $ne: 'Pending_Payment' }
-            };
+            query.seller = decoded.userId;
+        } else if (role === 'buyer') {
+            query.buyer = decoded.userId;
         } else {
-            query = {
-                buyer: decoded.userId,
-                status: { $ne: 'Pending_Payment' }
-            };
+            // Default: check both if role is not specified (useful for chat context)
+            query.$or = [
+                { buyer: decoded.userId },
+                { seller: decoded.userId }
+            ];
         }
 
         const totalOrders = await Order.countDocuments(query);
