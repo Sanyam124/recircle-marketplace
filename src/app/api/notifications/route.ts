@@ -14,14 +14,32 @@ export async function GET(req: NextRequest) {
 
         await connectToDatabase();
 
+        const { searchParams } = new URL(req.url);
+        const page = parseInt(searchParams.get('page') || '1');
+        const limit = parseInt(searchParams.get('limit') || '20');
+        const skip = (page - 1) * limit;
+
+        const totalNotifications = await Notification.countDocuments({ recipient: decoded.userId });
+        const totalPages = Math.ceil(totalNotifications / limit);
+
         const notifications = await Notification.find({ recipient: decoded.userId })
             .sort({ createdAt: -1 })
-            .limit(20)
+            .skip(skip)
+            .limit(limit)
             .populate('sender', 'name');
 
         const unreadCount = await Notification.countDocuments({ recipient: decoded.userId, isRead: false });
 
-        return NextResponse.json({ notifications, unreadCount }, { status: 200 });
+        return NextResponse.json({
+            notifications,
+            unreadCount,
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalNotifications,
+                hasMore: page < totalPages
+            }
+        }, { status: 200 });
 
     } catch (error) {
         console.error('Fetch Notifications Error:', error);

@@ -14,7 +14,7 @@ const ReviewSchema: Schema<IReview> = new Schema(
         reviewer: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         target: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         rating: { type: Number, required: true, min: 1, max: 5 },
-        comment: { type: String },
+        comment: { type: String, trim: true },
     },
     { timestamps: true }
 );

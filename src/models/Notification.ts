@@ -27,6 +27,9 @@ const NotificationSchema: Schema<INotification> = new Schema(
     { timestamps: true }
 );
 
+// Optimization: Optimize fetching activity feed for a user
+NotificationSchema.index({ recipient: 1, createdAt: -1 });
+
 const Notification: Model<INotification> =
     mongoose.models.Notification || mongoose.model<INotification>('Notification', NotificationSchema);
 

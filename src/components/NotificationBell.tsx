@@ -54,13 +54,31 @@ export default function NotificationBell() {
 
     const markAsRead = async (id?: string) => {
         try {
+            // Optimistic Update
+            const oldNotifications = [...notifications];
+            const oldUnreadCount = unreadCount;
+
+            if (id) {
+                setNotifications(notifications.map(n => n._id === id ? { ...n, isRead: true } : n));
+                setUnreadCount(Math.max(0, unreadCount - 1));
+            } else {
+                setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+                setUnreadCount(0);
+            }
+
             const res = await fetch('/api/notifications', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(id ? { notificationId: id } : { markAll: true }),
             });
             if (res.ok) {
+                // Refresh silently to sync with server (e.g. if other notifications arrived)
                 fetchNotifications();
+            } else {
+                // Rollback on failure
+                setNotifications(oldNotifications);
+                setUnreadCount(oldUnreadCount);
+                console.error('Failed to update notification on server');
             }
         } catch (error) {
             console.error('Failed to update notification', error);

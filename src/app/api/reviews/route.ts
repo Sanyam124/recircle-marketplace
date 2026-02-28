@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
 
         await connectToDatabase();
 
-        const { targetId, rating, comment } = await req.json();
+        const { targetId, rating, comment: rawComment } = await req.json();
+        const comment = rawComment?.trim();
 
         if (!targetId || !rating) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
