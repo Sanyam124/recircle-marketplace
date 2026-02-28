@@ -35,6 +35,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const [actionMessage, setActionMessage] = useState('');
     const [submittingAction, setSubmittingAction] = useState(false);
     const [actionError, setActionError] = useState('');
+    const [activeOrder, setActiveOrder] = useState<any>(null);
 
     const [otherUserLastSeen, setOtherUserLastSeen] = useState<Date | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -199,9 +200,6 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 // mapped this legacy generic chat to an item earlier, fall back to it
                 if (!searchParams.get('productId') && !searchParams.get('serviceId') && data.lastContext) {
                     setReferencingItem(data.lastContext);
-                    if (data.lastContext.type === 'service' && data.lastContext.data?.price) {
-                        setActionPrice(data.lastContext.data.price.toString());
-                    }
                 }
             }
         } catch (error) {
@@ -256,8 +254,24 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             if (res.ok) {
                 const data = await res.json();
                 setReferencingItem({ type, id, data: { ...data[type], buyerId: data.buyerId } });
-                if (type === 'service' && data[type]?.price) {
-                    setActionPrice(data[type].price.toString());
+                
+                // Fetch active order for this item context
+                try {
+                    const orderRes = await fetch(`/api/orders?productId=${type === 'product' ? id : ''}&serviceId=${type === 'service' ? id : ''}&limit=10`);
+                    if (orderRes.ok) {
+                        const orderData = await orderRes.json();
+                        // Find the order involving these two specific users (current and other)
+                        const active = orderData.orders?.find((o: any) => 
+                            (o.status === 'Scheduled' || o.status === 'Paid') && 
+                            (
+                                (o.buyer?._id?.toString() === user?.id?.toString() && o.seller?._id?.toString() === userId.toString()) || 
+                                (o.buyer?._id?.toString() === userId.toString() && o.seller?._id?.toString() === user?.id?.toString())
+                            )
+                        );
+                        setActiveOrder(active || null);
+                    }
+                } catch (err) {
+                    console.error("Order lookup error", err);
                 }
             }
         } catch (error) {
@@ -331,6 +345,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             if (res.ok) {
                 await fetchHistory(); 
                 if (referencingItem) {
+                    // Update: Immediate refresh to make tabs appear faster
                     await fetchItemData(referencingItem.type, referencingItem.id);
                 }
             } else if (!data.promptOverride) {
@@ -351,6 +366,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             if (res.ok) {
                 await fetchHistory(); 
                 if (referencingItem) {
+                    // Update: Immediate refresh to make tabs disappear/reappear faster
                     await fetchItemData(referencingItem.type, referencingItem.id);
                 }
             }
@@ -366,7 +382,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         const originalPrice = referencingItem.data.price;
 
         if (!price || price <= 0) { setActionError('Please enter a valid price/budget.'); return; }
-        if (isProduct && price >= originalPrice) { setActionError('Your offer must be lower than the listed price.'); return; }
+        if (price > originalPrice) { setActionError(`Your offer cannot be higher than the listed price (₹${originalPrice.toLocaleString()}).`); return; }
 
         setSubmittingAction(true);
         setActionError('');
@@ -395,6 +411,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 
                 await handleSendMessage(undefined, fullMsgStr, offerPayload);
                 if (referencingItem) {
+                    // Update: Immediate refresh so tabs stay in sync
                     await fetchItemData(referencingItem.type, referencingItem.id);
                 }
                 setActiveTab('chat');
@@ -521,33 +538,30 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                         const isSeller = sellerId?.toString() === user?.id?.toString();
                                         const isActualBuyer = buyerId?.toString() === user?.id?.toString();
                                         
+                                        // Case 1: Current user is a potential buyer, but it's sold to someone else
                                         if (buyerId && !isActualBuyer && !isSeller) {
                                             return <span className="text-[9px] text-red-500/70 font-medium italic">This item is no longer available</span>;
                                         }
+
+                                        // Case 2: Current user is the seller, and it's sold to someone other than the person in this chat
+                                        if (isSeller && buyerId && buyerId.toString() !== userId.toString()) {
+                                            return <span className="text-[9px] text-red-500/70 font-medium italic">Sold to other user</span>;
+                                        }
+
+                                        // Case 3: Current user is the actual buyer
+                                        if (isActualBuyer) {
+                                            return <span className="text-[9px] text-red-500/70 font-medium italic">Product Bought</span>;
+                                        }
+
+                                        // Case 4: Current user is the seller, chatting with the actual buyer
+                                        if (isSeller && buyerId?.toString() === userId?.toString()) {
+                                            return <span className="text-[9px] text-red-500/70 font-medium italic">Sold to this user</span>;
+                                        }
+
                                         return null;
                                     })()}
 
-                                    {/* Offer Status Note (Agreed/Declined) */}
-                                    {(() => {
-                                        const latestOffer = [...messages].reverse().find(m => m.offer && (m.offer.status === 'Accepted' || m.offer.status === 'Declined'));
-                                        if (latestOffer) {
-                                            const type = referencingItem.type === 'product' ? 'Offer' : 'Appointment';
-                                            const status = latestOffer.offer.status;
-                                            const isAccepted = status === 'Accepted';
-                                            
-                                            return (
-                                                <div className={`flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-tight ${isAccepted ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                                    {isAccepted ? (
-                                                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                                    ) : (
-                                                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                                                    )}
-                                                    {type} {status}
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    })()}
+                                    {/* Sub-messages logic stays here, but offer status note is removed as per user request */}
                                 </div>
                             )}
                         </div>
@@ -653,7 +667,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                                 Accepted
                                                                             </span>
                                                                             <Link 
-                                                                                href={msg.sender === userId ? '/orders?tab=seller' : '/orders?tab=buyer'}
+                                                                                href={msg.sender === userId 
+                                                                                    ? `/orders?tab=seller${activeOrder ? `&orderId=${activeOrder._id}` : ''}` 
+                                                                                    : `/orders?tab=buyer${activeOrder ? `&orderId=${activeOrder._id}` : ''}`}
                                                                                 className="text-[10px] sm:text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 underline underline-offset-4 decoration-indigo-200 dark:decoration-indigo-800 transition-colors text-center px-2"
                                                                             >
                                                                                 {msg.sender === userId 
@@ -744,206 +760,172 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                         )}
                     </div>
 
-                    {/* Bottom Area: Action Pills + Dynamic Input Form */}
-                    <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 transition-colors flex flex-col flex-shrink-0 relative z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)]">
+                    {/* Bottom Area: Redesigned Tabbed Interface */}
+                    <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 transition-colors flex flex-col flex-shrink-0 relative z-20 shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.03)] dark:shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.2)]">
                         
-                        {/* Quick Action Pills Strip (Scrollable) */}
-                        <div className="flex gap-2 overflow-x-auto p-3 scrollbar-hide border-b border-gray-50 dark:border-gray-800">
-                            {referencingItem && (() => {
-                                const isSold = referencingItem.type === 'product' && referencingItem.data?.status === 'Sold';
-                                
-                                // Robust ID extraction for both products (seller) and services (provider)
-                                // We prioritize _id for lean objects and populated documents
-                                const sellerId = referencingItem.data?.seller?._id || 
-                                                 referencingItem.data?.seller?.id || 
-                                                 referencingItem.data?.seller ||
-                                                 referencingItem.data?.provider?._id ||
-                                                 referencingItem.data?.provider?.id ||
-                                                 referencingItem.data?.provider;
-                                                 
-                                const buyerId = referencingItem.data?.buyerId?._id || 
-                                                 referencingItem.data?.buyerId?.id || 
-                                                 referencingItem.data?.buyerId;
-                                
-                                const currentUserId = user?.id?.toString();
-                                const chatPartnerId = userId?.toString();
-                                
-                                const isCurrentBuyer = buyerId?.toString() === currentUserId;
-                                const isCurrentSeller = sellerId?.toString() === currentUserId;
-                                
-                                // Prevent UI flickering: if referencingItem has no data yet, wait.
-                                if (!referencingItem.data) return (
-                                    <div className="flex items-center gap-2 px-4 py-1.5 opacity-50">
-                                        <div className="w-3 h-3 border-2 border-indigo-600 border-t-transparent animate-spin rounded-full"></div>
-                                        <span className="text-[10px] font-bold text-gray-400">Loading Actions...</span>
-                                    </div>
-                                );
-
-                                // Only show transaction buttons if this is THE specific chat between buyer and seller
-                                const isConversationBetweenParties = (
-                                    (isCurrentSeller && buyerId?.toString() === chatPartnerId) || 
-                                    (isCurrentBuyer && sellerId?.toString() === chatPartnerId)
-                                );
-
-                                // Logic Matrix Implementation
-                                if (isSold) {
-                                    // 1. Participant View: THE specific buyer-seller chat
-                                    if (isConversationBetweenParties) {
-                                        if (isCurrentBuyer) {
-                                            return (
-                                                <Link
-                                                    href="/orders?tab=buyer"
-                                                    className="whitespace-nowrap flex items-center gap-1.5 px-6 py-2 rounded-full text-xs font-bold bg-green-600 text-white shadow-sm active:scale-95 flex-shrink-0 animate-pulse"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                    Next Steps
-                                                </Link>
-                                            );
-                                        }
-                                        if (isCurrentSeller) {
-                                            return (
-                                                <Link
-                                                    href="/orders?tab=seller"
-                                                    className="whitespace-nowrap flex items-center gap-1.5 px-6 py-2 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-sm active:scale-95 flex-shrink-0"
-                                                >
-                                                    Manage Order
-                                                </Link>
-                                            );
-                                        }
-                                    }
-                                    
-                                    // 2. Non-Participant/Missed-Out View: Show as disabled
-                                    if (!isCurrentSeller) {
-                                        return (
-                                            <div className="whitespace-nowrap flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-70">
-                                                Make Offer (Sold)
-                                            </div>
-                                        );
-                                    }
-                                    
-                                    return null;
-                                }
-
-                                // 3. Appointment/Transaction Handlers for Services and Products
-                                // For services, this triggers only if there's an ACTIVE (non-completed) agreement/order
-                                if (isConversationBetweenParties) {
-                                    if (isCurrentBuyer) {
-                                        return (
-                                            <Link
-                                                href="/orders?tab=buyer"
-                                                className="whitespace-nowrap flex items-center gap-1.5 px-6 py-2 rounded-full text-xs font-bold bg-green-600 text-white shadow-sm active:scale-95 flex-shrink-0 animate-pulse"
-                                            >
-                                                Next Steps
-                                            </Link>
-                                        );
-                                    }
-                                    if (isCurrentSeller) {
-                                        return (
-                                            <Link
-                                                href="/orders?tab=seller"
-                                                className="whitespace-nowrap flex items-center gap-1.5 px-6 py-2 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-sm active:scale-95 flex-shrink-0"
-                                            >
-                                                Manage Order
-                                            </Link>
-                                        );
-                                    }
-                                }
-
-                                // 4. Interaction Guard: Providers never see "Make Offer" or "Req Appt"
-                                // Also: After an order is completed, the seller will see nothing (returns null)
-                                if (isCurrentSeller) return null;
-
-                                return (
-                                    <button
-                                        onClick={() => setActiveTab(activeTab === 'action' ? 'chat' : 'action')}
-                                        className={`whitespace-nowrap flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold border transition-colors shadow-sm active:scale-95 flex-shrink-0 ${
-                                            activeTab === 'action' 
-                                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-200' 
-                                                : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50'
-                                        }`}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        {referencingItem.type === 'product' ? 'Make Offer' : 'Req Appt'}
-                                    </button>
-                                );
-                            })()}
+                        <div className="flex border-b border-gray-100 dark:border-gray-800">
+                            {/* Tab Switcher */}
+                            <button 
+                                onClick={() => setActiveTab('chat')}
+                                className={`flex-1 py-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
+                                    activeTab === 'chat' 
+                                        ? 'text-indigo-600 dark:text-indigo-400' 
+                                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400'
+                                }`}
+                            >
+                                Chat
+                                {activeTab === 'chat' && <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full" />}
+                            </button>
                             
-                            {/* Standard Smart Replies */}
-                            {smartReplies.map((reply) => (
-                                <button
-                                    key={reply}
-                                    type="button"
-                                    onClick={() => {
-                                        setNewMessage(reply);
-                                    }}
-                                    className="whitespace-nowrap px-4 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 text-xs font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shadow-sm active:scale-95 flex-shrink-0"
-                                >
-                                    {reply}
-                                </button>
-                            ))}
+                            {(() => {
+                                const sellerId = referencingItem?.data?.seller?._id || referencingItem?.data?.seller?.id || referencingItem?.data?.seller ||
+                                                 referencingItem?.data?.provider?._id || referencingItem?.data?.provider?.id || referencingItem?.data?.provider;
+                                const isCurrentSeller = sellerId?.toString() === user?.id?.toString();
+                                const isSold = referencingItem?.type === 'product' && referencingItem?.data?.status === 'Sold';
+                                
+                                // CASE 1: Active Order exists -> Show Redirection Tab
+                                if (activeOrder) {
+                                    const role = isCurrentSeller ? 'seller' : 'buyer';
+                                    const label = isCurrentSeller ? 'Manage Order' : 'Next Step';
+                                    return (
+                                        <Link 
+                                            href={`/orders?tab=${role}&orderId=${activeOrder._id}`}
+                                            className="flex-1 py-3 text-center text-xs font-bold tracking-wider uppercase text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition-all relative"
+                                        >
+                                            {label}
+                                            <span className="ml-1">↗</span>
+                                        </Link>
+                                    );
+                                }
+
+                                // CASE 2: No Order -> Show Action tab for non-sellers
+                                if (!isCurrentSeller && !isSold && referencingItem?.data) {
+                                    return (
+                                        <button 
+                                            onClick={() => setActiveTab('action')}
+                                            className={`flex-1 py-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
+                                                activeTab === 'action' 
+                                                    ? 'text-indigo-600 dark:text-indigo-400' 
+                                                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400'
+                                            }`}
+                                        >
+                                            {referencingItem?.type === 'product' ? 'Make Offer' : 'Req Appointment'}
+                                            {activeTab === 'action' && <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full" />}
+                                        </button>
+                                    );
+                                }
+                                return null;
+                            })()}
                         </div>
 
-                        {/* Expandable Form Region */}
-                        {activeTab === 'action' && referencingItem ? (
-                            <div className="p-4 bg-indigo-50/30 dark:bg-gray-800/20 border-b border-indigo-100 dark:border-gray-800 animate-in slide-in-from-bottom-2 fade-in duration-200">
-                                    <div className="flex flex-col gap-3">
-                                        <div className="flex flex-col sm:flex-row items-end gap-3">
-                                            <div className="flex-1 w-full">
-                                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                                                    {referencingItem.type === 'product' ? 'Offer Amount (₹)' : 'Proposed Budget (₹)'}
-                                                </label>
+                        {/* Content Area */}
+                        <div className="p-3">
+                            {activeTab === 'chat' ? (
+                                <div className="space-y-3">
+                                    {/* Quick Chat Suggestions */}
+                                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                        {smartReplies.map((reply) => (
+                                            <button
+                                                key={reply}
+                                                type="button"
+                                                onClick={() => setNewMessage(reply)}
+                                                className="whitespace-nowrap px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 text-[10px] sm:text-xs font-bold border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all active:scale-95 shadow-sm"
+                                            >
+                                                {reply}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Message Input */}
+                                    <form onSubmit={handleSendMessage} className="flex gap-2 relative bg-gray-50 dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 items-center p-1 px-2 shadow-inner">
+                                        <button type="button" className="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shrink-0 rounded-full hover:bg-white dark:hover:bg-gray-700">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                        </button>
+                                        
+                                        <input
+                                            type="text"
+                                            value={newMessage}
+                                            onChange={(e) => setNewMessage(e.target.value)}
+                                            placeholder={referencingItem ? `Ask about ${referencingItem.data?.title}...` : "Type a message..."}
+                                            className="flex-1 min-w-0 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none text-sm py-2 px-2"
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={!newMessage.trim()}
+                                            className={`p-2 rounded-full transition-all flex-shrink-0 ${newMessage.trim() ? 'bg-indigo-600 text-white shadow-md hover:bg-indigo-700 active:scale-95' : 'bg-transparent text-gray-300 dark:text-gray-600'}`}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${newMessage.trim() ? '-rotate-45' : ''} transition-transform`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {/* Quick Price Suggestions */}
+                                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                        {[
+                                            { label: 'Listed', val: Math.round(referencingItem?.data?.price || 0) },
+                                            { label: '-5%', val: Math.round((referencingItem?.data?.price || 0) * 0.95) },
+                                            { label: '-10%', val: Math.round((referencingItem?.data?.price || 0) * 0.9) },
+                                            { label: '+5%', val: Math.round((referencingItem?.data?.price || 0) * 1.05) },
+                                            { label: '+10%', val: Math.round((referencingItem?.data?.price || 0) * 1.1) },
+                                        ].map((item) => (
+                                            <button
+                                                key={item.label}
+                                                type="button"
+                                                onClick={() => { setActionPrice(item.val.toString()); setActionError(''); }}
+                                                className="whitespace-nowrap px-4 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-xs font-bold border border-emerald-100 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-all active:scale-95 shadow-sm"
+                                            >
+                                                {item.label}: ₹{item.val.toLocaleString()}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Price Writing Area */}
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex-1 relative">
                                                 <input
                                                     type="number"
                                                     value={actionPrice}
-                                                    onChange={e => { setActionPrice(e.target.value); setActionError(''); }}
-                                                    placeholder={`Market price: ₹${(referencingItem?.data?.price || 0)}`}
-                                                    className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-white transition-colors placeholder-gray-400"
-                                                    autoFocus
+                                                    step="1"
+                                                    onChange={e => { 
+                                                        const val = e.target.value;
+                                                        if (val.includes('.') || val.includes(',')) return;
+                                                        setActionPrice(val); 
+                                                        setActionError(''); 
+                                                    }}
+                                                    placeholder="Enter proposed amount..."
+                                                    className="w-full border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white transition-all shadow-inner"
                                                 />
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 pointer-events-none">INR</div>
                                             </div>
-                                            <div className="w-full sm:w-auto">
-                                                <button
-                                                    onClick={handleActionSubmit}
-                                                    disabled={submittingAction || !actionPrice || Number(actionPrice) <= 0}
-                                                    className="w-full sm:w-auto px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 active:scale-95 shadow-sm"
-                                                >
-                                                    {submittingAction ? '...' : (referencingItem.type === 'product' ? 'Send Offer' : 'Send Req')}
-                                                </button>
-                                            </div>
+                                            <button
+                                                onClick={handleActionSubmit}
+                                                disabled={
+                                                    submittingAction || 
+                                                    !actionPrice || 
+                                                    Number(actionPrice) <= 0 || 
+                                                    Number(actionPrice) > (referencingItem?.data?.price || 0) * 2
+                                                }
+                                                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-bold transition-all disabled:opacity-50 disabled:grayscale active:scale-95 shadow-lg shadow-indigo-200 dark:shadow-none"
+                                            >
+                                                {submittingAction ? '...' : (referencingItem?.type === 'product' ? 'Send Offer' : 'Send Req')}
+                                            </button>
                                         </div>
-                                        {actionError && <p className="text-[11px] text-red-500 font-bold bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded inline-block self-start">{actionError}</p>}
+                                        {actionPrice && Number(actionPrice) > (referencingItem?.data?.price || 0) * 2 && (
+                                            <p className="text-[10px] text-red-500 font-bold px-2 animate-pulse">Max limit: 200% of listed price (₹{(referencingItem?.data?.price || 0) * 2})</p>
+                                        )}
+                                        {actionError && (
+                                            <p className="text-[10px] text-red-500 font-bold px-2 animate-pulse">{actionError}</p>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ) : null}
-
-                        {/* Standard Message Input */}
-                        <form onSubmit={handleSendMessage} className="p-3 bg-white dark:bg-gray-900 transition-colors">
-                            <div className="flex gap-2 relative bg-gray-50 dark:bg-gray-800/80 rounded-full border border-gray-200 dark:border-gray-700 items-center p-1 px-2 shadow-inner">
-                                <button type="button" className="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shrink-0 rounded-full hover:bg-white dark:hover:bg-gray-700">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                                </button>
-                                
-                                <input
-                                    type="text"
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder={referencingItem ? `Ask about ${referencingItem.data?.title}...` : "Type a message..."}
-                                    className="flex-1 min-w-0 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none text-sm py-2 px-2"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={!newMessage.trim()}
-                                    className={`p-2 rounded-full transition-all flex-shrink-0 ${newMessage.trim() ? 'bg-indigo-600 text-white shadow-md hover:bg-indigo-700 active:scale-95' : 'bg-transparent text-gray-300 dark:text-gray-600'}`}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${newMessage.trim() ? '-rotate-45' : ''} transition-transform`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </form>
+                            )}
+                        </div>
                     </div>
+                        
         </>
     );
 }

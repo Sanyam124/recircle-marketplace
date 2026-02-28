@@ -40,6 +40,19 @@ export const ChatItem = React.memo(({
         const product = conv.product;
         const service = conv.service;
         const buyerId = conv.buyerId?.toString();
+
+        // 0. Priority: Cancellation Status
+        const orderTime = conv.orderUpdatedAt ? new Date(conv.orderUpdatedAt).getTime() : 0;
+        const offerTime = conv.latestOffer ? new Date(conv.latestOffer.updatedAt).getTime() : 0;
+        
+        if (conv.orderStatus === 'Cancelled' && orderTime >= offerTime) {
+            return { 
+                label: 'CANCELLED', 
+                isStatus: true, 
+                color: 'text-red-500 dark:text-red-400',
+                priceLabel: conv.latestOffer?.offeredPrice ? `OFFER ₹${conv.latestOffer.offeredPrice.toLocaleString()}` : null
+            };
+        }
         
         // 1. Product Statuses
         if (product) {
@@ -111,12 +124,11 @@ export const ChatItem = React.memo(({
                     };
                 }
                 
-                // If it's a terminal order (Completed/Cancelled) AND NO newer offer exists
-                if (orderTime > offerTime) {
+                if (conv.orderStatus === 'Completed') {
                     return {
-                        label: null,
+                        label: 'COMPLETED',
                         isStatus: true,
-                        color: 'text-gray-500',
+                        color: 'text-green-600 dark:text-green-400',
                         priceLabel: price ? `APPO. ₹${price}` : null
                     };
                 }

@@ -27,7 +27,8 @@ export default function MakeOfferModal({
   const handleSubmit = async () => {
     const price = Number(offeredPrice);
     if (!price || price <= 0) { setError('Please enter a valid price.'); return; }
-    if (price >= originalPrice) { setError('Your offer must be lower than the listed price.'); return; }
+    // Decimal check is now handled in onChange, but keeping a fallback here is safe
+    if (offeredPrice.includes('.') && offeredPrice.split('.')[1].length > 2) { setError('Only 2 decimal places allowed.'); return; }
 
     setSubmitting(true);
     setError('');
@@ -67,8 +68,14 @@ export default function MakeOfferModal({
             <input
               type="number"
               value={offeredPrice}
-              onChange={e => { setOfferedPrice(e.target.value); setError(''); }}
-              placeholder={`Up to ₹${originalPrice - 1}`}
+              step="1"
+              onChange={e => { 
+                const val = e.target.value;
+                if (val.includes('.') || val.includes(',')) return;
+                setOfferedPrice(val); 
+                setError(''); 
+              }}
+              placeholder={`Up to ₹${originalPrice}`}
               className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:text-white mb-2"
             />
             {offeredPrice && Number(offeredPrice) < originalPrice && Number(offeredPrice) > 0 && (
@@ -86,6 +93,10 @@ export default function MakeOfferModal({
               onChange={e => setMessage(e.target.value)}
             />
 
+            {offeredPrice && Number(offeredPrice) > originalPrice * 2 && (
+              <p className="text-sm text-red-500 font-bold mb-3 animate-pulse">Max limit: 200% of listed price (₹{originalPrice * 2})</p>
+            )}
+
             {error && <p className="text-sm text-red-500 dark:text-red-400 mb-3">{error}</p>}
 
             <div className="flex gap-3">
@@ -94,7 +105,12 @@ export default function MakeOfferModal({
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={submitting}
+                disabled={
+                  submitting || 
+                  !offeredPrice || 
+                  Number(offeredPrice) <= 0 || 
+                  Number(offeredPrice) > originalPrice * 2
+                }
                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
               >
                 {submitting ? 'Sending…' : 'Send Offer'}

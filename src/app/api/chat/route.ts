@@ -28,11 +28,12 @@ export async function GET(req: NextRequest) {
         await connectToDatabase();
 
         // Mark messages as read for THIS context specifically
+        const itemId = productId || serviceId;
+        const itemType = productId ? 'product' : (serviceId ? 'service' : null);
+
         const readFilter: any = { sender: recipientId, recipient: decoded.userId, isRead: false };
-        if (productId && productId !== 'undefined' && productId !== 'null') {
-            readFilter.product = productId;
-        } else if (serviceId && serviceId !== 'undefined' && serviceId !== 'null') {
-            readFilter.service = serviceId;
+        if (itemType) {
+            readFilter[itemType] = itemId;
         } else {
             readFilter.product = { $exists: false };
             readFilter.service = { $exists: false };
@@ -47,12 +48,9 @@ export async function GET(req: NextRequest) {
             deletedBy: { $ne: decoded.userId }
         };
 
-        if (productId && productId !== 'undefined' && productId !== 'null') {
-            query.product = productId;
-        } else if (serviceId && serviceId !== 'undefined' && serviceId !== 'null') {
-            query.service = serviceId;
+        if (itemType) {
+            query[itemType] = itemId;
         } else {
-            // Strictly fetch contextless chats so items don't bleed into one thread
             query.product = { $exists: false };
             query.service = { $exists: false };
         }
