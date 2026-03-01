@@ -113,9 +113,14 @@ export default function CreateServicePage() {
                   required
                   min="0"
                   max="10000"
+                  step="1"
                   className="block w-full rounded-md border-gray-300 pr-12 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white"
                   value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.includes('.') || val.includes(',')) return;
+                    setFormData({ ...formData, price: val });
+                  }}
                 />
               </div>
               <p className="mt-1 text-xs text-gray-500">Max limit: ₹10,000 to keep services affordable.</p>
@@ -241,7 +246,7 @@ export default function CreateServicePage() {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !formData.price || Number(formData.price) < 0 || Number(formData.price) > 10000}
               className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
             >
               {loading ? 'Creating...' : 'List Service'}

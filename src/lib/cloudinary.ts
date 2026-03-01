@@ -18,6 +18,9 @@ export async function uploadToCloudinary(file: string, folder: string = 'recircl
     try {
         const result = await cloudinary.uploader.upload(file, {
             folder,
+            format: 'webp',
+            quality: 'auto',
+            fetch_format: 'auto'
         });
         return result.secure_url;
     } catch (error) {

@@ -15,7 +15,13 @@ export async function POST(req: NextRequest) {
         await connectToDatabase();
 
         const body = await req.json();
-        const { title, description, price, priceUnit, category, availability, images } = body;
+        const { title: rawTitle, description: rawDescription, price: rawPrice, priceUnit: rawPriceUnit, category: rawCategory, availability: rawAvailability, images } = body;
+        const title = rawTitle?.trim();
+        const description = rawDescription?.trim();
+        const category = rawCategory?.trim();
+        const priceUnit = rawPriceUnit?.trim();
+        const availability = rawAvailability?.trim();
+        const price = Math.round(rawPrice);
 
         if (!title || !description || !price || !category) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

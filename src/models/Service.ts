@@ -17,17 +17,21 @@ export interface IService extends Document {
 const ServiceSchema: Schema<IService> = new Schema(
     {
         provider: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-        title: { type: String, required: true, index: 'text' },
-        description: { type: String, required: true, index: 'text' },
-        price: { type: Number, required: true },
-        priceUnit: { type: String, default: 'fixed' },
-        category: { type: String, required: true, index: true },
-        availability: { type: String },
+        title: { type: String, required: true, trim: true, index: 'text' },
+        description: { type: String, required: true, trim: true, index: 'text' },
+        price: { type: Number, required: true, min: 0, max: 100000 },
+        priceUnit: { type: String, trim: true, default: 'fixed' },
+        category: { type: String, required: true, trim: true, index: true },
+        availability: { type: String, trim: true },
         images: { type: [String] },
         status: { type: String, enum: ['Active', 'Inactive'], default: 'Active', index: true },
     },
     { timestamps: true }
 );
+
+// Optimization: Compound indexes for common discovery patterns
+ServiceSchema.index({ status: 1, createdAt: -1 });
+ServiceSchema.index({ status: 1, category: 1, createdAt: -1 });
 
 const Service: Model<IService> =
     mongoose.models.Service || mongoose.model<IService>('Service', ServiceSchema);

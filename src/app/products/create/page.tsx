@@ -114,9 +114,14 @@ export default function CreateProductPage() {
                 id="price"
                 required
                 min="5" 
+                step="1"
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white"
                 value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val.includes('.') || val.includes(',')) return;
+                  setFormData({ ...formData, price: val });
+                }}
               />
                {/* Fee Transparency Logic (Keep existing) */}
                 {formData.price && Number(formData.price) > 0 && (
@@ -248,7 +253,7 @@ export default function CreateProductPage() {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !formData.price || Number(formData.price) < 5}
               className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
             >
               {loading ? 'Creating...' : 'List Item'}

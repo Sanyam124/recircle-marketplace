@@ -16,11 +16,11 @@ export interface IProduct extends Document {
 const ProductSchema: Schema<IProduct> = new Schema(
     {
         seller: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-        title: { type: String, required: true, index: 'text' },
-        description: { type: String, required: true, index: 'text' },
-        price: { type: Number, required: true },
+        title: { type: String, required: true, trim: true, index: 'text' },
+        description: { type: String, required: true, trim: true, index: 'text' },
+        price: { type: Number, required: true, min: 0, max: 1000000 },
         images: { type: [String], required: true }, // Array of image URLs
-        category: { type: String, required: true, index: true },
+        category: { type: String, required: true, trim: true, index: true },
         condition: {
             type: String,
             enum: ['New', 'Like New', 'Good', 'Fair', 'Poor'],
@@ -35,6 +35,12 @@ const ProductSchema: Schema<IProduct> = new Schema(
     },
     { timestamps: true }
 );
+
+// Optimization: Compound indexes for common query + sort patterns
+ProductSchema.index({ status: 1, createdAt: -1 });
+ProductSchema.index({ status: 1, price: 1 });
+ProductSchema.index({ status: 1, price: -1 });
+ProductSchema.index({ category: 1, status: 1, createdAt: -1 });
 
 const Product: Model<IProduct> =
     mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);
