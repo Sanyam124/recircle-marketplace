@@ -3,6 +3,7 @@ import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
 import Product from '@/models/Product';
 import Service from '@/models/Service';
+import Review from '@/models/Review';
 import { verifyToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
         if (type === 'service' || type === 'all') {
             const servicePopulate = {
                 path: 'wishlistedServices',
-                select: 'title price priceUnit images category provider createdAt status',
+                select: 'title price priceUnit images category description provider createdAt status',
                 populate: { path: 'provider', select: 'name' }
             };
             const userWithServices = await User.findById(userData.userId).populate(servicePopulate);
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
         if (type === 'product' || type === 'all') {
             const productPopulate = {
                 path: 'wishlist',
-                select: 'title price images category condition seller createdAt status',
+                select: 'title price images category description condition seller createdAt status',
                 populate: { path: 'seller', select: 'name' }
             };
             const userWithProducts = await User.findById(userData.userId).populate(productPopulate);
@@ -56,8 +57,28 @@ export async function GET(req: NextRequest) {
         const totalPages = Math.ceil(totalItems / limit);
         const paginated = wishlist.slice(skip, skip + limit);
 
+        // Fetch ratings for paginated items
+        const ownerIds = paginated.map(item => item.type === 'product' ? item.seller?._id : item.provider?._id).filter(id => id != null);
+
+        const reviews = await Review.aggregate([
+            { $match: { target: { $in: ownerIds } } },
+            { $group: { _id: '$target', average: { $avg: '$rating' }, count: { $sum: 1 } } }
+        ]);
+
+        const reviewMap = new Map(reviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
+
+        const wishlistWithRatings = paginated.map(item => {
+            const ownerId = item.type === 'product' ? item.seller?._id?.toString() : item.provider?._id?.toString();
+            const stats = reviewMap.get(ownerId) || { average: 0, count: 0 };
+            return {
+                ...item,
+                ownerRating: stats.average || 0,
+                reviewCount: stats.count || 0
+            };
+        });
+
         return NextResponse.json({
-            wishlist: paginated,
+            wishlist: wishlistWithRatings,
             pagination: { currentPage: page, totalPages, totalItems, hasMore: page < totalPages }
         }, { status: 200 });
     } catch (error: any) {

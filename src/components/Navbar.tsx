@@ -13,6 +13,7 @@ export default function Navbar() {
   const [messageUnreadCount, setMessageUnreadCount] = useState(0);
 
   const fetchUnreadCount = async () => {
+    if (!user) return;
     try {
       const res = await fetch('/api/chat/unread-count');
       if (res.ok) {
@@ -20,7 +21,8 @@ export default function Navbar() {
         setMessageUnreadCount(data.unreadCount || 0);
       }
     } catch (e) {
-      console.error('Failed to fetch unread count', e);
+      // Quietly log fetch failures as they are usually transient network/server-restart issues
+      console.warn('Silent unread-count fetch failure:', e instanceof Error ? e.message : e);
     }
   };
 
@@ -130,7 +132,7 @@ export default function Navbar() {
                         <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold border border-indigo-200 dark:border-indigo-800">
                              {user.name?.charAt(0).toUpperCase() || 'U'}
                         </div>
-                        <span className="hidden xl:inline">{user.name?.split(' ')[0]}</span>
+                        <span className="hidden xl:inline break-words max-w-[150px]">{user.name?.split(' ')[0]}</span>
                     </Link>
                     <button
                         onClick={logout}
@@ -205,9 +207,9 @@ export default function Navbar() {
                     <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm font-bold border border-indigo-200 dark:border-indigo-800">
                         {user.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
-                    <div>
-                        <div className="text-base font-bold text-gray-900 dark:text-white">{user.name}</div>
-                        <div className="text-xs text-indigo-500 dark:text-indigo-400 font-medium tracking-tight">@{user.username || 'user'}</div>
+                    <div className="min-w-0 flex-1">
+                        <div className="text-base font-bold text-gray-900 dark:text-white break-words">{user.name}</div>
+                        <div className="text-xs text-indigo-500 dark:text-indigo-400 font-medium tracking-tight break-words">@{user.username || 'user'}</div>
                     </div>
                 </Link>
 
