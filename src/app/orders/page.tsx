@@ -53,10 +53,16 @@ function PaginationControls({
 }
 
 export default function OrdersPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'buyer' | 'seller'>('buyer');
   
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push(`/login?redirect=${encodeURIComponent('/orders')}`);
+    }
+  }, [user, authLoading, router]);
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tabOption = urlParams.get('tab');
@@ -214,7 +220,7 @@ export default function OrdersPage() {
     }
   };
 
-  if (!user) return <Loader />;
+  if (authLoading || !user) return <Loader />;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-8 pb-20">

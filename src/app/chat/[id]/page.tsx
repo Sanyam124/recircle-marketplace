@@ -4,13 +4,20 @@ import { useState, useEffect, useLayoutEffect, useRef, use, useCallback, useMemo
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Loader from '@/components/Loader';
 
 export default function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
     const userId = resolvedParams.id;
-    const { user } = useAuth();
+    const router = useRouter();
+    const { user, loading: authLoading } = useAuth();
+
+    useEffect(() => {
+        if (!authLoading && !user) {
+            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+        }
+    }, [user, authLoading, router]);
     const searchParams = useSearchParams();
     const [messages, setMessages] = useState<any[]>([]);
     const [hasMore, setHasMore] = useState(false);
@@ -24,6 +31,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     // Use refs to avoid stale closures in polling interval
     const referencingItemRef = useRef(referencingItem);
     const lastServerContextIdRef = useRef<string | null>(null);
+    const hasSentAutoMsg = useRef(false);
 
     const setReferencingItem = (val: any) => {
         referencingItemRef.current = val;
@@ -34,6 +42,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const [actionPrice, setActionPrice] = useState('');
     const [actionMessage, setActionMessage] = useState('');
     const [submittingAction, setSubmittingAction] = useState(false);
+    const [sendingMessage, setSendingMessage] = useState(false);
+    const [acceptingOffer, setAcceptingOffer] = useState(false);
+    const [decliningOffer, setDecliningOffer] = useState(false);
     const [actionError, setActionError] = useState('');
     const [activeOrder, setActiveOrder] = useState<any>(null);
 
@@ -64,6 +75,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         setActionPrice('');
         setActionMessage('');
         setActionError('');
+        hasSentAutoMsg.current = false;
 
         // Handle deep linking for Make Offer/Request Appointment
         if (searchParams.get('tab') === 'action') {
@@ -105,6 +117,34 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             clearInterval(heartbeatInterval); 
         };
     }, [userId, productId, serviceId]);
+    
+    // Dedicated effect for automated intro message on redirection
+    useEffect(() => {
+        const shouldSendAutoMsg = searchParams.get('autoMsg') === 'true';
+        if (!loading && shouldSendAutoMsg && !hasSentAutoMsg.current && messages.length === 0) {
+            // Set synchronous flag immediately to prevent double-execution in Strict Mode/polling
+            hasSentAutoMsg.current = true;
+            
+            const sendInitialMsg = async () => {
+                const typeLabel = productId ? 'product' : 'service';
+                const msg = `Hii, I came across this ${typeLabel} and wanted to discuss it further!`;
+                await handleSendMessage(undefined, msg);
+            };
+            sendInitialMsg();
+        }
+    }, [loading, messages.length, searchParams, productId, serviceId]);
+    
+    const hasAutoFilledPrice = useRef(false);
+    
+    // Dedicated effect for price pre-filling when switching to action tab via deep link
+    useEffect(() => {
+        if (activeTab === 'action' && !hasAutoFilledPrice.current && referencingItem?.data?.price) {
+            setActionPrice(referencingItem.data.price.toString());
+            hasAutoFilledPrice.current = true;
+        } else if (activeTab !== 'action') {
+            hasAutoFilledPrice.current = false; // Reset when leaving action tab to allow re-fill on re-entry
+        }
+    }, [activeTab, referencingItem]); // referencingItem updates (polling) won't re-fill if we already did it for this session
 
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
         if (scrollRef.current) {
@@ -253,7 +293,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             const res = await fetch(`/api/${type}s/${id}`);
             if (res.ok) {
                 const data = await res.json();
-                setReferencingItem({ type, id, data: { ...data[type], buyerId: data.buyerId } });
+                const itemData = data[type];
+                setReferencingItem({ type, id, data: { ...itemData, buyerId: data.buyerId } });
                 
                 // Fetch active order for this item context
                 try {
@@ -282,8 +323,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const handleSendMessage = async (e?: React.FormEvent, customContent?: string, offerPayload?: any) => {
         if (e) e.preventDefault();
         const content = customContent || newMessage.trim();
-        if (!content && !offerPayload) return;
+        if ((!content && !offerPayload) || sendingMessage) return;
 
+        setSendingMessage(true);
         if (!customContent && !offerPayload) setNewMessage('');
 
         try {
@@ -308,6 +350,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             }
         } catch (error) {
             console.error('Failed to send message', error);
+        } finally {
+            setSendingMessage(false);
         }
     };
 
@@ -326,6 +370,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     };
 
     const handleAcceptOffer = async (offerId: string, offerPrice: number, override: boolean = false) => {
+        if (acceptingOffer) return;
+        setAcceptingOffer(true);
         try {
             const res = await fetch(`/api/offers/${offerId}`, {
                 method: 'PATCH',
@@ -353,10 +399,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             }
         } catch (error) {
             console.error('Accept offer error', error);
+        } finally {
+            setAcceptingOffer(false);
         }
     };
 
     const handleDeclineOffer = async (offerId: string) => {
+        if (decliningOffer) return;
+        setDecliningOffer(true);
         try {
             const res = await fetch(`/api/offers/${offerId}`, {
                 method: 'PATCH',
@@ -372,6 +422,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             }
         } catch (error) {
             console.error('Decline offer error', error);
+        } finally {
+            setDecliningOffer(false);
         }
     };
 
@@ -382,7 +434,6 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         const originalPrice = referencingItem.data.price;
 
         if (!price || price <= 0) { setActionError('Please enter a valid price/budget.'); return; }
-        if (price > originalPrice) { setActionError(`Your offer cannot be higher than the listed price (₹${originalPrice.toLocaleString()}).`); return; }
 
         setSubmittingAction(true);
         setActionError('');
@@ -444,7 +495,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         "I'm interested!"
     ];
 
-    if (loading) return <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900"><Loader /></div>;
+    if (authLoading || loading) return <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900"><Loader /></div>;
 
     return (
         <>
@@ -707,16 +758,18 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                                 <>
                                                                                     <button 
                                                                                         onClick={() => handleAcceptOffer(msg.offer.offerId, msg.offer.price)}
-                                                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5"
+                                                                                        disabled={acceptingOffer}
+                                                                                        className={`flex-1 py-2.5 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 ${acceptingOffer ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                                                                                     >
                                                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                                                                        Accept Order
+                                                                                        {acceptingOffer ? 'Processing...' : 'Accept Order'}
                                                                                     </button>
                                                                                     <button 
                                                                                         onClick={() => handleDeclineOffer(msg.offer.offerId)}
-                                                                                        className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all shadow-sm active:scale-95"
+                                                                                        disabled={decliningOffer}
+                                                                                        className={`px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all shadow-sm active:scale-95 ${decliningOffer ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                                     >
-                                                                                        Decline
+                                                                                        {decliningOffer ? '...' : 'Decline'}
                                                                                     </button>
                                                                                 </>
                                                                             )
@@ -842,13 +895,21 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                                         </button>
                                         
-                                        <input
-                                            type="text"
-                                            value={newMessage}
-                                            onChange={(e) => setNewMessage(e.target.value)}
-                                            placeholder={referencingItem ? `Ask about ${referencingItem.data?.title}...` : "Type a message..."}
-                                            className="flex-1 min-w-0 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none text-sm py-2 px-2"
-                                        />
+                                        <div className="flex-1 flex flex-col">
+                                            <input
+                                                type="text"
+                                                value={newMessage}
+                                                maxLength={2000}
+                                                onChange={(e) => setNewMessage(e.target.value)}
+                                                placeholder={referencingItem ? `Ask about ${referencingItem.data?.title}...` : "Type a message..."}
+                                                className="w-full bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none text-sm py-2 px-2"
+                                            />
+                                            {newMessage.length > 0 && (
+                                                <span className={`text-[8px] px-2 font-bold ${newMessage.length >= 1900 ? 'text-red-500' : 'text-gray-400'}`}>
+                                                    {newMessage.length}/2000
+                                                </span>
+                                            )}
+                                        </div>
                                         <button
                                             type="submit"
                                             disabled={!newMessage.trim()}
@@ -883,30 +944,31 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                     </div>
 
                                     {/* Price Writing Area */}
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex-1 relative">
-                                                <input
-                                                    type="number"
-                                                    value={actionPrice}
-                                                    step="1"
-                                                    onChange={e => { 
-                                                        const val = e.target.value;
-                                                        if (val.includes('.') || val.includes(',')) return;
-                                                        setActionPrice(val); 
-                                                        setActionError(''); 
-                                                    }}
-                                                    placeholder="Enter proposed amount..."
-                                                    className="w-full border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white transition-all shadow-inner"
-                                                />
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 pointer-events-none">INR</div>
-                                            </div>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-1 relative flex items-center">
+                                                    <div className="absolute left-4 text-sm font-bold text-gray-400 dark:text-gray-500 pointer-events-none">₹</div>
+                                                    <input
+                                                        type="number"
+                                                        value={actionPrice}
+                                                        step="1"
+                                                        onChange={e => { 
+                                                            const val = e.target.value;
+                                                            if (!/^\d*$/.test(val)) return;
+                                                            setActionPrice(val); 
+                                                            setActionError(''); 
+                                                        }}
+                                                        placeholder="Enter amount..."
+                                                        className="w-full border border-gray-200 dark:border-gray-700 rounded-2xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white transition-all shadow-inner"
+                                                    />
+                                                </div>
                                             <button
                                                 onClick={handleActionSubmit}
                                                 disabled={
                                                     submittingAction || 
                                                     !actionPrice || 
                                                     Number(actionPrice) <= 0 || 
+                                                    Number(actionPrice) < (referencingItem?.data?.price || 0) * 0.5 ||
                                                     Number(actionPrice) > (referencingItem?.data?.price || 0) * 2
                                                 }
                                                 className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-bold transition-all disabled:opacity-50 disabled:grayscale active:scale-95 shadow-lg shadow-indigo-200 dark:shadow-none"
@@ -914,6 +976,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                 {submittingAction ? '...' : (referencingItem?.type === 'product' ? 'Send Offer' : 'Send Req')}
                                             </button>
                                         </div>
+                                        {actionPrice && Number(actionPrice) > 0 && Number(actionPrice) < (referencingItem?.data?.price || 0) * 0.5 && (
+                                            <p className="text-[10px] text-red-500 font-bold px-2 animate-pulse">Price cannot be less than ₹{Math.floor((referencingItem?.data?.price || 0) * 0.5)}</p>
+                                        )}
                                         {actionPrice && Number(actionPrice) > (referencingItem?.data?.price || 0) * 2 && (
                                             <p className="text-[10px] text-red-500 font-bold px-2 animate-pulse">Max limit: 200% of listed price (₹{(referencingItem?.data?.price || 0) * 2})</p>
                                         )}

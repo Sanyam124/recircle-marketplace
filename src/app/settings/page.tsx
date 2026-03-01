@@ -3,14 +3,24 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push(`/login?redirect=${encodeURIComponent('/settings')}`);
+    }
+  }, [user, authLoading, router]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const [allowEmailContact, setAllowEmailContact] = useState(false);
+   const [allowEmailContact, setAllowEmailContact] = useState(false);
+   const [allowPhoneContact, setAllowPhoneContact] = useState(false);
+   const [isOnVacation, setIsOnVacation] = useState(false);
   
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -26,6 +36,8 @@ export default function SettingsPage() {
           if (res.ok) {
               const data = await res.json();
               setAllowEmailContact(!!data.user?.allowEmailContact);
+              setAllowPhoneContact(!!data.user?.allowPhoneContact);
+              setIsOnVacation(!!data.user?.isOnVacation);
           }
       } catch (error) {
           console.error('Failed to load user settings', error);
@@ -61,7 +73,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/profile/data', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ allowEmailContact }),
+        body: JSON.stringify({ allowEmailContact, allowPhoneContact, isOnVacation }),
       });
 
       if (res.ok) {
@@ -77,7 +89,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading) return <Loader />;
+  if (authLoading || loading) return <Loader />;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors duration-300">
@@ -165,6 +177,43 @@ export default function SettingsPage() {
               <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500"></div>
             </label>
           </div>
+
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <label htmlFor="allowPhoneContact" className="text-sm font-bold text-gray-900 dark:text-white">Allow Contact via Phone</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Let other users see your phone number and contact you outside of the platform.</p>
+            </div>
+            
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                id="allowPhoneContact" 
+                className="sr-only peer" 
+                checked={allowPhoneContact}
+                onChange={(e) => setAllowPhoneContact(e.target.checked)}
+              />
+              <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500"></div>
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <label htmlFor="isOnVacation" className="text-sm font-bold text-gray-900 dark:text-white">Vacation Mode</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Temporarily hide all your products and services from the feed. Perfect for semester breaks!</p>
+            </div>
+            
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                id="isOnVacation" 
+                className="sr-only peer" 
+                checked={isOnVacation}
+                onChange={(e) => setIsOnVacation(e.target.checked)}
+              />
+              <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500 dark:peer-checked:bg-amber-600"></div>
+            </label>
+          </div>
+
 
 
           <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-700">

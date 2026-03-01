@@ -15,16 +15,21 @@ export default function WishlistPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [type, setType] = useState<'product' | 'service' | 'all'>('all');
 
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push(`/login?redirect=${encodeURIComponent('/wishlist')}`);
+      return;
+    }
+
     if (user?.role === 'delivery_partner') {
         router.push('/delivery-dashboard');
         return;
     }
     fetchWishlist();
-  }, [user, router, page, type]);
+  }, [user, authLoading, router, page, type]);
 
   const handleTypeChange = (newType: 'product' | 'service' | 'all') => {
     if (newType !== type) {
@@ -51,7 +56,7 @@ export default function WishlistPage() {
     }
   };
 
-  if (loading) return <Loader />;
+  if (authLoading || loading) return <Loader />;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors">
