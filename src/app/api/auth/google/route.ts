@@ -22,12 +22,16 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid Google Token' }, { status: 400 });
         }
 
-        const { email, name, picture, sub: googleId } = payload;
+        const { email: rawEmail, name, picture, sub: googleId } = payload;
+        const email = rawEmail.toLowerCase();
 
-        const user = await User.findOne({ email });
+        // Search for user by either email OR googleId
+        let user = await User.findOne({
+            $or: [{ email }, { googleId }]
+        });
 
         if (!user) {
-            // NEW: Instead of creating, return data for auto-fill
+            // New user: Return data for auto-fill in register page
             return NextResponse.json({
                 exists: false,
                 googleData: {
@@ -39,10 +43,10 @@ export async function POST(req: NextRequest) {
             }, { status: 200 });
         }
 
-        // Existing user logic continues
-        if (user.authProvider === 'email' && !user.googleId) {
+        // Link Google ID if user exists by email but hasn't linked Google yet
+        if (!user.googleId) {
             user.googleId = googleId;
-            user.authProvider = 'google'; // Or keep 'email' but allow google login
+            user.authProvider = 'google';
             user.isVerified = true;
             await user.save();
         }

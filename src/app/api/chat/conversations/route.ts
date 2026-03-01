@@ -131,8 +131,11 @@ export async function GET(req: NextRequest) {
             let orderStatus = null;
             let order = null;
 
-            if (product && product.status === 'Sold') {
-                order = ordersList.find((o: any) => String(o.product) === String(product._id));
+            if (product) {
+                order = ordersList.find((o: any) =>
+                    String(o.product) === String(product._id) &&
+                    (String(o.buyer) === objectIdUserId.toString() || String(o.buyer) === d._id.otherUserId.toString())
+                );
                 if (order) {
                     buyerId = order.buyer;
                     orderStatus = order.status;
