@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ReCircle Marketplace 🔄
 
-## Getting Started
+**ReCircle** is a modern, secure, and student-centric community marketplace designed to facilitate the trading of essentials and the offering of freelance services within campus ecosystems.
 
-First, run the development server:
+![ReCircle Logo](/public/logo.png)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🚀 Vision
+Empowering students to build a sustainable and collaborative economy by providing a trusted platform to buy, sell, and schedule services with ease.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ✨ Core Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 🛒 Product Marketplace
+- **List & Discover**: Easily post items for sale with image uploads (Cloudinary integration).
+- **Secure Transactions**: OTP-verified handoffs to ensure both parties are satisfied before completion.
+- **Dynamic Search**: Filter products by category, price range, and condition.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 🛠️ Service Appointments
+- **Freelance Hub**: Offer or book services like tutoring, repairs, or creative work.
+- **Smart Scheduling**: Integrated appointment request and acceptance flow.
+- **Repeatable Services**: Unlike products, services remain available for multiple bookings.
 
-## Learn More
+### 💬 Intelligent Chat System
+- **Real-time Negotiation**: Direct messaging between buyers and sellers.
+- **Tabbed Interface**: Switch seamlessly between conversation and action (Make Offer / Request Appointment).
+- **Price Guardrails**: Automatic validation (±200% price caps, integer-only pricing) to keep deals fair.
+- **System Automation**: Automated messages for order confirmations and cancellations.
 
-To learn more about Next.js, take a look at the following resources:
+### 🛡️ Trust & Security
+- **Identity Verification**: Strict name/username constraints and Google OAuth integration.
+- **Atomic Operations**: Backend logic powered by MongoDB atomic transitions to prevent race conditions.
+- **Dispute Resolution**: Dedicated admin tools to resolve issues and refund buyers.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🛠️ Tech Stack
+- **Frontend**: [Next.js 15](https://nextjs.org/) (App Router), React 19, Tailwind CSS.
+- **Backend**: Next.js API Routes, Node.js.
+- **Database**: [MongoDB](https://www.mongodb.com/) with [Mongoose](https://mongoosejs.com/).
+- **Auth**: JWT-based authentication & Google OAuth.
+- **Storage**: [Cloudinary](https://cloudinary.com/) for optimized image hosting.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## ⚙️ Getting Started
 
-## Deploy on Vercel
+### Prerequisites
+- Node.js (v18+)
+- MongoDB Atlas account or local instance.
+- Cloudinary account.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Installation
+1. **Clone the Repo**:
+   ```bash
+   git clone https://github.com/Sanyam124/Minor-Project-Dev.git
+   cd recircle-marketplace
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Environment Setup**:
+   Create a `.env.local` file in the root directory:
+   ```env
+   MONGODB_URI=your_mongodb_uri
+   JWT_SECRET=your_jwt_secret
+   CLOUDINARY_CLOUD_NAME=your_name
+   CLOUDINARY_API_KEY=your_key
+   CLOUDINARY_API_SECRET=your_secret
+   NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_id
+   ```
+
+4. **Run Development Server**:
+   ```bash
+   npm run dev
+   ```
+
+5. **Seed Data (Optional)**:
+   ```bash
+   npm run seed
+   ```
+
+## 📜 License
+This project is developed as part of a student minor project. All rights reserved.
+
+---
+*Built with ❤️ for the student community.*
