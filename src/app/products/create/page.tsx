@@ -3,16 +3,27 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import Loader from '@/components/Loader';
 
 export default function CreateProductPage() {
   const router = useRouter();
-  const { user } = useAuth();
-
+  const { user, loading: authLoading } = useAuth();
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push(`/login?redirect=${encodeURIComponent('/products/create')}`);
+      return;
+    }
+
     if (user?.role === 'delivery_partner') {
       router.push('/delivery-dashboard');
+      return;
     }
-  }, [user, router]);
+    
+    if (user && !user.isPhoneVerified) {
+      router.push('/profile/edit?reason=verify_to_list');
+    }
+  }, [user, router, authLoading]);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -25,6 +36,12 @@ export default function CreateProductPage() {
   const [images, setImages] = useState<string[]>([]); // Base64 strings
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Prevent form flicker while loading auth or if redirect is imminent
+  // Moved after state declarations to comply with Rules of Hooks
+  if (authLoading || !user || !user.isPhoneVerified || user.role === 'delivery_partner') {
+    return <Loader fullScreen />;
+  }
 
 
 
@@ -80,7 +97,6 @@ export default function CreateProductPage() {
       router.refresh();
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -94,15 +110,21 @@ export default function CreateProductPage() {
           {/* Title, Price, Description, Category, Condition fields remain same... */}
           <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
             <div className="sm:col-span-4">
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700">Title</label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700">Title</label>
+                <span className={`text-[10px] font-bold ${formData.title.length >= 70 ? 'text-red-500' : 'text-gray-400'}`}>
+                  {formData.title.length}/80
+                </span>
+              </div>
               <input
                 type="text"
                 name="title"
                 id="title"
                 required
+                maxLength={80}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value.replace(/[\r\n]/g, '') })}
               />
             </div>
 
@@ -114,32 +136,43 @@ export default function CreateProductPage() {
                 id="price"
                 required
                 min="5" 
+                max="1000000"
                 step="1"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white"
+                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-indigo-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white ${
+                  formData.price && Number(formData.price) > 1000000 ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-indigo-500'
+                }`}
                 value={formData.price}
+                onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                  const val = e.currentTarget.value;
+                  if (val.length > 7) e.currentTarget.value = val.slice(0, 7);
+                }}
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (val.includes('.') || val.includes(',')) return;
+                  if (!/^\d*$/.test(val)) return;
                   setFormData({ ...formData, price: val });
                 }}
               />
-               {/* Fee Transparency Logic (Keep existing) */}
-                {formData.price && Number(formData.price) > 0 && (
-                    <div className="mt-2 bg-green-50 p-3 rounded-md text-sm text-green-800 border border-green-200">
-                        <p className="font-semibold">Zero Commission Model:</p>
-                        <p className="mt-1">You keep 100% of the sale price. Direct student-to-student exchange.</p>
-                        <p className="font-bold mt-1 text-green-900 text-lg">You Earn: ₹{formData.price}</p>
-                    </div>
-                )}
+              <p className="mt-1 text-[10px] text-gray-500">Max limit: ₹1,000,000</p>
+              {formData.price && Number(formData.price) > 1000000 && (
+                <p className="mt-1 text-xs font-bold text-red-600 animate-pulse">
+                  Price cannot exceed ₹1,000,000
+                </p>
+              )}
             </div>
 
             <div className="sm:col-span-6">
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+                <span className={`text-[10px] font-bold ${formData.description.length >= 1900 ? 'text-red-500' : 'text-gray-400'}`}>
+                  {formData.description.length}/2000
+                </span>
+              </div>
               <textarea
                 id="description"
                 name="description"
                 rows={4}
                 required
+                maxLength={2000}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-3 border text-gray-900 bg-white"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -253,7 +286,7 @@ export default function CreateProductPage() {
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.price || Number(formData.price) < 5}
+              disabled={loading || !formData.price || Number(formData.price) < 5 || Number(formData.price) > 1000000}
               className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
             >
               {loading ? 'Creating...' : 'List Item'}

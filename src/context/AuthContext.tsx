@@ -16,6 +16,9 @@ interface User {
   wishlist?: string[];
   wishlistedServices?: string[];
   isVerified?: boolean;
+  isPhoneVerified?: boolean;
+  isOnVacation?: boolean;
+  blockedUsers?: string[];
 }
 
 interface AuthContextType {
@@ -24,6 +27,7 @@ interface AuthContextType {
   login: (userData: User) => void;
   logout: () => void;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,9 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
+        } else {
+          setUser(null);
         }
       } catch (error) {
         console.error('Failed to load user', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -67,8 +74,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+      } else {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Failed to refresh user', error);
+      setUser(null);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, setUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, setUser, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
