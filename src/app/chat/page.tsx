@@ -1,6 +1,16 @@
-'use client';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ChatPage() {
+    const { user, loading: authLoading } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!authLoading && !user) {
+            router.push(`/login?redirect=${encodeURIComponent('/chat')}`);
+        }
+    }, [user, authLoading, router]);
     return (
         <>
             {/* Background Pattern for Empty State */}

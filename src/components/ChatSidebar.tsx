@@ -23,6 +23,8 @@ export default function ChatSidebar() {
     const searchParams = useSearchParams();
 
     useEffect(() => {
+        if (!user) return;
+
         fetchConversations(1, false);
         // Polling for updates
         const interval = setInterval(() => fetchConversations(1, false), 5000);
@@ -35,7 +37,7 @@ export default function ChatSidebar() {
             clearInterval(interval);
             window.removeEventListener('click', handleClickOutside);
         };
-    }, []);
+    }, [user]);
 
     const fetchConversations = async (pageNum: number, append: boolean = false) => {
         try {
@@ -114,11 +116,43 @@ export default function ChatSidebar() {
         e.preventDefault();
         e.stopPropagation();
         setActiveMenu(null);
-        setReportTarget({
-            userId: conv.user._id,
-            type: conv.product ? 'product' : 'service',
-            id: conv.product?._id || conv.service?._id
-        });
+        
+        const type = conv.product ? 'product' : 'service';
+        const id = conv.product?._id || conv.service?._id;
+        
+        if (id) {
+            setReportTarget({
+                userId: conv.user._id,
+                type,
+                id: id.toString()
+            });
+        }
+    };
+
+    const handleBlockClick = async (e: React.MouseEvent, conv: any) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setActiveMenu(null);
+        
+        if (!window.confirm(`Are you sure you want to block ${conv.user.name}? They will no longer be able to message you and their listings will be hidden.`)) return;
+
+        try {
+            const res = await fetch('/api/user/block', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetUserId: conv.user._id })
+            });
+            
+            if (res.ok) {
+                // Remove from local state immediately
+                setConversations(prev => prev.filter(c => c.user._id !== conv.user._id));
+                alert(`${conv.user.name} has been blocked.`);
+            } else {
+                alert("Failed to block user.");
+            }
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     // Intersection Observer for infinite scroll
@@ -136,6 +170,10 @@ export default function ChatSidebar() {
     const filteredConversations = useMemo(() => {
         if (!user) return conversations;
         return conversations.filter(conv => {
+            // [BLOCK FILTER] Skip conversations with blocked users
+            const isBlocked = user.blockedUsers?.some((id: any) => id.toString() === conv.user._id.toString());
+            if (isBlocked) return false;
+
             if (activeTab === 'all') return true;
             
             const itemOwnerId = conv.product?.seller || conv.service?.provider;
@@ -222,6 +260,7 @@ export default function ChatSidebar() {
                             setActiveMenu={setActiveMenu}
                             handleDeleteChat={handleDeleteChat}
                             handleReportClick={handleReportClick}
+                            handleBlockClick={handleBlockClick}
                             onItemClick={() => {
                                 setConversations(prev => prev.map(c => 
                                     c.user._id === conv.user._id && (c.product?._id === conv.product?._id && c.service?._id === conv.service?._id)
