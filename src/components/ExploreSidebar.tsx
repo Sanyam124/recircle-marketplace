@@ -166,9 +166,24 @@ export default function ExploreSidebar({ currentFilters, onFilterChange }: Explo
           <div className="mb-6">
             <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Item Type</h4>
             <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
-               <button onClick={() => setFilters(prev => ({...prev, type: 'all'}))} className={`flex-1 text-xs py-1.5 font-bold rounded-lg transition-all ${filters.type === 'all' ? 'bg-white dark:bg-gray-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}>All</button>
-               <button onClick={() => setFilters(prev => ({...prev, type: 'products'}))} className={`flex-1 text-xs py-1.5 font-bold rounded-lg transition-all ${filters.type === 'products' ? 'bg-white dark:bg-gray-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}>Products</button>
-               <button onClick={() => setFilters(prev => ({...prev, type: 'services'}))} className={`flex-1 text-xs py-1.5 font-bold rounded-lg transition-all ${filters.type === 'services' ? 'bg-white dark:bg-gray-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}>Services</button>
+               <button 
+                  onClick={() => setFilters({ search: '', type: 'all', sort: 'newest', minPrice: '', maxPrice: '', categories: [], conditions: [] })} 
+                  className={`flex-1 text-xs py-1.5 font-bold rounded-lg transition-all ${filters.type === 'all' ? 'bg-white dark:bg-gray-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+               >
+                 All
+               </button>
+               <button 
+                  onClick={() => setFilters({ search: '', type: 'products', sort: 'newest', minPrice: '', maxPrice: '', categories: [], conditions: [] })} 
+                  className={`flex-1 text-xs py-1.5 font-bold rounded-lg transition-all ${filters.type === 'products' ? 'bg-white dark:bg-gray-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+               >
+                 Products
+               </button>
+               <button 
+                  onClick={() => setFilters({ search: '', type: 'services', sort: 'newest', minPrice: '', maxPrice: '', categories: [], conditions: [] })} 
+                  className={`flex-1 text-xs py-1.5 font-bold rounded-lg transition-all ${filters.type === 'services' ? 'bg-white dark:bg-gray-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+               >
+                 Services
+               </button>
             </div>
           </div>
 

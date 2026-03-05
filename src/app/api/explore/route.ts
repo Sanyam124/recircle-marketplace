@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import Product from '@/models/Product';
 import Service from '@/models/Service';
+import User from '@/models/User';
 import Review from '@/models/Review';
 
 export async function GET(req: NextRequest) {
@@ -30,6 +31,17 @@ export async function GET(req: NextRequest) {
         // Base Queries
         const productQuery: any = { status: 'Available' };
         const serviceQuery: any = { status: 'Active' };
+
+        // [VACATION MODE] Hide listings from users who are on vacation
+        // Only apply if we are not looking for a specific user's items
+        if (!targetId) {
+            const vacationUsers = await User.find({ isOnVacation: true }).select('_id');
+            if (vacationUsers.length > 0) {
+                const vacationIds = vacationUsers.map(u => u._id);
+                productQuery.seller = { $nin: vacationIds };
+                serviceQuery.provider = { $nin: vacationIds };
+            }
+        }
 
         // Search logic
         if (search) {
@@ -92,7 +104,11 @@ export async function GET(req: NextRequest) {
         const pipeline: any[] = [];
 
         // 1. Build Product match
-        pipeline.push({ $match: productQuery });
+        if (type === 'services') {
+            pipeline.push({ $match: { _id: { $exists: false } } });
+        } else {
+            pipeline.push({ $match: productQuery });
+        }
         pipeline.push({ $addFields: { itemType: 'product' } });
 
         // 2. Union with Services
@@ -102,19 +118,11 @@ export async function GET(req: NextRequest) {
                 coll: 'services',
                 pipeline: [
                     { $match: serviceMatch },
-                    { $addFields: { itemType: 'service', seller: '$provider' } }
+                    { $addFields: { itemType: 'service' } }
                 ]
             };
 
-            if (type === 'services') {
-                // If only services, we swap the start
-                // (Easier to just use Product as base and empty the match if type is services only)
-                pipeline.length = 0;
-                pipeline.push({ $match: serviceMatch });
-                pipeline.push({ $addFields: { itemType: 'service' } });
-            } else {
-                pipeline.push({ $unionWith: serviceUnion });
-            }
+            pipeline.push({ $unionWith: serviceUnion });
         }
 
         // 3. Normalize fields after union
@@ -124,6 +132,7 @@ export async function GET(req: NextRequest) {
                 price: 1,
                 images: 1,
                 category: 1,
+                description: 1,
                 condition: 1,
                 status: 1,
                 itemType: 1,
