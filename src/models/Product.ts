@@ -16,8 +16,8 @@ export interface IProduct extends Document {
 const ProductSchema: Schema<IProduct> = new Schema(
     {
         seller: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-        title: { type: String, required: true, trim: true, index: 'text' },
-        description: { type: String, required: true, trim: true, index: 'text' },
+        title: { type: String, required: true, trim: true, index: 'text', maxlength: 80 },
+        description: { type: String, required: true, trim: true, index: 'text', maxlength: 2000 },
         price: { type: Number, required: true, min: 0, max: 1000000 },
         images: { type: [String], required: true }, // Array of image URLs
         category: { type: String, required: true, trim: true, index: true },

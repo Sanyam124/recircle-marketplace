@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Product from '@/models/Product';
 import Order from '@/models/Order';
+import Review from '@/models/Review';
 import { verifyToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -25,7 +26,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             buyerId = lastOrder?.buyer;
         }
 
-        return NextResponse.json({ product, buyerId }, { status: 200 });
+        // Fetch Seller Review Stats
+        const reviewStats = await Review.aggregate([
+            { $match: { target: product.seller._id } },
+            { $group: { _id: null, average: { $avg: '$rating' }, count: { $sum: 1 } } }
+        ]);
+
+        const averageRating = reviewStats.length > 0 ? Number(reviewStats[0].average.toFixed(1)) : 0;
+        const reviewCount = reviewStats.length > 0 ? reviewStats[0].count : 0;
+
+        return NextResponse.json({
+            product: {
+                ...product.toObject(),
+                averageRating,
+                reviewCount
+            },
+            buyerId
+        }, { status: 200 });
 
     } catch (error: any) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

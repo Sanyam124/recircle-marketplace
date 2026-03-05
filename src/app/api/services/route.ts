@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Service from '@/models/Service';
+import User from '@/models/User';
 import Review from '@/models/Review';
 import { verifyToken } from '@/lib/auth';
 import { uploadToCloudinary } from '@/lib/cloudinary';
@@ -26,6 +27,9 @@ export async function POST(req: NextRequest) {
         if (!title || !description || !price || !category) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
+
+        if (title.length > 80) return NextResponse.json({ error: 'Title must be 80 characters or less' }, { status: 400 });
+        if (description.length > 2000) return NextResponse.json({ error: 'Description must be 2000 characters or less' }, { status: 400 });
 
         const imageUrls: string[] = [];
         if (images && Array.isArray(images)) {
@@ -80,6 +84,16 @@ export async function GET(req: NextRequest) {
         const skip = (page - 1) * limit;
 
         const query: any = { status: 'Active' };
+
+        // [VACATION MODE] Hide listings from users who are on vacation
+        // Only apply if we are not looking for a specific provider's items
+        if (!provider) {
+            const vacationUsers = await User.find({ isOnVacation: true }).select('_id');
+            if (vacationUsers.length > 0) {
+                const vacationIds = vacationUsers.map(u => u._id);
+                query.provider = { $nin: vacationIds };
+            }
+        }
 
         if (category) {
             query.category = category;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Product from '@/models/Product';
+import User from '@/models/User';
 import Review from '@/models/Review';
 import { verifyToken } from '@/lib/auth';
 import { uploadToCloudinary } from '@/lib/cloudinary';
@@ -24,6 +25,9 @@ export async function POST(req: NextRequest) {
         if (!title || !description || !price || !category || !condition) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
+
+        if (title.length > 80) return NextResponse.json({ error: 'Title must be 80 characters or less' }, { status: 400 });
+        if (description.length > 2000) return NextResponse.json({ error: 'Description must be 2000 characters or less' }, { status: 400 });
 
         // For MVP, assuming images are sent as base64 strings or URLs. 
         // In a real app, you might upload on client and send URLs, or upload here.
@@ -80,6 +84,16 @@ export async function GET(req: NextRequest) {
         const skip = (page - 1) * limit;
 
         const query: any = { status: 'Available' };
+
+        // [VACATION MODE] Hide listings from users who are on vacation
+        // Only apply if we are not looking for a specific seller's items
+        if (!seller) {
+            const vacationUsers = await User.find({ isOnVacation: true }).select('_id');
+            if (vacationUsers.length > 0) {
+                const vacationIds = vacationUsers.map(u => u._id);
+                query.seller = { $nin: vacationIds };
+            }
+        }
 
         if (category) {
             query.category = category;

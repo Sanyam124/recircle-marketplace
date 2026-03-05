@@ -10,7 +10,7 @@ import ImageCarousel from '@/components/ImageCarousel';
 import ShareButton from '@/components/ShareButton';
 import ReportModal from '@/components/ReportModal';
 import ReviewSection from '@/components/ReviewSection';
-import RequestAppointmentModal from '@/components/RequestAppointmentModal';
+import ExpandableText from '@/components/ExpandableText';
 
 interface Service {
   _id: string;
@@ -24,8 +24,13 @@ interface Service {
   provider: {
     _id: string;
     name: string;
+    username?: string;
     email: string;
+    profilePicture?: string;
   };
+  averageRating?: number;
+  reviewCount?: number;
+  status: 'Active' | 'Inactive';
   createdAt: string;
 }
 
@@ -35,8 +40,8 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
 
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [requestOpen, setRequestOpen] = useState(false);
   const { user, setUser } = useAuth();
   const router = useRouter();
   const [liked, setLiked] = useState(false);
@@ -105,6 +110,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this service?')) return;
 
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/services/${id}`, {
         method: 'DELETE',
@@ -114,6 +120,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
       }
     } catch (error) {
       console.error('Failed to delete service', error);
+      setIsDeleting(false);
     }
   };
 
@@ -131,7 +138,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
         {/* Service Info */}
         <div className="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
           <div className="flex items-start justify-between gap-3 flex-wrap">
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl">{service.title}</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl break-words flex-1 min-w-0">{service.title}</h1>
             <div className="flex items-center gap-2 flex-shrink-0 mt-1">
               <ShareButton
                 title={service.title}
@@ -165,11 +172,6 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
             )}
           </div>
 
-          <div className="mt-6">
-            <h3 className="sr-only">Description</h3>
-            <div className="text-base text-gray-700 dark:text-gray-300 space-y-6" dangerouslySetInnerHTML={{ __html: service.description.replace(/\n/g, '<br/>') }} />
-          </div>
-          
           <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white">Provider Information</h3>
@@ -179,14 +181,38 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
             </div>
             <Link href={`/profile/${service.provider._id}`} className="mt-4 flex items-center group bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-3 hover:shadow-md transition-all">
               <div className="flex-shrink-0">
-                <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold border border-indigo-700 shadow-sm overflow-hidden group-hover:scale-105 transition-transform">
+                <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold border border-indigo-700 shadow-sm overflow-hidden group-hover:scale-105 transition-transform uppercase">
                   {service.provider.name.charAt(0)}
                 </div>
               </div>
-              <div className="ml-4">
-                <div className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{service.provider.name}</div>
-                <div className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">@{ (service.provider as any).username || (service.provider as any)._id?.toString().slice(-4) }</div>
-                <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Member since {new Date(service.createdAt).getFullYear()}</div>
+              <div className="ml-4 flex-1 min-w-0">
+                <div className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">{service.provider.name}</div>
+                <div className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">@{ service.provider.username || service.provider._id?.toString().slice(-4) }</div>
+                
+                {/* Average Rating & Review Count */}
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="flex items-center mt-1 group/rating"
+                >
+                  <div className="flex items-center">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <svg
+                        key={star}
+                        className={`h-3 w-3 ${ (service.averageRating || 0) >= star ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600' }`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <span className="ml-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-indigo-600 transition-colors">
+                    {service.averageRating || '0'} ({service.reviewCount || 0} reviews)
+                  </span>
+                </button>
               </div>
               <div className="ml-auto">
                 <svg className="w-5 h-5 text-gray-300 dark:text-gray-600 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
@@ -194,14 +220,29 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
             </Link>
           </div>
 
+          <div className="mt-10">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white">Description</h3>
+            <div className="mt-3">
+              <ExpandableText 
+                text={service.description} 
+                maxLines={5} 
+                incrementalLines={20}
+                isHtml={false}
+                showReadMore={true}
+                className="text-base text-gray-700 dark:text-gray-300"
+              />
+            </div>
+          </div>
+          
           <div className="mt-10 flex gap-4 flex-col sm:flex-row">
             {user && user.id === service.provider._id ? (
               <button
                 type="button"
                 onClick={handleDelete}
-                className="flex-1 bg-white dark:bg-gray-800 border border-red-300 dark:border-red-800 rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-red-500 transition-colors"
+                disabled={isDeleting}
+                className={`flex-1 bg-white dark:bg-gray-800 border border-red-300 dark:border-red-800 rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-red-700 dark:text-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-red-500 transition-colors ${isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-50 dark:hover:bg-red-900/30'}`}
               >
-                Delete Service
+                {isDeleting ? 'Deleting...' : 'Delete Service'}
               </button>
             ) : (
                   <div className="w-full bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
@@ -246,7 +287,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                                    router.push('/login');
                                    return;
                                }
-                               router.push(`/chat/${service.provider._id}?serviceId=${service._id}&tab=action`);
+                               router.push(`/chat/${service.provider._id}?serviceId=${service._id}&tab=action&autoMsg=true`);
                            }}
                            className="flex-1 bg-white dark:bg-gray-800 border-2 border-indigo-600 dark:border-indigo-500 text-indigo-700 dark:text-indigo-400 rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/40 transition-all active:scale-95"
                        >
@@ -255,7 +296,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3">
-                      {service.availability && (
+                      {service.status === 'Active' && user && user.id !== service.provider._id && (
                           <button
                           type="button"
                           onClick={toggleWishlist}
@@ -269,21 +310,12 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
             )}
           </div>
 
-          <div className="mt-12">
+          <div className="mt-12" id="reviews-section">
             <ReviewSection targetId={service.provider._id} targetName={service.provider.name} />
           </div>
 
           {reportOpen && (
             <ReportModal targetUserId={service.provider._id} itemType="service" itemId={service._id} onClose={() => setReportOpen(false)} />
-          )}
-
-          {requestOpen && (
-            <RequestAppointmentModal
-               serviceId={service._id}
-               itemTitle={service.title}
-               originalPrice={service.price}
-               onClose={() => setRequestOpen(false)}
-            />
           )}
         </div>
       </div>

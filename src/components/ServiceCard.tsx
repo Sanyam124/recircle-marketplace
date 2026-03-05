@@ -1,9 +1,12 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { formatTimeAgo } from '@/lib/utils';
+import ExpandableText from './ExpandableText';
 
 interface Service {
   _id: string;
@@ -12,6 +15,7 @@ interface Service {
   priceUnit: string;
   category: string;
   images: string[];
+  description: string;
   createdAt?: string | Date;
   provider: {
     _id?: string;
@@ -69,8 +73,12 @@ export default function ServiceCard({ service }: { service: Service }) {
   };
 
   return (
-    <div className="group relative block bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden border border-gray-100 dark:border-gray-700">
-      <Link href={`/services/${service._id}`} className="relative h-56 w-full block overflow-hidden bg-gray-200 dark:bg-gray-700">
+    <div className="group relative block bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden border border-gray-100 dark:border-gray-700 select-none cursor-pointer">
+      <Link href={`/services/${service._id}`} className="absolute inset-0 z-0">
+        <span className="sr-only">View {service.title}</span>
+      </Link>
+
+      <div className="relative h-56 w-full block overflow-hidden bg-gray-200 dark:bg-gray-700">
         {service.images && service.images.length > 0 ? (
           <Image
             src={service.images[0]}
@@ -87,7 +95,7 @@ export default function ServiceCard({ service }: { service: Service }) {
             </svg>
           </div>
         )}
-        <div className="absolute top-2 right-2 flex gap-2" onClick={(e) => e.preventDefault()}>
+        <div className="absolute top-2 right-2 flex gap-2">
             <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 pointer-events-none">
               {service.category}
             </div>
@@ -100,18 +108,21 @@ export default function ServiceCard({ service }: { service: Service }) {
                 </svg>
             </button>
         </div>
-      </Link>
-      <div className="p-4">
+      </div>
+      <div className="p-4 relative z-10 pointer-events-none">
         <div className="flex justify-between items-start">
-          <div className="w-full">
-            <Link href={`/services/${service._id}`} className="block">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">{service.title}</h3>
-            </Link>
-            <div className="mt-1 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-              <Link href={`/profile/${service.provider?._id || (service as any).seller?._id || ''}`} className="font-medium mr-1 flex items-center hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline z-10 relative">
-                {service.provider?.name || (service as any).seller?.name || 'Unknown Provider'}
-              </Link>
-              <div className="flex items-center">
+          <div className="w-full min-w-0">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1 min-h-[1.6em]">{service.title}</h3>
+            <div className="mt-1 flex items-start justify-between text-sm text-gray-500 dark:text-gray-400 gap-2">
+              <div className="flex-1 min-w-0">
+                <ExpandableText 
+                  text={service.description || ''} 
+                  maxLines={2} 
+                  className="text-[11px] leading-normal min-h-[3em]" 
+                  showReadMore={false} 
+                />
+              </div>
+              <div className="flex items-center shrink-0">
                  <svg className="h-4 w-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                  </svg>
@@ -125,7 +136,7 @@ export default function ServiceCard({ service }: { service: Service }) {
             </div>
           </div>
         </div>
-        <Link href={`/services/${service._id}`} className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex items-center justify-between">
           <div className="flex flex-col">
             <div className="flex items-baseline gap-1">
               <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">₹{service.price}</span>
@@ -133,7 +144,7 @@ export default function ServiceCard({ service }: { service: Service }) {
             </div>
             <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">{formatTimeAgo(service.createdAt)}</span>
           </div>
-        </Link>
+        </div>
       </div>
     </div>
   );
