@@ -24,7 +24,22 @@ export async function PUT(req: NextRequest) {
             { new: true }
         ).select('-password');
 
-        return NextResponse.json({ user: updatedUser }, { status: 200 });
+        if (!updatedUser) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({
+            user: {
+                id: updatedUser._id,
+                name: updatedUser.name,
+                username: updatedUser.username,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                profilePicture: updatedUser.profilePicture,
+                isVerified: updatedUser.isVerified,
+                authProvider: updatedUser.authProvider
+            }
+        }, { status: 200 });
 
     } catch (error: any) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -48,12 +48,14 @@ export async function POST(req: NextRequest) {
                 user: {
                     id: user._id,
                     name: user.name,
+                    username: user.username,
                     email: user.email,
                     role: user.role,
                     profilePicture: user.profilePicture,
                     wishlist: user.wishlist || [],
                     wishlistedServices: user.wishlistedServices || [],
                     isVerified: user.isVerified,
+                    authProvider: user.authProvider,
                 }
             },
             { status: 200 }

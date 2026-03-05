@@ -145,8 +145,11 @@ export default function RegisterPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    // Only trim username and email, allow spaces in name for typing
-    const updatedValue = (name === 'username' || name === 'email') ? value.trim() : value;
+    // Strip newlines and trim username/email
+    let updatedValue = value.replace(/[\r\n]/g, '');
+    if (name === 'username' || name === 'email') {
+        updatedValue = updatedValue.trim();
+    }
     
     setFormData({ ...formData, [name]: updatedValue });
     setError('');
@@ -256,8 +259,7 @@ export default function RegisterPage() {
       login(data.user);
     } catch (err: any) {
       setError(err.message);
-    } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -311,8 +313,8 @@ export default function RegisterPage() {
                     value={formData.username}
                     onChange={(e) => {
                         // Allow letters, numbers, dots, and underscores
-                        // Forced lowercase for consistency
-                        const val = e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, '');
+                        // Forced lowercase for consistency & strip newlines
+                        const val = e.target.value.toLowerCase().replace(/[\r\n]/g, '').replace(/[^a-z0-9._]/g, '');
                         setFormData({ ...formData, username: val });
                     }}
                     placeholder="johndoe123"

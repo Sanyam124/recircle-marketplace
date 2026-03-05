@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const boughtProductSkip = (boughtProductPage - 1) * boughtLimit;
         const boughtServiceSkip = (boughtServicePage - 1) * boughtLimit;
 
-        const user = await User.findById(id).select('name username email profilePicture gender createdAt role bio isVerified allowEmailContact');
+        const user = await User.findById(id).select('name username email profilePicture gender createdAt role bio isVerified allowEmailContact authProvider isPhoneVerified phone allowPhoneContact address isOnVacation');
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             const token = req.cookies.get('token')?.value;
             if (token) {
                 const decoded = verifyToken(token) as any;
-                if (decoded && decoded.userId === id) isOwner = true;
+                if (decoded && decoded.userId === id.toString()) isOwner = true;
             }
         } catch { }
 
@@ -56,7 +56,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             Product.countDocuments({ seller: objectId, status: { $ne: 'Available' } }),
         ]);
         const totalProducts = totalProductsAvailable + totalProductsSold;
-        const productQuery = isOwner ? { seller: objectId } : { seller: objectId, status: 'Available' };
+        const productQuery = isOwner
+            ? { seller: objectId }
+            : (user.isOnVacation ? { _id: null } : { seller: objectId, status: 'Available' });
+
         const products = await Product.find(productQuery)
             .sort({ createdAt: -1 })
             .skip(productSkip)
@@ -69,7 +72,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             Order.countDocuments({ seller: objectId, orderType: 'Service_Appointment' }),
         ]);
         const totalServices = totalServicesActive + totalServicesInactive;
-        const serviceQuery = isOwner ? { provider: objectId } : { provider: objectId, status: 'Active' };
+        const serviceQuery = isOwner
+            ? { provider: objectId }
+            : (user.isOnVacation ? { _id: null } : { provider: objectId, status: 'Active' });
+
         const services = await Service.find(serviceQuery)
             .sort({ createdAt: -1 })
             .skip(serviceSkip)
@@ -162,7 +168,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
         return NextResponse.json({
             user: {
-                _id: user._id,
+                id: user._id,
                 name: user.name,
                 username: user.username,
                 email: user.email,
@@ -170,11 +176,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 gender: user.gender,
                 bio: user.bio,
                 isVerified: user.isVerified,
+                isPhoneVerified: user.isPhoneVerified,
+                authProvider: user.authProvider,
+                phone: user.phone,
+                allowPhoneContact: user.allowPhoneContact,
                 joinedAt: user.createdAt,
                 role: user.role,
                 rating: rating.toFixed(1),
                 reviewCount: totalReviews,
                 allowEmailContact: user.allowEmailContact,
+                address: user.address,
+                isOnVacation: user.isOnVacation
             },
             isOwner,
             allItems,

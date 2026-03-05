@@ -45,7 +45,11 @@ export async function GET(req: NextRequest) {
                     profilePicture: user.profilePicture,
                     wishlist: user.wishlist || [],
                     wishlistedServices: user.wishlistedServices || [],
-                    isVerified: user.isVerified
+                    isVerified: user.isVerified,
+                    isPhoneVerified: user.isPhoneVerified,
+                    allowPhoneContact: user.allowPhoneContact,
+                    usernameChangeCount: user.usernameChangeCount || 0,
+                    authProvider: user.authProvider
                 }
             },
             { status: 200 }

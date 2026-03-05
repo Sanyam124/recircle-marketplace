@@ -27,7 +27,27 @@ export async function GET(req: NextRequest) {
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
         return NextResponse.json({
-            user
+            user: {
+                id: user._id,
+                name: user.name,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                profilePicture: user.profilePicture,
+                bio: user.bio,
+                phone: user.phone,
+                isPhoneVerified: user.isPhoneVerified,
+                allowPhoneContact: user.allowPhoneContact,
+                address: user.address,
+                gender: user.gender,
+                allowEmailContact: user.allowEmailContact,
+                wishlist: user.wishlist || [],
+                wishlistedServices: user.wishlistedServices || [],
+                isVerified: user.isVerified,
+                isOnVacation: user.isOnVacation || false,
+                authProvider: user.authProvider,
+                usernameChangeCount: user.usernameChangeCount || 0
+            }
         }, { status: 200 });
 
     } catch (error: any) {
@@ -44,33 +64,74 @@ export async function PUT(req: NextRequest) {
         if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
         await connectToDatabase();
-        const { name, username, gender, address, bio, allowEmailContact } = await req.json();
+        const body = await req.json();
+        const { name, username, gender, address, bio, allowEmailContact, allowPhoneContact, isOnVacation } = body;
 
-        if (name && (name.trim().length < 3 || name.trim().length > 30)) {
-            return NextResponse.json({ error: 'Name must be between 3 and 30 characters' }, { status: 400 });
-        }
+        const user = await User.findById(decoded.userId);
+        if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        // Check if username is already taken by another user
-        if (username) {
-            const existingUser = await User.findOne({
-                username: username,
-                _id: { $ne: decoded.userId }
-            });
-            if (existingUser) {
-                return NextResponse.json({ error: 'Username already taken' }, { status: 409 });
+        const updateData: any = {};
+
+        // 1. Name update
+        if (name !== undefined) {
+            const trimmedName = name.trim();
+            if (trimmedName) {
+                if (trimmedName.length < 3 || trimmedName.length > 30) {
+                    return NextResponse.json({ error: 'Name must be between 3 and 30 characters' }, { status: 400 });
+                }
+                updateData.name = trimmedName;
             }
         }
 
-        const updateData: any = {
-            name,
-            gender: gender || 'none',
-            address,
-            bio
-        };
+        // 2. Username update with limit
+        if (username !== undefined) {
+            const newUsername = username.trim().toLowerCase();
+            if (newUsername && newUsername !== user.username) {
+                // Check Limit
+                if (user.usernameChangeCount >= 3) {
+                    return NextResponse.json({ error: 'Username change limit reached (max 3)' }, { status: 403 });
+                }
 
-        if (allowEmailContact !== undefined) {
-            updateData.allowEmailContact = allowEmailContact;
+                // Uniqueness check
+                const existingUser = await User.findOne({
+                    username: newUsername,
+                    _id: { $ne: decoded.userId }
+                });
+                if (existingUser) {
+                    return NextResponse.json({ error: 'Username already taken' }, { status: 409 });
+                }
+
+                if (newUsername.length > 20) {
+                    return NextResponse.json({ error: 'Username must be 20 characters or less' }, { status: 400 });
+                }
+
+                updateData.username = newUsername;
+                updateData.usernameChangeCount = (user.usernameChangeCount || 0) + 1;
+                updateData.usernameLastChanged = new Date();
+            }
         }
+
+        // 3. Simple fields
+        if (gender !== undefined) updateData.gender = gender;
+        if (address !== undefined) {
+            if (address.length > 150) {
+                return NextResponse.json({ error: 'Address must be 150 characters or less' }, { status: 400 });
+            }
+            updateData.address = address;
+        }
+
+        // 4. Bio with length check
+        if (bio !== undefined) {
+            if (bio.length > 500) {
+                return NextResponse.json({ error: 'Bio must be 500 characters or less' }, { status: 400 });
+            }
+            updateData.bio = bio;
+        }
+
+        // 5. Privacy Toggles
+        if (allowEmailContact !== undefined) updateData.allowEmailContact = allowEmailContact;
+        if (allowPhoneContact !== undefined) updateData.allowPhoneContact = allowPhoneContact;
+        if (isOnVacation !== undefined) updateData.isOnVacation = isOnVacation;
 
         const updatedUser = await User.findByIdAndUpdate(
             decoded.userId,
@@ -84,7 +145,27 @@ export async function PUT(req: NextRequest) {
 
         return NextResponse.json({
             message: 'Profile updated successfully',
-            user: updatedUser
+            user: {
+                id: updatedUser._id,
+                name: updatedUser.name,
+                username: updatedUser.username,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                profilePicture: updatedUser.profilePicture,
+                bio: updatedUser.bio,
+                phone: updatedUser.phone,
+                isPhoneVerified: updatedUser.isPhoneVerified,
+                allowPhoneContact: updatedUser.allowPhoneContact,
+                address: updatedUser.address,
+                gender: updatedUser.gender,
+                allowEmailContact: updatedUser.allowEmailContact,
+                wishlist: updatedUser.wishlist || [],
+                wishlistedServices: updatedUser.wishlistedServices || [],
+                isVerified: updatedUser.isVerified,
+                isOnVacation: updatedUser.isOnVacation || false,
+                authProvider: updatedUser.authProvider,
+                usernameChangeCount: updatedUser.usernameChangeCount || 0
+            }
         }, { status: 200 });
 
     } catch (error: any) {

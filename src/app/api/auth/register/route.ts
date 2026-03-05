@@ -119,7 +119,6 @@ export async function POST(req: NextRequest) {
         });
 
         // Generate Login Token
-        // Fix (Final): Use userId to match Login API standard
         const token = generateToken({
             userId: user._id,
             email: user.email,
@@ -128,7 +127,19 @@ export async function POST(req: NextRequest) {
         });
 
         const response = NextResponse.json(
-            { message: 'Registration successful!', user },
+            {
+                message: 'Registration successful!',
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    username: user.username,
+                    email: user.email,
+                    role: user.role,
+                    profilePicture: user.profilePicture,
+                    isVerified: user.isVerified,
+                    authProvider: user.authProvider
+                }
+            },
             { status: 201 }
         );
 

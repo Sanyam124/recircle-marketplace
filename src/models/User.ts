@@ -2,23 +2,31 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IUser extends Document {
     name: string;
-    username: string; // [NEW] Unique username
+    username: string;
     email: string;
     password?: string;
     profilePicture?: string;
     bio?: string;
-    role: 'user' | 'admin'; // [MODIFIED] Strictly user or admin
+    role: 'user' | 'admin';
     address?: string;
     isVerified: boolean;
-    gender?: 'male' | 'female' | 'other' | 'none'; // [ADDED] 'none'
-    allowEmailContact?: boolean; // [ADDED] Email contact preference
+    phone?: string; // [NEW] Optional phone
+    isPhoneVerified: boolean; // [NEW] Level 2 verification
+    allowPhoneContact?: boolean; // [NEW] Privacy toggle
+    status: 'Active' | 'Banned' | 'Deactivated'; // [NEW] Admin status
+    gender?: 'male' | 'female' | 'other' | 'none';
+    allowEmailContact?: boolean;
+    isOnVacation: boolean;
     wishlist: mongoose.Types.ObjectId[];
     wishlistedServices: mongoose.Types.ObjectId[];
+    blockedUsers: mongoose.Types.ObjectId[]; // [NEW] For Block feature
     authProvider: 'email' | 'google';
     googleId?: string;
     otp?: string;
     otpExpiry?: Date;
     lastSeen?: Date;
+    usernameChangeCount: number;
+    usernameLastChanged?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -35,31 +43,42 @@ const UserSchema: Schema<IUser> = new Schema(
             maxlength: 20,
             lowercase: true,
             match: /^(?![0-9]+$)(?!.*\.\.)[a-z0-9_][a-z0-9._]{1,18}[a-z0-9_]$/
-        }, // [REFINED] No periods at start/end, no consecutive periods, no pure numbers
+        },
         email: { type: String, required: true, unique: true, trim: true, lowercase: true },
         password: { type: String, select: false },
         profilePicture: { type: String },
-        bio: { type: String, trim: true },
+        bio: { type: String, trim: true, maxlength: 500, default: '' },
         gender: { type: String, enum: ['male', 'female', 'other', 'none'], default: 'none' },
         allowEmailContact: { type: Boolean, default: false },
+        phone: { type: String, trim: true },
+        isPhoneVerified: { type: Boolean, default: false },
+        allowPhoneContact: { type: Boolean, default: false },
+        status: { type: String, enum: ['Active', 'Banned', 'Deactivated'], default: 'Active' },
         role: { type: String, enum: ['user', 'admin'], default: 'user' },
-        address: { type: String, trim: true },
+        address: { type: String, trim: true, maxlength: 150 },
         isVerified: { type: Boolean, default: false },
+        isOnVacation: { type: Boolean, default: false },
         wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
         wishlistedServices: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Service' }],
+        blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         authProvider: { type: String, enum: ['email', 'google'], default: 'email' },
         googleId: { type: String, unique: true, sparse: true },
         otp: { type: String, select: false },
         otpExpiry: { type: Date, select: false },
         lastSeen: { type: Date },
+        usernameChangeCount: { type: Number, default: 0 },
+        usernameLastChanged: { type: Date },
     },
     { timestamps: true }
 );
 
-// Workaround for Next.js HMR: Delete cached model if it lacks the new field
+// Workaround for Next.js HMR: Delete cached model if it lacks the new fields or has old constraints
 if (mongoose.models.User) {
     const currentSchema = mongoose.models.User.schema;
-    if (!currentSchema.path('wishlistedServices') || !currentSchema.path('googleId')) {
+    const bioPath = currentSchema.path('bio') as any;
+    const isOldBioLimit = bioPath?.options?.maxlength === 300;
+
+    if (isOldBioLimit || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('status') || !currentSchema.path('authProvider') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || (currentSchema.path('address') as any)?.options?.maxlength !== 150 || !currentSchema.path('isOnVacation')) {
         delete mongoose.models.User;
     }
 }
