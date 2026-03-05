@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+
 export interface IOffer extends Document {
     buyer: mongoose.Types.ObjectId;
     seller: mongoose.Types.ObjectId;

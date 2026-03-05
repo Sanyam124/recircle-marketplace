@@ -46,6 +46,9 @@ export async function POST(req: NextRequest) {
         if (offeredPrice <= 0) {
             return NextResponse.json({ error: 'Offer must be greater than 0' }, { status: 400 });
         }
+        if (offeredPrice < item.price * 0.5) {
+            return NextResponse.json({ error: `Offer must be at least 50% of listed price (₹${Math.floor(item.price * 0.5)})` }, { status: 400 });
+        }
         if (offeredPrice > item.price * 2) {
             return NextResponse.json({ error: `Offer cannot exceed 200% of listed price (₹${item.price * 2})` }, { status: 400 });
         }

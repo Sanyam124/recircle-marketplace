@@ -69,9 +69,9 @@ export async function GET(req: NextRequest) {
         await connectToDatabase();
         const { searchParams } = new URL(req.url);
         const targetId = searchParams.get('targetId');
-        const ratingFilter = searchParams.get('rating'); // New parameter for filtering by specific star rating
+        const ratingFilter = searchParams.get('rating');
 
-        if (!targetId) {
+        if (!targetId || targetId === 'undefined') {
             return NextResponse.json({ error: 'Missing targetId' }, { status: 400 });
         }
 

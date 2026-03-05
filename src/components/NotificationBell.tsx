@@ -59,10 +59,10 @@ export default function NotificationBell() {
             const oldUnreadCount = unreadCount;
 
             if (id) {
-                setNotifications(notifications.map(n => n._id === id ? { ...n, isRead: true } : n));
+                setNotifications(notifications.filter(n => n._id !== id));
                 setUnreadCount(Math.max(0, unreadCount - 1));
             } else {
-                setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+                setNotifications([]);
                 setUnreadCount(0);
             }
 
@@ -162,15 +162,6 @@ export default function NotificationBell() {
                         )}
                     </div>
 
-                    <div className="p-3 border-t border-gray-100 dark:border-gray-800 text-center bg-gray-50 dark:bg-gray-800/50 rounded-b-xl transition-colors">
-                        <Link
-                            href="/profile"
-                            className="text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                            onClick={() => setIsOpen(false)}
-                        >
-                            View All Activity
-                        </Link>
-                    </div>
                 </div>
             )}
         </div>

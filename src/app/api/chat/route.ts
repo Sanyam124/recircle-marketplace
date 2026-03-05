@@ -130,6 +130,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing recipient or content' }, { status: 400 });
         }
 
+        if (content.length > 2000) {
+            return NextResponse.json({ error: 'Message must be 2000 characters or less' }, { status: 400 });
+        }
+
         if (!productId && !serviceId) {
             return NextResponse.json({ error: 'Chats must be linked to a Product or Service' }, { status: 400 });
         }

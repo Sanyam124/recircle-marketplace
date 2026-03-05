@@ -66,11 +66,11 @@ export default function RequestAppointmentModal({
               step="1"
               onChange={e => { 
                 const val = e.target.value;
-                if (val.includes('.') || val.includes(',')) return;
+                if (!/^\d*$/.test(val)) return;
                 setOfferedPrice(val); 
                 setError(''); 
               }}
-              placeholder={`Max ₹${originalPrice}`}
+              placeholder={`e.g. ₹${originalPrice}`}
               className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:text-white mb-4 transition-colors"
             />
 

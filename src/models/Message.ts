@@ -28,7 +28,7 @@ const MessageSchema: Schema<IMessage> = new Schema(
             price: { type: Number },
             status: { type: String, enum: ['Pending', 'Accepted', 'Declined'] }
         },
-        content: { type: String, required: true },
+        content: { type: String, required: true, maxlength: 2000 },
         isRead: { type: Boolean, default: false, index: true },
         deletedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     },

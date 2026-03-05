@@ -34,6 +34,7 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
   const hasReviewed = user && reviews.some((r) => r.reviewer._id === user.id);
 
   useEffect(() => {
+    if (!targetId || targetId === 'undefined') return;
     setReviews([]);
     setPage(1);
     fetchReviews(1);
@@ -99,7 +100,6 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
       fetchReviews(1); // Refresh list
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setSubmitting(false);
     }
   };

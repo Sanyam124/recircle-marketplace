@@ -19,10 +19,10 @@ export async function GET(req: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '20');
         const skip = (page - 1) * limit;
 
-        const totalNotifications = await Notification.countDocuments({ recipient: decoded.userId });
+        const totalNotifications = await Notification.countDocuments({ recipient: decoded.userId, isRead: false });
         const totalPages = Math.ceil(totalNotifications / limit);
 
-        const notifications = await Notification.find({ recipient: decoded.userId })
+        const notifications = await Notification.find({ recipient: decoded.userId, isRead: false })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
