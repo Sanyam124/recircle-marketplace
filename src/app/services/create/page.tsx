@@ -10,17 +10,13 @@ export default function CreateServicePage() {
   const { user, loading: authLoading } = useAuth();
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push(`/login?redirect=${encodeURIComponent('/services/create')}`);
+      router.push(`/auth?redirect=${encodeURIComponent('/services/create')}`);
       return;
     }
 
     if (user?.role === 'delivery_partner') {
         router.push('/delivery-dashboard');
         return;
-    }
-
-    if (user && !user.isPhoneVerified) {
-      router.push('/profile/edit?reason=verify_to_list_service');
     }
   }, [user, router, authLoading]);
 
@@ -38,7 +34,7 @@ export default function CreateServicePage() {
 
   // Prevent form flicker while loading auth or if redirect is imminent
   // Moved after state declarations to comply with Rules of Hooks
-  if (authLoading || !user || !user.isPhoneVerified || user.role === 'delivery_partner') {
+  if (authLoading || !user || user.role === 'delivery_partner') {
     return <Loader fullScreen />;
   }
 

@@ -40,9 +40,11 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
 
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [unblocking, setUnblocking] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const { user, setUser } = useAuth();
+  const { user, setUser, refreshUser } = useAuth();
   const router = useRouter();
   const [liked, setLiked] = useState(false);
 
@@ -56,7 +58,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
     e.preventDefault();
 
     if (!user) {
-        router.push('/login');
+        router.push('/auth');
         return;
     }
     
@@ -97,6 +99,8 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
       if (res.ok) {
         const data = await res.json();
         setService(data.service);
+      } else if (res.status === 403) {
+        setIsBlocked(true);
       } else {
         // Handle 404
       }
@@ -104,6 +108,23 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
       console.error('Failed to fetch service', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUnblock = async () => {
+    if (!service || !user) return;
+    setUnblocking(true);
+    try {
+      const res = await fetch(`/api/user/block?userId=${service.provider._id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        await refreshUser();
+      }
+    } catch (error) {
+      console.error('Failed to unblock user', error);
+    } finally {
+      setUnblocking(false);
     }
   };
 
@@ -124,7 +145,34 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
     }
   };
 
+  const isBlockedByMe = user?.blockedUsers?.some((id: any) => id.toString() === service?.provider._id.toString());
+
   if (loading) return <Loader />;
+  
+  if (isBlocked) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+        <div className="bg-red-50 dark:bg-red-900/20 rounded-3xl p-12 border-2 border-red-100 dark:border-red-900/30 shadow-xl">
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0-6V9m0 12a9 9 0 110-18 9 9 0 010 18z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4">Access Denied</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-lg mb-8">
+            You are blocked from viewing this service, or the user has restricted access.
+          </p>
+          <button 
+            onClick={() => router.back()}
+            className="px-8 py-3 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg active:scale-95"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!service) return <div className="text-center py-20">Service not found</div>;
 
   return (
@@ -266,46 +314,61 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3 mb-2">
-                       <button
-                           type="button"
-                           onClick={() => {
-                               if (!user) {
-                                   router.push('/login');
-                                   return;
-                               }
-                               router.push(`/chat/${service.provider._id}?serviceId=${service._id}`);
-                           }}
-                           className="flex-1 bg-indigo-600 text-white rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold hover:bg-indigo-700 shadow-md shadow-indigo-100 dark:shadow-none transition-all active:scale-95"
-                       >
-                           Chat with Provider
-                       </button>
+                       {user && isBlockedByMe ? (
+                            <button
+                                type="button"
+                                onClick={handleUnblock}
+                                disabled={unblocking}
+                                className="w-full bg-red-600 text-white rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold hover:bg-red-700 shadow-md shadow-red-100 dark:shadow-none transition-all active:scale-95 disabled:opacity-50"
+                            >
+                                {unblocking ? 'Unblocking...' : 'Unblock User to Interact'}
+                            </button>
+                       ) : (
+                           <>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!user) {
+                                        router.push('/auth');
+                                        return;
+                                    }
+                                    router.push(`/chat/${service.provider._id}?serviceId=${service._id}`);
+                                }}
+                                className="flex-1 bg-indigo-600 text-white rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold hover:bg-indigo-700 shadow-md shadow-indigo-100 dark:shadow-none transition-all active:scale-95"
+                            >
+                                Chat with Provider
+                            </button>
 
-                       <button
-                           type="button"
-                           onClick={() => {
-                               if (!user) {
-                                   router.push('/login');
-                                   return;
-                               }
-                               router.push(`/chat/${service.provider._id}?serviceId=${service._id}&tab=action&autoMsg=true`);
-                           }}
-                           className="flex-1 bg-white dark:bg-gray-800 border-2 border-indigo-600 dark:border-indigo-500 text-indigo-700 dark:text-indigo-400 rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/40 transition-all active:scale-95"
-                       >
-                           Request Appointment
-                       </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!user) {
+                                        router.push('/auth');
+                                        return;
+                                    }
+                                    router.push(`/chat/${service.provider._id}?serviceId=${service._id}&tab=action&autoMsg=true`);
+                                }}
+                                className="flex-1 bg-white dark:bg-gray-800 border-2 border-indigo-600 dark:border-indigo-500 text-indigo-700 dark:text-indigo-400 rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/40 transition-all active:scale-95"
+                            >
+                                Request Appointment
+                            </button>
+                           </>
+                       )}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      {service.status === 'Active' && user && user.id !== service.provider._id && (
-                          <button
-                          type="button"
-                          onClick={toggleWishlist}
-                          className={`flex-1 rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold transition-all active:scale-95 ${liked ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-2 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50' : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                          >
-                          {liked ? 'Remove from Wishlist' : 'Add to Wishlist'}
-                          </button>
-                      )}
-                    </div>
+                    {!isBlockedByMe && (
+                        <div className="flex flex-col sm:flex-row gap-3">
+                        {service.status === 'Active' && user && user.id !== service.provider._id && (
+                            <button
+                            type="button"
+                            onClick={toggleWishlist}
+                            className={`flex-1 rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold transition-all active:scale-95 ${liked ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-2 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50' : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                            >
+                            {liked ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                            </button>
+                        )}
+                        </div>
+                    )}
                 </div>
             )}
           </div>
