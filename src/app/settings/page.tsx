@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/context/AuthContext';
@@ -8,12 +9,12 @@ import Loader from '@/components/Loader';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push(`/login?redirect=${encodeURIComponent('/settings')}`);
+      router.push(`/auth?redirect=${encodeURIComponent('/settings')}`);
     }
   }, [user, authLoading, router]);
   const [saving, setSaving] = useState(false);
@@ -21,6 +22,8 @@ export default function SettingsPage() {
    const [allowEmailContact, setAllowEmailContact] = useState(false);
    const [allowPhoneContact, setAllowPhoneContact] = useState(false);
    const [isOnVacation, setIsOnVacation] = useState(false);
+   const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
+   const [unblockingId, setUnblockingId] = useState<string | null>(null);
   
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -38,6 +41,13 @@ export default function SettingsPage() {
               setAllowEmailContact(!!data.user?.allowEmailContact);
               setAllowPhoneContact(!!data.user?.allowPhoneContact);
               setIsOnVacation(!!data.user?.isOnVacation);
+          }
+          
+          // Fetch blocked users details
+          const blockRes = await fetch('/api/user/blocked');
+          if (blockRes.ok) {
+              const blockData = await blockRes.json();
+              setBlockedUsers(blockData.blockedUsers || []);
           }
       } catch (error) {
           console.error('Failed to load user settings', error);
@@ -62,6 +72,27 @@ export default function SettingsPage() {
         setSaving(false);
       }
     } catch { setSaving(false); }
+  };
+
+  const handleUnblock = async (userId: string) => {
+    try {
+      setUnblockingId(userId);
+      const res = await fetch(`/api/user/block?userId=${userId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setBlockedUsers(prev => prev.filter(u => u._id !== userId));
+        await refreshUser();
+        setMessage('User successfully unblocked');
+      } else {
+        setMessage('Failed to unblock user');
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage('Error unblocking user');
+    } finally {
+      setUnblockingId(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -212,6 +243,46 @@ export default function SettingsPage() {
               />
               <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500 dark:peer-checked:bg-amber-600"></div>
             </label>
+          </div>
+
+          {/* Blocked Users Section */}
+          <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Blocked Users</h3>
+            
+            {blockedUsers.length === 0 ? (
+              <div className="text-center py-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                <p className="text-sm text-gray-500 dark:text-gray-400">You haven't blocked any users yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {blockedUsers.map(blockedUser => (
+                  <div key={blockedUser._id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
+                    <Link href={`/profile/${blockedUser._id}`} className="flex items-center gap-3 group hover:opacity-80 transition-opacity flex-1 min-w-0">
+                      <div className="h-10 w-10 shrink-0 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center font-bold text-gray-600 dark:text-gray-300 overflow-hidden relative border border-gray-300 dark:border-gray-500 shadow-sm group-hover:ring-2 group-hover:ring-indigo-400 group-hover:ring-offset-1 transition-all">
+                        {blockedUser.profilePicture ? (
+                           <img src={blockedUser.profilePicture} alt={blockedUser.name} className="object-cover w-full h-full" />
+                        ) : (
+                           blockedUser.name?.charAt(0).toUpperCase() || 'U'
+                        )}
+                      </div>
+                      <div className="truncate">
+                        <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">{blockedUser.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{blockedUser.username}</p>
+                      </div>
+                    </Link>
+                    
+                    <button
+                      type="button"
+                      onClick={() => handleUnblock(blockedUser._id)}
+                      disabled={unblockingId === blockedUser._id}
+                      className="px-4 py-1.5 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors shadow-sm active:scale-95"
+                    >
+                      {unblockingId === blockedUser._id ? 'Unblocking...' : 'Unblock'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
 

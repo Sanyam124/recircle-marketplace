@@ -14,7 +14,7 @@ export default function ProfileRedirectPage() {
       if (user?.id) {
         router.replace(`/profile/${user.id}`);
       } else {
-        router.replace('/login');
+        router.replace('/auth');
       }
     }
   }, [user, loading, router]);

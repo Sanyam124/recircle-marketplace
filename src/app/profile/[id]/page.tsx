@@ -224,22 +224,30 @@ type TabKey = 'all' | 'products' | 'services';
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
-  const { user: authUser } = useAuth();
+  const { user: authUser, refreshUser } = useAuth();
   const router = useRouter();
   const isOwner = authUser?.id === id;
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sectionLoading, setSectionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [productPage, setProductPage] = useState(1);
   const [servicePage, setServicePage] = useState(1);
   const [allPage, setAllPage] = useState(1);
   const [reportOpen, setReportOpen] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blocking, setBlocking] = useState(false);
 
   useEffect(() => {
     fetchProfile(1, 1, 1, false);
-  }, [id]);
+    
+    // Check if the auth user has already blocked this profile
+    if (authUser?.blockedUsers?.some(b => b.toString() === id)) {
+        setIsBlocked(true);
+    }
+  }, [id, authUser]);
 
   useEffect(() => {
     if (data) fetchProfile(productPage, servicePage, allPage, true);
@@ -249,10 +257,26 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     try {
       if (isPageChange) setSectionLoading(true);
       else setLoading(true);
-      const res = await fetch(`/api/profile/${id}?productPage=${pPage}&servicePage=${sPage}&allPage=${aPage}&limit=8`);
+      const url = new URL(`/api/profile/${id}`, window.location.origin);
+      url.searchParams.append('productPage', pPage.toString());
+      url.searchParams.append('servicePage', sPage.toString());
+      url.searchParams.append('allPage', aPage.toString());
+      url.searchParams.append('limit', '8');
+      
+      const res = await fetch(url.toString(), { cache: 'no-store' });
+      
+      if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          if (res.status === 403) {
+             setErrorMsg(errData.error || 'You are blocked from viewing this profile.');
+             setLoading(false);
+             return;
+          }
+      }
+
       if (res.ok) {
-        const json = await res.json();
-        setData(json);
+        const d = await res.json();
+        setData(d);
       }
     } catch (error) {
       console.error('Failed to load profile', error);
@@ -283,8 +307,52 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     } catch { console.error('Update failed'); }
   };
 
+  const handleBlockUser = async () => {
+    if (!authUser) return;
+    try {
+      setBlocking(true);
+      const res = await fetch(isBlocked ? `/api/user/block?userId=${id}` : '/api/user/block', {
+        method: isBlocked ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        ...(isBlocked ? {} : { body: JSON.stringify({ targetUserId: id }) })
+      });
+      
+      if (res.ok) {
+        setIsBlocked(!isBlocked);
+        await refreshUser();
+        alert(isBlocked ? `User unblocked.` : `User blocked. Their listings are now hidden and they cannot message you.`);
+      } else {
+        alert("Failed to update block status.");
+      }
+    } catch (error) {
+       console.error(error);
+    } finally {
+       setBlocking(false);
+    }
+  };
 
   if (loading) return <Loader />;
+  if (errorMsg) return (
+     <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+        <div className="bg-red-50 dark:bg-red-900/20 rounded-3xl p-12 border-2 border-red-100 dark:border-red-900/30 shadow-xl">
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0-6V9m0 12a9 9 0 110-18 9 9 0 010 18z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4">Access Denied</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-lg mb-8">
+            You are blocked from viewing this profile, or the user has restricted access.
+          </p>
+          <button 
+            onClick={() => router.back()}
+            className="px-8 py-3 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg active:scale-95"
+          >
+            Go Back
+          </button>
+        </div>
+     </div>
+  );
   if (!data) return <div className="text-center py-20">User not found</div>;
 
   const { user, products, services, allItems, pagination, stats } = data;
@@ -488,24 +556,41 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   >
                     <span className="text-base">★</span>
                   </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Are you sure you want to block ${user.name}? You will no longer see their listings.`)) {
-                        // handleBlockUser(user._id)
-                      }
-                    }}
-                    className="px-3 py-2 text-xs font-bold rounded-lg text-red-500 dark:text-red-400 hover:bg-white dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
-                    title="Block User"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                  </button>
-                  <button
-                    onClick={() => setReportOpen(true)}
-                    className="px-3 py-2 text-xs font-bold rounded-lg text-orange-500 dark:text-orange-400 hover:bg-white dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
-                    title="Report User"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  </button>
+                  {authUser && (
+                    <button
+                      onClick={() => {
+                        const action = isBlocked ? 'unblock' : 'block';
+                        const confirmMsg = isBlocked 
+                           ? `Are you sure you want to unblock ${user.name}?`
+                           : `Are you sure you want to block ${user.name}? You will no longer see their listings.`;
+                           
+                        if (confirm(confirmMsg)) {
+                          handleBlockUser();
+                        }
+                      }}
+                      disabled={blocking}
+                      className={`px-3 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50 ${isBlocked ? 'text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600' : 'text-red-500 dark:text-red-400 hover:bg-white dark:hover:bg-gray-600'}`}
+                      title={isBlocked ? "Unblock User" : "Block User"}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         {isBlocked ? (
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                         ) : (
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
+                         )}
+                      </svg>
+                      <span className="hidden sm:inline">{isBlocked ? 'Unblock' : 'Block'}</span>
+                    </button>
+                  )}
+                  {authUser && (
+                    <button
+                      onClick={() => setReportOpen(true)}
+                      className="px-3 py-2 text-xs font-bold rounded-lg text-orange-500 dark:text-orange-400 hover:bg-white dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
+                      title="Report User"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    </button>
+                  )}
                 </div>
                 <ShareButton
                   title={`${user.name}'s profile on ReCircle`}
@@ -663,7 +748,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
         {/* Reviews */}
         <div id="reviews-section">
-          <ReviewSection targetId={user._id} targetName={user.name} />
+          <ReviewSection targetId={user.id || user._id} targetName={user.name} />
         </div>
 
       </div>
@@ -671,7 +756,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
 
       {reportOpen && (
-        <ReportModal targetUserId={user._id} itemType="none" itemId={null} onClose={() => setReportOpen(false)} />
+        <ReportModal targetUserId={user.id || user._id} itemType="none" itemId={null} onClose={() => setReportOpen(false)} />
       )}
     </div>
   );
