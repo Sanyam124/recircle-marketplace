@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Product from '@/models/Product';
+import User from '@/models/User';
 import Order from '@/models/Order';
 import Review from '@/models/Review';
 import { verifyToken } from '@/lib/auth';
@@ -14,6 +15,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
         if (!product) {
             return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+        }
+
+        // Block access if a user relationship is blocked
+        const token = req.cookies.get('token')?.value;
+        const decoded = token ? verifyToken(token) : null;
+        if (decoded && product.seller) {
+            const currentUserId = decoded.userId;
+            const sellerId = product.seller._id.toString();
+
+            if (currentUserId !== sellerId) {
+                const sellerUser = await User.findById(sellerId).select('blockedUsers');
+                const isBlockedByOther = sellerUser?.blockedUsers?.some((id: any) => id.toString() === currentUserId);
+
+                if (isBlockedByOther) {
+                    return NextResponse.json({ error: 'Access denied due to privacy settings (blocked user).' }, { status: 403 });
+                }
+            }
         }
 
         // Check for buyerId if sold or reserved

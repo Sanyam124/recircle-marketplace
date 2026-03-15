@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Service from '@/models/Service';
+import User from '@/models/User';
 import Order from '@/models/Order';
 import Review from '@/models/Review';
 import { verifyToken } from '@/lib/auth';
@@ -14,6 +15,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
         if (!service) {
             return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+        }
+
+        // Block access if a user relationship is blocked
+        const token = req.cookies.get('token')?.value;
+        const decoded = token ? verifyToken(token) : null;
+        if (decoded && service.provider) {
+            const currentUserId = decoded.userId;
+            const providerId = service.provider._id.toString();
+
+            if (currentUserId !== providerId) {
+                const providerUser = await User.findById(providerId).select('blockedUsers');
+                const isBlockedByOther = providerUser?.blockedUsers?.some((id: any) => id.toString() === currentUserId);
+
+                if (isBlockedByOther) {
+                    return NextResponse.json({ error: 'Access denied due to privacy settings (blocked user).' }, { status: 403 });
+                }
+            }
         }
 
         // Check for buyerId ONLY if there's an ACTIVE order (not completed)

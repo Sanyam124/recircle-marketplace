@@ -5,6 +5,7 @@ import Product from '@/models/Product';
 import Service from '@/models/Service';
 import User from '@/models/User';
 import Review from '@/models/Review';
+import { verifyToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
     try {
@@ -32,14 +33,34 @@ export async function GET(req: NextRequest) {
         const productQuery: any = { status: 'Available' };
         const serviceQuery: any = { status: 'Active' };
 
-        // [VACATION MODE] Hide listings from users who are on vacation
-        // Only apply if we are not looking for a specific user's items
+        // [VACATION MODE] & [BLOCKED USERS]
+        // Hide listings from users who are on vacation or have been blocked/blocked by the current user
         if (!targetId) {
+            const token = req.cookies.get('token')?.value;
+            const decoded = token ? verifyToken(token) : null;
+            let hiddenIds: any[] = [];
+
+            // 1. Vacation Mode
             const vacationUsers = await User.find({ isOnVacation: true }).select('_id');
-            if (vacationUsers.length > 0) {
-                const vacationIds = vacationUsers.map(u => u._id);
-                productQuery.seller = { $nin: vacationIds };
-                serviceQuery.provider = { $nin: vacationIds };
+            hiddenIds = vacationUsers.map(u => u._id);
+
+            // 2. Blocked Users (Two-Way)
+            if (decoded?.userId) {
+                // Users I blocked
+                const currentUser = await User.findById(decoded.userId).select('blockedUsers');
+                if (currentUser?.blockedUsers) {
+                    hiddenIds = [...hiddenIds, ...currentUser.blockedUsers];
+                }
+
+                // Users who blocked me
+                const usersWhoBlockedMe = await User.find({ blockedUsers: decoded.userId }).select('_id');
+                const usersWhoBlockedMeIds = usersWhoBlockedMe.map(u => u._id);
+                hiddenIds = [...hiddenIds, ...usersWhoBlockedMeIds];
+            }
+
+            if (hiddenIds.length > 0) {
+                productQuery.seller = { $nin: hiddenIds };
+                serviceQuery.provider = { $nin: hiddenIds };
             }
         }
 

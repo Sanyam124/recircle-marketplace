@@ -83,15 +83,37 @@ export async function GET(req: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '12');
         const skip = (page - 1) * limit;
 
+        const token = req.cookies.get('token')?.value;
+        const decoded = token ? verifyToken(token) : null;
+        let blockedUserIds: string[] = [];
+
+        if (decoded && !seller) {
+             const currentUser = await User.findById(decoded.userId).select('blockedUsers');
+             if (currentUser && currentUser.blockedUsers) {
+                  blockedUserIds = currentUser.blockedUsers.map((id: any) => id.toString());
+             }
+        }
+
         const query: any = { status: 'Available' };
 
-        // [VACATION MODE] Hide listings from users who are on vacation
+        // [VACATION MODE] & [BLOCKED USERS]
+        // Hide listings from users who are on vacation or have been blocked by the current user
         // Only apply if we are not looking for a specific seller's items
         if (!seller) {
             const vacationUsers = await User.find({ isOnVacation: true }).select('_id');
-            if (vacationUsers.length > 0) {
-                const vacationIds = vacationUsers.map(u => u._id);
-                query.seller = { $nin: vacationIds };
+            const vacationUserIds = vacationUsers.map(u => u._id.toString());
+            
+            let hiddenIds = [...vacationUserIds, ...blockedUserIds];
+            
+            // Reverse-block check: Hide listings of people who blocked the current user
+            if (decoded?.userId) {
+                const usersWhoBlockedMe = await User.find({ blockedUsers: decoded.userId }).select('_id');
+                const usersWhoBlockedMeIds = usersWhoBlockedMe.map(u => u._id.toString());
+                hiddenIds = [...hiddenIds, ...usersWhoBlockedMeIds];
+            }
+            
+            if (hiddenIds.length > 0) {
+                 query.seller = { $nin: hiddenIds };
             }
         }
 
