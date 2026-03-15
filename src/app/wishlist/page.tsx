@@ -20,7 +20,7 @@ export default function WishlistPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push(`/login?redirect=${encodeURIComponent('/wishlist')}`);
+      router.push(`/auth?redirect=${encodeURIComponent('/wishlist')}`);
       return;
     }
 

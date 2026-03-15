@@ -10,7 +10,7 @@ export default function ChatPage() {
 
     useEffect(() => {
         if (!authLoading && !user) {
-            router.push(`/login?redirect=${encodeURIComponent('/chat')}`);
+            router.push(`/auth?redirect=${encodeURIComponent('/chat')}`);
         }
     }, [user, authLoading, router]);
     return (

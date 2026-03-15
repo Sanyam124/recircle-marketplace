@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
         const user = await User.findOne({
             $or: [
                 { email: identifier.toLowerCase() },
-                { username: identifier }
+                { username: identifier.toLowerCase() }
             ]
         }).select('+password');
 

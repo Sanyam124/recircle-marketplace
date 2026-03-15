@@ -43,7 +43,7 @@ export default function ServiceCard({ service }: { service: Service }) {
     e.stopPropagation();
 
     if (!user) {
-        router.push('/login');
+        router.push('/auth');
         return;
     }
     

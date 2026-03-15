@@ -59,7 +59,7 @@ export default function OrdersPage() {
   
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push(`/login?redirect=${encodeURIComponent('/orders')}`);
+      router.push(`/auth?redirect=${encodeURIComponent('/orders')}`);
     }
   }, [user, authLoading, router]);
 

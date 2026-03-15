@@ -1,4 +1,4 @@
-k'use client';
+'use client';
 
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
@@ -43,7 +43,7 @@ export default function Home() {
 
   const handleStartEarning = () => {
     if (!user) {
-      router.push('/login');
+      router.push('/auth');
       return;
     }
     setEarningModalOpen(true);

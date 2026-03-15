@@ -43,7 +43,7 @@ export default function ProductCard({ product }: { product: Product }) {
     e.stopPropagation();
 
     if (!user) {
-        router.push('/login');
+        router.push('/auth');
         return;
     }
     

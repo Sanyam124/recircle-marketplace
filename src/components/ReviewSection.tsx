@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import StarRating from './StarRating';
+import Link from 'next/link';
 
 interface Review {
   _id: string;
@@ -31,10 +32,13 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
   const [error, setError] = useState('');
 
   // Check if user has already reviewed
-  const hasReviewed = user && reviews.some((r) => r.reviewer._id === user.id);
+  const hasReviewed = user && reviews.some((r) => r.reviewer?._id === user.id);
 
   useEffect(() => {
-    if (!targetId || targetId === 'undefined') return;
+    if (!targetId || targetId === 'undefined') {
+        setLoading(false);
+        return;
+    }
     setReviews([]);
     setPage(1);
     fetchReviews(1);
@@ -170,7 +174,7 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
           )}
         </div>
       </div>
-
+      {/* Review Form or Notices */}
       {!user ? (
           <p className="mb-8 text-sm text-gray-500 dark:text-gray-400">Please login to write a review.</p>
       ) : user.id === targetId ? (
@@ -179,16 +183,15 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
           <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-sm">
               You have already reviewed this user.
           </div>
+      ) : !canReview ? (
+          <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-600">
+             <p className="font-medium text-gray-900 dark:text-white mb-1">Notice</p>
+             Only users who have completed a verified transaction with this person can leave a review. 
+             If you've already completed a purchase or enrollment, ensure the provider has added you to the transaction history.
+          </div>
       ) : (
-        <div className="mb-8 border-b border-gray-100 dark:border-gray-700 pb-8">
-          {!canReview ? (
-              <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-600">
-                 <p className="font-medium text-gray-900 dark:text-white mb-1">Notice</p>
-                 Only users who have completed a verified transaction with this person can leave a review. 
-                 If you've already completed a purchase or enrollment, ensure the provider has added you to the transaction history.
-              </div>
-          ) : (
-              <form onSubmit={handleSubmit}>
+          <div className="mb-8 border-b border-gray-100 dark:border-gray-700 pb-8">
+            <form onSubmit={handleSubmit}>
               <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Write a Review</h3>
               {error && <div className="text-red-500 text-sm mb-3">{error}</div>}
               <div className="mb-4">
@@ -225,21 +228,36 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
                 {submitting ? 'Submitting...' : 'Post Review'}
               </button>
             </form>
-          )}
-      </div>
+          </div>
       )}
 
       <div className="space-y-6">
         {reviews.map((review) => (
           <div key={review._id} className="flex space-x-4">
              <div className="flex-shrink-0">
-                <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold border border-gray-200 dark:border-gray-600 text-base">
-                  {review.reviewer.name?.charAt(0).toUpperCase() || 'U'}
-                </div>
+               {review.reviewer?._id ? (
+                 <Link href={`/profile/${review.reviewer._id}`}>
+                   <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold border border-gray-200 dark:border-gray-600 text-base hover:ring-2 hover:ring-indigo-500 transition-all cursor-pointer">
+                     {review.reviewer?.name?.charAt(0).toUpperCase() || 'U'}
+                   </div>
+                 </Link>
+               ) : (
+                 <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold border border-gray-200 dark:border-gray-600 text-base">
+                   {review.reviewer?.name?.charAt(0).toUpperCase() || 'U'}
+                 </div>
+               )}
              </div>
              <div className="flex-1">
                <div className="flex items-center justify-between">
-                 <h4 className="text-sm font-bold text-gray-900 dark:text-white">{review.reviewer.name}</h4>
+                 {review.reviewer?._id ? (
+                   <Link href={`/profile/${review.reviewer._id}`}>
+                     <h4 className="text-sm font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline cursor-pointer">
+                       {review.reviewer?.name || 'Deleted User'}
+                     </h4>
+                   </Link>
+                 ) : (
+                   <h4 className="text-sm font-bold text-gray-900 dark:text-white">{review.reviewer?.name || 'Deleted User'}</h4>
+                 )}
                  <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(review.createdAt).toLocaleDateString()}</span>
                </div>
                <div className="mt-1">

@@ -140,6 +140,26 @@ export async function POST(req: NextRequest) {
 
         await connectToDatabase();
 
+        // Check if either user has blocked the other
+        const [sender, receiver] = await Promise.all([
+            User.findById(decoded.userId).select('blockedUsers'),
+            User.findById(recipientId).select('blockedUsers')
+        ]);
+
+        if (!sender || !receiver) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        const isBlockedBySender = sender.blockedUsers?.some((id: any) => id.toString() === recipientId.toString());
+        const isBlockedByReceiver = receiver.blockedUsers?.some((id: any) => id.toString() === decoded.userId.toString());
+
+        if (isBlockedBySender) {
+            return NextResponse.json({ error: 'You have blocked this user. Unblock them to send a message.' }, { status: 403 });
+        }
+        if (isBlockedByReceiver) {
+            return NextResponse.json({ error: 'You cannot message this user.' }, { status: 403 });
+        }
+
         const message = await Message.create({
             sender: decoded.userId,
             recipient: recipientId,
