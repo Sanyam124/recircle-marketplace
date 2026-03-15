@@ -49,7 +49,8 @@ export async function GET(req: NextRequest) {
                     isPhoneVerified: user.isPhoneVerified,
                     allowPhoneContact: user.allowPhoneContact,
                     usernameChangeCount: user.usernameChangeCount || 0,
-                    authProvider: user.authProvider
+                    authProvider: user.authProvider,
+                    blockedUsers: user.blockedUsers || []
                 }
             },
             { status: 200 }

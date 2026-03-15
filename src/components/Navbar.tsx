@@ -46,9 +46,6 @@ export default function Navbar() {
               <Link href="/explore" className="text-gray-900 dark:text-gray-300 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-indigo-500 dark:hover:text-white text-sm font-medium transition-colors">
                 Explore
               </Link>
-              <Link href="/users" className="text-gray-900 dark:text-gray-300 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-indigo-500 dark:hover:text-white text-sm font-medium transition-colors">
-                Find User
-              </Link>
             </div>
           </div>
           <div className="hidden md:flex sm:items-center">
@@ -144,12 +141,9 @@ export default function Navbar() {
                 </div>
               </div>
             ) : (
-              <div className="space-x-4">
-                <Link href="/login" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                  Login
-                </Link>
-                <Link href="/register" className="bg-indigo-600 dark:bg-indigo-500 text-white hover:bg-indigo-700 dark:hover:bg-indigo-600 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all">
-                  Get Started
+              <div className="flex items-center">
+                <Link href="/auth" className="bg-indigo-600 dark:bg-indigo-500 text-white hover:bg-indigo-700 dark:hover:bg-indigo-600 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all transform active:scale-[0.98]">
+                  Sign In / Register
                 </Link>
               </div>
             )}
@@ -185,9 +179,6 @@ export default function Navbar() {
           <div className="pt-2 pb-3 space-y-1 px-4">
             <Link onClick={() => setIsMobileMenuOpen(false)} href="/explore" className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               <span className="text-xl">🔍</span> Explore
-            </Link>
-            <Link onClick={() => setIsMobileMenuOpen(false)} href="/users" className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-              <span className="text-xl">👥</span> Find User
             </Link>
           </div>
           
@@ -258,12 +249,9 @@ export default function Navbar() {
                 </button>
               </div>
             ) : (
-              <div className="mt-3 space-y-3">
-                <Link onClick={() => setIsMobileMenuOpen(false)} href="/login" className="flex items-center justify-center w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-base font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  Login
-                </Link>
-                <Link onClick={() => setIsMobileMenuOpen(false)} href="/register" className="flex items-center justify-center w-full px-4 py-3 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white text-base font-bold hover:bg-indigo-700 dark:hover:bg-indigo-600 shadow-md">
-                  Sign Up Free
+              <div className="mt-3 px-2">
+                <Link onClick={() => setIsMobileMenuOpen(false)} href="/auth" className="flex items-center justify-center w-full px-4 py-3.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white text-base font-bold hover:bg-indigo-700 dark:hover:bg-indigo-600 shadow-md transition-all active:scale-[0.98]">
+                  Sign In / Register
                 </Link>
               </div>
             )}
