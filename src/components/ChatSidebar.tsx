@@ -3,14 +3,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ReportModal from './ReportModal';
 import { formatChatMessageDate } from '@/lib/utils';
 import { ChatItem } from './ChatItem';
 
 export default function ChatSidebar() {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [conversations, setConversations] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState<'all' | 'buying' | 'selling'>('all');
     const [loading, setLoading] = useState(true);
@@ -21,6 +21,7 @@ export default function ChatSidebar() {
     const [reportTarget, setReportTarget] = useState<{ userId: string, type: 'product' | 'service', id: string } | null>(null);
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     useEffect(() => {
         if (!user) return;
@@ -129,6 +130,18 @@ export default function ChatSidebar() {
         }
     };
 
+    const handleReportUserClick = (e: React.MouseEvent, conv: any) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setActiveMenu(null);
+        
+        setReportTarget({
+            userId: conv.user._id,
+            type: 'none',
+            id: null
+        });
+    };
+
     const handleBlockClick = async (e: React.MouseEvent, conv: any) => {
         e.preventDefault();
         e.stopPropagation();
@@ -146,6 +159,13 @@ export default function ChatSidebar() {
             if (res.ok) {
                 // Remove from local state immediately
                 setConversations(prev => prev.filter(c => c.user._id !== conv.user._id));
+                
+                // If the current chat is the one we just blocked, redirect to /chat
+                if (pathname === `/chat/${conv.user._id}`) {
+                    router.push('/chat');
+                }
+
+                await refreshUser();
                 alert(`${conv.user.name} has been blocked.`);
             } else {
                 alert("Failed to block user.");
@@ -260,6 +280,7 @@ export default function ChatSidebar() {
                             setActiveMenu={setActiveMenu}
                             handleDeleteChat={handleDeleteChat}
                             handleReportClick={handleReportClick}
+                            handleReportUserClick={handleReportUserClick}
                             handleBlockClick={handleBlockClick}
                             onItemClick={() => {
                                 setConversations(prev => prev.map(c => 

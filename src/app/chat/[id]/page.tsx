@@ -15,7 +15,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
     useEffect(() => {
         if (!authLoading && !user) {
-            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+            router.push(`/auth?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
         }
     }, [user, authLoading, router]);
     const searchParams = useSearchParams();
@@ -52,6 +52,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const scrollRef = useRef<HTMLDivElement>(null);
     // Stores scroll metrics captured BEFORE a prepend so useLayoutEffect can restore position
     const scrollAdjustRef = useRef<{ savedTop: number; savedHeight: number } | null>(null);
+
+    // Derived block state
+    const isBlockedByMe = useMemo(() => {
+        return user?.blockedUsers?.some((id: any) => id.toString() === userId) || false;
+    }, [user?.blockedUsers, userId]);
+
+    // Track if the current user was blocked by the recipient
+    const [isBlockedByOther, setIsBlockedByOther] = useState(false);
 
     // Runs synchronously after DOM commit — before browser paints — to restore scroll
     useLayoutEffect(() => {
@@ -282,6 +290,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             if (res.ok) {
                 const data = await res.json();
                 setOtherUser(data.user);
+            } else if (res.status === 403) {
+                // If we get a 403 here, we know the target profile blocked us.
+                setIsBlockedByOther(true);
             }
         } catch (error) {
             console.error('Failed to fetch other user', error);
@@ -830,7 +841,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                 {activeTab === 'chat' && <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full" />}
                             </button>
                             
-                            {(() => {
+                            {!isBlockedByMe && !isBlockedByOther && (() => {
                                 const sellerId = referencingItem?.data?.seller?._id || referencingItem?.data?.seller?.id || referencingItem?.data?.seller ||
                                                  referencingItem?.data?.provider?._id || referencingItem?.data?.provider?.id || referencingItem?.data?.provider;
                                 const isCurrentSeller = sellerId?.toString() === user?.id?.toString();
@@ -871,9 +882,28 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                             })()}
                         </div>
 
-                        {/* Content Area */}
                         <div className="p-3">
-                            {activeTab === 'chat' ? (
+                            {isBlockedByMe ? (
+                                <div className="py-6 flex flex-col items-center justify-center text-center">
+                                    <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-2">
+                                        <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-gray-900 dark:text-white font-bold text-sm">You blocked this user.</p>
+                                    <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">To chat, you must unblock them in their profile or your settings.</p>
+                                </div>
+                            ) : isBlockedByOther ? (
+                                <div className="py-6 flex flex-col items-center justify-center text-center">
+                                    <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-2">
+                                        <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-gray-900 dark:text-white font-bold text-sm">This user has blocked you.</p>
+                                    <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">You cannot interact with this user.</p>
+                                </div>
+                            ) : activeTab === 'chat' ? (
                                 <div className="space-y-3">
                                     {/* Quick Chat Suggestions */}
                                     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">

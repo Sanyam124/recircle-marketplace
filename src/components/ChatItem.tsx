@@ -14,6 +14,7 @@ interface ChatItemProps {
     setActiveMenu: (key: string | null) => void;
     handleDeleteChat: (e: React.MouseEvent, conv: any) => void;
     handleReportClick: (e: React.MouseEvent, conv: any) => void;
+    handleReportUserClick: (e: React.MouseEvent, conv: any) => void;
     handleBlockClick: (e: React.MouseEvent, conv: any) => void; // [NEW] block handler
     onItemClick: () => void;
 }
@@ -26,6 +27,7 @@ export const ChatItem = React.memo(({
     setActiveMenu,
     handleDeleteChat,
     handleReportClick,
+    handleReportUserClick,
     handleBlockClick,
     onItemClick
 }: ChatItemProps) => {
@@ -225,7 +227,7 @@ export const ChatItem = React.memo(({
                                         <span className="ml-1 shrink-0">You: </span>
                                     </span>
                                 )}
-                                <span className="break-words whitespace-normal">{conv.lastMessage.content}</span>
+                                <span className="truncate">{conv.lastMessage.content}</span>
                             </div>
                         </div>
 
@@ -294,7 +296,16 @@ export const ChatItem = React.memo(({
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
-                        Report Item
+                        Report Listing
+                    </button>
+                    <button 
+                        onClick={(e) => handleReportUserClick(e, conv)}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium flex items-center gap-2 transition-colors"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        Report User
                     </button>
                 </div>
             )}
