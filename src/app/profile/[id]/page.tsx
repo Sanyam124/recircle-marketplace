@@ -756,7 +756,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
 
       {reportOpen && (
-        <ReportModal targetUserId={user.id || user._id} itemType="none" itemId={null} onClose={() => setReportOpen(false)} />
+        <ReportModal targetUserId={user.id || user._id} itemType={null} itemId={null} onClose={() => setReportOpen(false)} />
       )}
     </div>
   );

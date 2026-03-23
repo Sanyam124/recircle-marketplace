@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatChatMessageDate } from '@/lib/utils';
+import { getConversationStatus } from '@/lib/chatUtils';
 import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -36,135 +37,9 @@ export const ChatItem = React.memo(({
     const itemImage = conv.product?.images?.[0] || conv.service?.images?.[0] || '/placeholder.png';
     const menuKey = `${conv.user._id}-${conv.product?._id || conv.service?._id}`;
 
-    // Status Label Logic
-    const getStatusInfo = () => {
-        if (!user) return { label: conv.lastMessage.content, isStatus: false };
-
-        const currentUserId = user.id?.toString();
-        const product = conv.product;
-        const service = conv.service;
-        const buyerId = conv.buyerId?.toString();
-
-        // 0. Priority: Cancellation Status
-        const orderTime = conv.orderUpdatedAt ? new Date(conv.orderUpdatedAt).getTime() : 0;
-        const offerTime = conv.latestOffer ? new Date(conv.latestOffer.updatedAt).getTime() : 0;
-        
-        if (conv.orderStatus === 'Cancelled' && orderTime >= offerTime) {
-            const prefix = service ? 'APPO.' : 'OFFER';
-            const price = conv.latestOffer?.offeredPrice?.toLocaleString();
-            return { 
-                label: 'CANCELLED', 
-                isStatus: true, 
-                color: 'text-red-500 dark:text-red-400',
-                priceLabel: price ? `${prefix} ₹${price}` : null
-            };
-        }
-        
-        // 1. Product Statuses
-        if (product) {
-            const sellerId = product.seller?.toString() || product.seller?._id?.toString();
-            
-            // Product already sold?
-            if (product.status === 'Sold') {
-                const price = conv.latestOffer?.offeredPrice?.toLocaleString();
-                if (currentUserId === buyerId) {
-                    return { 
-                        label: 'BOUGHT', 
-                        isStatus: true, 
-                        color: 'text-green-600 dark:text-green-400',
-                        priceLabel: price ? `OFFER ₹${price}` : null 
-                    };
-                }
-                if (currentUserId === sellerId) {
-                    if (conv.user._id.toString() === buyerId) {
-                        return { 
-                            label: 'SOLD', 
-                            isStatus: true, 
-                            color: 'text-indigo-600 dark:text-indigo-400',
-                            priceLabel: price ? `OFFER ₹${price}` : null 
-                        };
-                    }
-                    return { label: 'SOLD TO OTHER USER', isStatus: true, color: 'text-gray-500 font-medium italic' };
-                }
-                return { label: 'UNAVAILABLE NOW', isStatus: true, color: 'text-red-500 dark:text-red-400' };
-            }
-
-            // Still in negotiation?
-            if (conv.latestOffer) {
-                const price = conv.latestOffer.offeredPrice.toLocaleString();
-                const status = conv.latestOffer.status;
-                let label = null;
-                let color = 'text-green-600 dark:text-green-400';
-
-                if (status === 'Accepted') label = 'AGREED';
-                else if (status === 'Declined') {
-                    label = 'REJECTED';
-                    color = 'text-red-500 dark:text-red-400';
-                }
-
-                return { 
-                    label, 
-                    isStatus: true, 
-                    color,
-                    priceLabel: `OFFER ₹${price}`
-                };
-            }
-        }
-
-        // 2. Service Statuses (Repeatable)
-        if (service) {
-            const price = conv.latestOffer?.offeredPrice?.toLocaleString();
-            const offerTime = conv.latestOffer ? new Date(conv.latestOffer.updatedAt).getTime() : 0;
-            const orderTime = conv.orderUpdatedAt ? new Date(conv.orderUpdatedAt).getTime() : 0;
-
-            // 1. Check for Active/Progressed Orders
-            // If order is more recent OR equal to latest offer (natural progression)
-            // And it's in an active state, it takes priority.
-            if (conv.orderStatus && orderTime >= offerTime) {
-                if (conv.orderStatus === 'Scheduled' || conv.orderStatus === 'Paid' || conv.orderStatus === 'Dispute_Pending') {
-                    return { 
-                        label: 'ACTIVE', 
-                        isStatus: true, 
-                        color: 'text-indigo-600 dark:text-indigo-400',
-                        priceLabel: price ? `APPO. ₹${price}` : null 
-                    };
-                }
-                
-                if (conv.orderStatus === 'Completed') {
-                    return {
-                        label: 'COMPLETED',
-                        isStatus: true,
-                        color: 'text-green-600 dark:text-green-400',
-                        priceLabel: price ? `APPO. ₹${price}` : null
-                    };
-                }
-            }
-            
-            // 2. Fallback to Latest Offer Status (Newer than any order or no order)
-            if (conv.latestOffer) {
-                const status = conv.latestOffer.status;
-                let label = null;
-                let color = 'text-green-600 dark:text-green-400';
-
-                if (status === 'Accepted') label = 'ACTIVE';
-                else if (status === 'Declined') {
-                    label = 'REJECTED';
-                    color = 'text-red-500 dark:text-red-400';
-                }
-
-                return { 
-                    label, 
-                    isStatus: true, 
-                    color,
-                    priceLabel: `APPO. ₹${price}`
-                };
-            }
-        }
-
-        return { label: conv.lastMessage.content, isStatus: false };
-    };
-
-    const statusInfo = getStatusInfo();
+    // Determine what status badge to show (e.g. SOLD, ACTIVE, CANCELLED).
+    // Business logic is kept in chatUtils.ts for testability and readability.
+    const statusInfo = getConversationStatus(conv, user?.id?.toString());
 
     return (
         <div className="relative group">

@@ -13,7 +13,8 @@ const REASONS = [
 
 interface ReportModalProps {
   targetUserId: string;
-  itemType: 'product' | 'service' | 'none';
+  /** null means the report is about the user directly, not a specific listing */
+  itemType: 'product' | 'service' | null;
   itemId?: string | null;
   onClose: () => void;
 }

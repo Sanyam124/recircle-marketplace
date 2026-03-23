@@ -18,7 +18,7 @@ export default function ChatSidebar() {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
     const [activeMenu, setActiveMenu] = useState<string | null>(null); // To track which menu is open
-    const [reportTarget, setReportTarget] = useState<{ userId: string, type: 'product' | 'service', id: string } | null>(null);
+    const [reportTarget, setReportTarget] = useState<{ userId: string, type: 'product' | 'service' | null, id: string | null } | null>(null);
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -137,7 +137,7 @@ export default function ChatSidebar() {
         
         setReportTarget({
             userId: conv.user._id,
-            type: 'none',
+            type: null,
             id: null
         });
     };
