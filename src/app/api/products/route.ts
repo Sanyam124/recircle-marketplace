@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
         await connectToDatabase();
 
         const body = await req.json();
-        const { title: rawTitle, description: rawDescription, price: rawPrice, category: rawCategory, condition, images } = body;
+        const { title: rawTitle, description: rawDescription, price: rawPrice, category: rawCategory, condition, images, visibility, communityId, location } = body;
         const title = rawTitle?.trim();
         const description = rawDescription?.trim();
         const category = rawCategory?.trim();
@@ -29,9 +29,6 @@ export async function POST(req: NextRequest) {
         if (title.length > 80) return NextResponse.json({ error: 'Title must be 80 characters or less' }, { status: 400 });
         if (description.length > 2000) return NextResponse.json({ error: 'Description must be 2000 characters or less' }, { status: 400 });
 
-        // For MVP, assuming images are sent as base64 strings or URLs. 
-        // In a real app, you might upload on client and send URLs, or upload here.
-        // We'll handle base64 uploads here if provided.
         const imageUrls: string[] = [];
         if (images && Array.isArray(images)) {
             for (const img of images) {
@@ -44,7 +41,7 @@ export async function POST(req: NextRequest) {
                         imageUrls.push(img);
                     }
                 } else {
-                    imageUrls.push(img); // Assume it's already a URL
+                    imageUrls.push(img);
                 }
             }
         }
@@ -58,6 +55,9 @@ export async function POST(req: NextRequest) {
             condition,
             images: imageUrls,
             status: 'Available',
+            visibility: visibility === 'Community' ? 'Community' : 'Public',
+            community: communityId || (user.verifiedCommunities?.length > 0 ? user.verifiedCommunities[0] : undefined),
+            location: visibility === 'Public' ? location : undefined
         });
 
         return NextResponse.json({ product }, { status: 201 });
@@ -81,31 +81,47 @@ export async function GET(req: NextRequest) {
         const maxPrice = searchParams.get('maxPrice');
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '12');
+        const communityFilter = searchParams.get('communityFilter') || 'All';
+        const cityFilter = searchParams.get('city');
         const skip = (page - 1) * limit;
 
         const token = req.cookies.get('token')?.value;
         const decoded = token ? verifyToken(token) : null;
         let blockedUserIds: string[] = [];
 
+        const query: any = { status: 'Available' };
+
         if (decoded && !seller) {
-             const currentUser = await User.findById(decoded.userId).select('blockedUsers');
+             const currentUser = await User.findById(decoded.userId).select('blockedUsers verifiedCommunities');
              if (currentUser && currentUser.blockedUsers) {
                   blockedUserIds = currentUser.blockedUsers.map((id: any) => id.toString());
              }
+
+             if (communityFilter === 'Public') {
+                 query.visibility = 'Public';
+             } else if (communityFilter !== 'All' && communityFilter !== 'Public') {
+                 query.community = communityFilter;
+             } else {
+                 const verifiedCommunityIds = currentUser?.verifiedCommunities || [];
+                  query.$or = [
+                      { visibility: 'Public' },
+                      { visibility: { $exists: false } },
+                      { visibility: 'Community', community: { $in: verifiedCommunityIds } }
+                  ];
+             }
+        } else if (!seller) {
+             query.$or = [
+                 { visibility: 'Public' },
+                 { visibility: { $exists: false } }
+             ];
         }
 
-        const query: any = { status: 'Available' };
-
-        // [VACATION MODE] & [BLOCKED USERS]
-        // Hide listings from users who are on vacation or have been blocked by the current user
-        // Only apply if we are not looking for a specific seller's items
         if (!seller) {
             const vacationUsers = await User.find({ isOnVacation: true }).select('_id');
             const vacationUserIds = vacationUsers.map(u => u._id.toString());
             
             let hiddenIds = [...vacationUserIds, ...blockedUserIds];
             
-            // Reverse-block check: Hide listings of people who blocked the current user
             if (decoded?.userId) {
                 const usersWhoBlockedMe = await User.find({ blockedUsers: decoded.userId }).select('_id');
                 const usersWhoBlockedMeIds = usersWhoBlockedMe.map(u => u._id.toString());
@@ -121,13 +137,16 @@ export async function GET(req: NextRequest) {
             query.category = category;
         }
 
+        if (cityFilter) {
+            query['location.city'] = cityFilter;
+        }
+
         if (seller) {
             query.seller = seller;
         }
 
         if (search) {
             query.$text = { $search: search };
-            // MongoDB text index automatically handles stemming, stop words, and optimized lookups
         }
 
         if (minPrice || maxPrice) {
@@ -155,11 +174,11 @@ export async function GET(req: NextRequest) {
 
         const products = await Product.find(query)
             .populate('seller', 'name profilePicture gender')
+            .populate('community', 'name')
             .sort(sortOptions)
             .skip(skip)
             .limit(limit);
 
-        // Optimize: Aggregate ratings for all sellers in one grouped database query (Eliminate N+1 Leak)
         const sellerIds = products.map((p: any) => p.seller._id);
         const reviews = await Review.aggregate([
             { $match: { target: { $in: sellerIds } } },
@@ -172,15 +191,10 @@ export async function GET(req: NextRequest) {
             const stats = reviewMap.get(product.seller._id.toString()) || { average: 0, count: 0 };
             return {
                 ...product.toObject(),
-                sellerRating: stats.average,
+                ownerRating: stats.average,
                 reviewCount: stats.count
             };
         });
-
-        // In-memory sort if sorting by rating
-        if (sort === 'rating') {
-            productsWithRatings.sort((a, b) => b.sellerRating - a.sellerRating);
-        }
 
         return NextResponse.json({
             products: productsWithRatings,

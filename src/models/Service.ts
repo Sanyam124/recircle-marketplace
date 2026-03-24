@@ -10,6 +10,9 @@ export interface IService extends Document {
     availability?: string;
     images?: string[];
     status: 'Active' | 'Inactive';
+    community?: mongoose.Types.ObjectId;
+    visibility: 'Public' | 'Community';
+    location?: { pincode?: string; city?: string; state?: string };
     createdAt: Date;
     updatedAt: Date;
 }
@@ -25,6 +28,13 @@ const ServiceSchema: Schema<IService> = new Schema(
         availability: { type: String, trim: true },
         images: { type: [String] },
         status: { type: String, enum: ['Active', 'Inactive'], default: 'Active', index: true },
+        community: { type: Schema.Types.ObjectId, ref: 'Community', index: true },
+        visibility: { type: String, enum: ['Public', 'Community'], default: 'Public', index: true },
+        location: {
+            pincode: { type: String, trim: true },
+            city: { type: String, trim: true },
+            state: { type: String, trim: true }
+        }
     },
     { timestamps: true }
 );

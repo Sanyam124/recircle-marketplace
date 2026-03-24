@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
         await connectToDatabase();
 
         const body = await req.json();
-        const { title: rawTitle, description: rawDescription, price: rawPrice, priceUnit: rawPriceUnit, category: rawCategory, availability: rawAvailability, images } = body;
+        const { title: rawTitle, description: rawDescription, price: rawPrice, priceUnit: rawPriceUnit, category: rawCategory, availability: rawAvailability, images, visibility, communityId, location } = body;
         const title = rawTitle?.trim();
         const description = rawDescription?.trim();
         const category = rawCategory?.trim();
@@ -58,6 +58,9 @@ export async function POST(req: NextRequest) {
             availability,
             images: imageUrls,
             status: 'Active',
+            visibility: visibility === 'Community' ? 'Community' : 'Public',
+            community: communityId || (user.verifiedCommunities?.length > 0 ? user.verifiedCommunities[0] : undefined),
+            location: visibility === 'Public' ? location : undefined
         });
 
         return NextResponse.json({ service }, { status: 201 });
@@ -81,20 +84,44 @@ export async function GET(req: NextRequest) {
         const maxPrice = searchParams.get('maxPrice');
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '12');
+        const communityFilter = searchParams.get('communityFilter') || 'All';
+        const cityFilter = searchParams.get('city');
         const skip = (page - 1) * limit;
 
         const token = req.cookies.get('token')?.value;
         const decoded = token ? verifyToken(token) : null;
         let blockedUserIds: string[] = [];
 
+        const query: any = { status: 'Active' };
+
         if (decoded && !provider) {
-             const currentUser = await User.findById(decoded.userId).select('blockedUsers');
+             const currentUser = await User.findById(decoded.userId).select('blockedUsers verifiedCommunities');
              if (currentUser && currentUser.blockedUsers) {
                   blockedUserIds = currentUser.blockedUsers.map((id: any) => id.toString());
              }
-        }
 
-        const query: any = { status: 'Active' };
+             if (communityFilter === 'Public') {
+                 // Only show globally public items
+                 query.visibility = 'Public';
+             } else if (communityFilter !== 'All' && communityFilter !== 'Public') {
+                 // Exact community filter
+                 query.community = communityFilter;
+             } else {
+                 // 'All' filter rule: Must be 'Public' OR belong to one of the user's verified communities
+                 const verifiedCommunityIds = currentUser?.verifiedCommunities || [];
+                  query.$or = [
+                      { visibility: 'Public' },
+                      { visibility: { $exists: false } },
+                      { visibility: 'Community', community: { $in: verifiedCommunityIds } }
+                  ];
+             }
+        } else if (!provider) {
+             // Unauthenticated users ONLY see Public things when looking at 'All'
+             query.$or = [
+                 { visibility: 'Public' },
+                 { visibility: { $exists: false } }
+             ];
+        }
 
         // [VACATION MODE] & [BLOCKED USERS]
         // Hide listings from users who are on vacation or have been blocked by the current user
@@ -119,6 +146,10 @@ export async function GET(req: NextRequest) {
 
         if (category) {
             query.category = category;
+        }
+
+        if (cityFilter) {
+            query['location.city'] = cityFilter;
         }
 
         if (provider) {
@@ -147,6 +178,7 @@ export async function GET(req: NextRequest) {
 
         const services = await Service.find(query)
             .populate('provider', 'name profilePicture')
+            .populate('community', 'name')
             .sort(Object.keys(dbSort).length > 0 ? dbSort : { createdAt: -1, _id: -1 })
             .skip(skip)
             .limit(limit);

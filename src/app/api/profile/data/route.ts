@@ -7,6 +7,8 @@ import Review from '@/models/Review';
 import Message from '@/models/Message';
 import Notification from '@/models/Notification';
 import Order from '@/models/Order';
+import Community from '@/models/Community';
+import VerificationRequest from '@/models/VerificationRequest';
 import { verifyToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
@@ -21,9 +23,12 @@ export async function GET(req: NextRequest) {
 
         console.log('ProfileAPI: Fetching data for user:', decoded.userId);
         await connectToDatabase();
+        require('@/models/Community');
 
         // Fetch User
-        const user = await User.findById(decoded.userId).select('-password');
+        const user = await User.findById(decoded.userId)
+            .populate('verifiedCommunities', 'name image isActive')
+            .select('-password');
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
         return NextResponse.json({
@@ -46,7 +51,8 @@ export async function GET(req: NextRequest) {
                 isVerified: user.isVerified,
                 isOnVacation: user.isOnVacation || false,
                 authProvider: user.authProvider,
-                usernameChangeCount: user.usernameChangeCount || 0
+                usernameChangeCount: user.usernameChangeCount || 0,
+                verifiedCommunities: user.verifiedCommunities || []
             }
         }, { status: 200 });
 
@@ -64,6 +70,7 @@ export async function PUT(req: NextRequest) {
         if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
         await connectToDatabase();
+        require('@/models/Community');
         const body = await req.json();
         const { name, username, gender, address, bio, allowEmailContact, allowPhoneContact, isOnVacation } = body;
 
@@ -137,7 +144,7 @@ export async function PUT(req: NextRequest) {
             decoded.userId,
             { $set: updateData },
             { new: true, runValidators: true }
-        ).select('-password');
+        ).populate('verifiedCommunities', 'name image isActive').select('-password');
 
         if (!updatedUser) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -164,7 +171,8 @@ export async function PUT(req: NextRequest) {
                 isVerified: updatedUser.isVerified,
                 isOnVacation: updatedUser.isOnVacation || false,
                 authProvider: updatedUser.authProvider,
-                usernameChangeCount: updatedUser.usernameChangeCount || 0
+                usernameChangeCount: updatedUser.usernameChangeCount || 0,
+                verifiedCommunities: updatedUser.verifiedCommunities || []
             }
         }, { status: 200 });
 
@@ -185,7 +193,25 @@ export async function DELETE(req: NextRequest) {
 
         const userId = decoded.userId;
 
-        // Parallel Delete - Performance and Cleanliness
+        // Step 1: Pre-fetch targets for Cloudinary garbage collection
+        const [userProducts, userServices, userObj] = await Promise.all([
+            Product.find({ seller: userId }).select('images'),
+            Service.find({ provider: userId }).select('images'),
+            User.findById(userId).select('profilePicture')
+        ]);
+
+        const imagesToDelete: string[] = [];
+        if (userObj?.profilePicture) imagesToDelete.push(userObj.profilePicture);
+        userProducts.forEach(p => p.images?.forEach((img: string) => imagesToDelete.push(img)));
+        userServices.forEach(s => s.images?.forEach((img: string) => imagesToDelete.push(img)));
+
+        // Step 2: Trigger Cloudinary Cleanup (Non-blocking but awaited)
+        if (imagesToDelete.length > 0) {
+            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+            await Promise.all(imagesToDelete.map(img => deleteFromCloudinary(img)));
+        }
+
+        // Step 3: Parallel Database Delete - Performance and Cleanliness
         await Promise.all([
             Product.deleteMany({ seller: userId }),
             Service.deleteMany({ provider: userId }),
@@ -195,6 +221,8 @@ export async function DELETE(req: NextRequest) {
             Message.deleteMany({ $or: [{ sender: userId }, { recipient: userId }] }),
             // Handle Notifications
             Notification.deleteMany({ recipient: userId }),
+            // Remove Pending Verification Requests
+            VerificationRequest.deleteMany({ user: userId }),
             // Finally the User
             User.findByIdAndDelete(userId)
         ]);

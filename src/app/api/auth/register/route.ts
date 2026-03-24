@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
+import Community from '@/models/Community';
 import { hashPassword, generateToken } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
@@ -106,6 +107,14 @@ export async function POST(req: NextRequest) {
 
         const hashedPassword = await hashPassword(password);
 
+        // Community Auto-Verification (Email Domain Match)
+        const emailDomain = normalizedEmail.split('@')[1];
+        const matchingCommunities = await Community.find({
+            isActive: true,
+            emailDomains: emailDomain
+        });
+        const verifiedCommunityIds = matchingCommunities.map(c => c._id);
+
         const user = await User.create({
             name,
             username,
@@ -115,6 +124,7 @@ export async function POST(req: NextRequest) {
             gender: 'none', // Default Gender
             isVerified: true,
             authProvider: googleToken ? 'google' : 'email',
+            verifiedCommunities: verifiedCommunityIds,
             ...(verifiedGoogleId && { googleId: verifiedGoogleId })
         });
 
@@ -129,6 +139,7 @@ export async function POST(req: NextRequest) {
         const response = NextResponse.json(
             {
                 message: 'Registration successful!',
+                autoVerifiedCommunities: matchingCommunities.map(c => c.name),
                 user: {
                     id: user._id,
                     name: user.name,
@@ -137,6 +148,7 @@ export async function POST(req: NextRequest) {
                     role: user.role,
                     profilePicture: user.profilePicture,
                     isVerified: user.isVerified,
+                    verifiedCommunities: user.verifiedCommunities,
                     authProvider: user.authProvider
                 }
             },

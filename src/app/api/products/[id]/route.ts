@@ -100,6 +100,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             }, { status: 400 });
         }
 
+        // Cleanup Cloudinary Storage
+        if (product.images && product.images.length > 0) {
+            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+            for (const img of product.images) {
+                await deleteFromCloudinary(img);
+            }
+        }
+
         await Product.findByIdAndDelete(id);
 
         return NextResponse.json({ message: 'Product deleted' }, { status: 200 });

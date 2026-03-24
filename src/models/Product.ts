@@ -9,6 +9,9 @@ export interface IProduct extends Document {
     category: string;
     condition: 'New' | 'Like New' | 'Good' | 'Fair' | 'Poor';
     status: 'Available' | 'Sold' | 'Reserved';
+    community?: mongoose.Types.ObjectId;
+    visibility: 'Public' | 'Community';
+    location?: { pincode?: string; city?: string; state?: string };
     createdAt: Date;
     updatedAt: Date;
 }
@@ -32,6 +35,13 @@ const ProductSchema: Schema<IProduct> = new Schema(
             default: 'Available',
             index: true,
         },
+        community: { type: Schema.Types.ObjectId, ref: 'Community', index: true },
+        visibility: { type: String, enum: ['Public', 'Community'], default: 'Public', index: true },
+        location: {
+            pincode: { type: String, trim: true },
+            city: { type: String, trim: true },
+            state: { type: String, trim: true }
+        }
     },
     { timestamps: true }
 );

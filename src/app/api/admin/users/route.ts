@@ -68,10 +68,10 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { userId, role } = await req.json();
+        const { userId, role, communityId } = await req.json();
 
         // Valid roles verification
-        const validRoles = ['user', 'student', 'faculty', 'admin'];
+        const validRoles = ['user', 'student', 'faculty', 'admin', 'verifier'];
         if (!validRoles.includes(role)) {
             return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
         }
@@ -82,8 +82,16 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        // Prevent self-demotion from admin if needed, but for now allow full control
         user.role = role;
+
+        // If promoting to verifier and a community is provided, add it to their verified communities
+        if (role === 'verifier' && communityId) {
+            if (!user.verifiedCommunities.includes(communityId)) {
+                user.verifiedCommunities.push(communityId);
+                user.isVerified = true; // Verifiers should be verified themselves!
+            }
+        }
+
         await user.save();
 
         return NextResponse.json({ success: true, user }, { status: 200 });

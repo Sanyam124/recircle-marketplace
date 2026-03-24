@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
+import Community from '@/models/Community';
 import { verifyToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
@@ -24,8 +25,11 @@ export async function GET(req: NextRequest) {
         }
 
         await connectToDatabase();
+        require('@/models/Community');
 
-        const user = await User.findById(decoded.userId).select('-password');
+        const user = await User.findById(decoded.userId)
+            .populate('verifiedCommunities', 'name image isActive')
+            .select('-password');
 
         if (!user) {
             return NextResponse.json(
@@ -50,7 +54,8 @@ export async function GET(req: NextRequest) {
                     allowPhoneContact: user.allowPhoneContact,
                     usernameChangeCount: user.usernameChangeCount || 0,
                     authProvider: user.authProvider,
-                    blockedUsers: user.blockedUsers || []
+                    blockedUsers: user.blockedUsers || [],
+                    verifiedCommunities: user.verifiedCommunities || []
                 }
             },
             { status: 200 }

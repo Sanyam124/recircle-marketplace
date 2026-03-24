@@ -26,6 +26,8 @@ export async function GET(req: NextRequest) {
         const conditions = searchParams.getAll('conditions[]');
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '12');
+        const communityFilter = searchParams.get('communityFilter'); // 'All', 'Public', or specific ID
+        const cityFilter = searchParams.get('city');
 
         const skip = (page - 1) * limit;
 
@@ -62,6 +64,42 @@ export async function GET(req: NextRequest) {
                 productQuery.seller = { $nin: hiddenIds };
                 serviceQuery.provider = { $nin: hiddenIds };
             }
+        }
+
+        // [CIRCLE VISIBILITY LOGIC]
+        const token = req.cookies.get('token')?.value;
+        const decoded = token ? verifyToken(token) : null;
+        let user: any = null;
+        if (decoded?.userId) {
+            user = await User.findById(decoded.userId).select('verifiedCommunities');
+        }
+
+        const visibilityFilter: any = { $or: [] };
+
+        // 1. Specific Community Filter (ID)
+        if (communityFilter && communityFilter !== 'All' && communityFilter !== 'Public' && mongoose.Types.ObjectId.isValid(communityFilter)) {
+            productQuery.community = new mongoose.Types.ObjectId(communityFilter);
+            serviceQuery.community = new mongoose.Types.ObjectId(communityFilter);
+            // Items must have a community and matches the ID
+        } 
+        // 2. Public Only Filter
+        else if (communityFilter === 'Public') {
+            productQuery.visibility = 'Public';
+            serviceQuery.visibility = 'Public';
+        }
+        // 3. Default "All" Filter (Show Public + Items from User's Verified Communities)
+        else {
+            const allowedCommunityIds = user?.verifiedCommunities || [];
+            productQuery.$or = [
+                { visibility: 'Public' },
+                { visibility: { $exists: false } },
+                { community: { $in: allowedCommunityIds } }
+            ];
+            serviceQuery.$or = [
+                { visibility: 'Public' },
+                { visibility: { $exists: false } },
+                { community: { $in: allowedCommunityIds } }
+            ];
         }
 
         // Search logic
@@ -121,6 +159,12 @@ export async function GET(req: NextRequest) {
             productQuery.condition = { $in: conditions };
         }
 
+        // City logic
+        if (cityFilter) {
+            productQuery['location.city'] = cityFilter;
+            serviceQuery['location.city'] = cityFilter;
+        }
+
         // Fetch Results using Aggregation for unified sorting/pagination
         const pipeline: any[] = [];
 
@@ -139,7 +183,8 @@ export async function GET(req: NextRequest) {
                 coll: 'services',
                 pipeline: [
                     { $match: serviceMatch },
-                    { $addFields: { itemType: 'service' } }
+                    { $addFields: { itemType: 'service' } },
+                    { $project: { community: 1, visibility: 1, title: 1, price: 1, images: 1, category: 1, description: 1, status: 1, createdAt: 1, priceUnit: 1, provider: 1, location: 1 } }
                 ]
             };
 
@@ -160,7 +205,10 @@ export async function GET(req: NextRequest) {
                 createdAt: 1,
                 priceUnit: 1,
                 seller: { $ifNull: ['$seller', '$provider'] },
-                provider: 1
+                provider: 1,
+                community: 1,
+                visibility: 1,
+                location: 1
             }
         });
 
@@ -235,6 +283,28 @@ export async function GET(req: NextRequest) {
             }
         });
         resultsPipeline.push({ $project: { sellerObj: 0 } });
+        
+        // 8. Populate Community Info
+        resultsPipeline.push({
+            $lookup: {
+                from: 'communities',
+                localField: 'community',
+                foreignField: '_id',
+                as: 'communityObj'
+            }
+        });
+        resultsPipeline.push({
+            $unwind: { path: '$communityObj', preserveNullAndEmptyArrays: true }
+        });
+        resultsPipeline.push({
+            $addFields: {
+                community: {
+                    _id: '$communityObj._id',
+                    name: '$communityObj.name'
+                }
+            }
+        });
+        resultsPipeline.push({ $project: { communityObj: 0 } });
 
         const [totalRes, results] = await Promise.all([
             Product.aggregate(countPipeline),

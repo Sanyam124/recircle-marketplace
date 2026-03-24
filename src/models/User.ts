@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
+import Community from './Community'; // [FIX] Registered for populate dependency
 
 export interface IUser extends Document {
     name: string;
@@ -7,7 +8,7 @@ export interface IUser extends Document {
     password?: string;
     profilePicture?: string;
     bio?: string;
-    role: 'user' | 'admin';
+    role: 'user' | 'admin' | 'verifier';
     address?: string;
     isVerified: boolean;
     phone?: string; // [NEW] Optional phone
@@ -20,6 +21,7 @@ export interface IUser extends Document {
     wishlist: mongoose.Types.ObjectId[];
     wishlistedServices: mongoose.Types.ObjectId[];
     blockedUsers: mongoose.Types.ObjectId[]; // [NEW] For Block feature
+    verifiedCommunities: mongoose.Types.ObjectId[]; // [NEW] Circles Feature: Permanent verified Residents
     authProvider: 'email' | 'google';
     googleId?: string;
     otp?: string;
@@ -54,13 +56,14 @@ const UserSchema: Schema<IUser> = new Schema(
         isPhoneVerified: { type: Boolean, default: false },
         allowPhoneContact: { type: Boolean, default: false },
         status: { type: String, enum: ['Active', 'Banned', 'Deactivated'], default: 'Active' },
-        role: { type: String, enum: ['user', 'admin'], default: 'user' },
+        role: { type: String, enum: ['user', 'admin', 'verifier'], default: 'user' },
         address: { type: String, trim: true, maxlength: 150 },
         isVerified: { type: Boolean, default: false },
         isOnVacation: { type: Boolean, default: false },
         wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
         wishlistedServices: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Service' }],
         blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        verifiedCommunities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Community' }],
         authProvider: { type: String, enum: ['email', 'google'], default: 'email' },
         googleId: { type: String, unique: true, sparse: true },
         otp: { type: String, select: false },
@@ -77,8 +80,10 @@ if (mongoose.models.User) {
     const currentSchema = mongoose.models.User.schema;
     const bioPath = currentSchema.path('bio') as any;
     const isOldBioLimit = bioPath?.options?.maxlength === 300;
+    const rolePath = currentSchema.path('role') as any;
+    const isOldRoleEnum = !rolePath?.options?.enum?.includes('verifier');
 
-    if (isOldBioLimit || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('status') || !currentSchema.path('authProvider') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || (currentSchema.path('address') as any)?.options?.maxlength !== 150 || !currentSchema.path('isOnVacation')) {
+    if (isOldRoleEnum || isOldBioLimit || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('verifiedCommunities') || !currentSchema.path('status') || !currentSchema.path('authProvider') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || (currentSchema.path('address') as any)?.options?.maxlength !== 150 || !currentSchema.path('isOnVacation')) {
         delete mongoose.models.User;
     }
 }

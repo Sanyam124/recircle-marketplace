@@ -1,0 +1,32 @@
+import mongoose, { Schema, Document, Model } from 'mongoose';
+
+export interface IBoardPost extends Document {
+    author: mongoose.Types.ObjectId;
+    community: mongoose.Types.ObjectId;
+    content: string;
+    upvotes: mongoose.Types.ObjectId[];
+    expiresAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+const BoardPostSchema: Schema<IBoardPost> = new Schema(
+    {
+        author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        community: { type: mongoose.Schema.Types.ObjectId, ref: 'Community', required: true },
+        content: { type: String, required: true, maxlength: 500, trim: true },
+        upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        expiresAt: { 
+            type: Date, 
+            default: () => new Date(+new Date() + 48*60*60*1000), // Default to 48 hours from now
+        },
+    },
+    { timestamps: true }
+);
+
+// TTL Index: Deletes the document precisely when the `expiresAt` date is reached
+BoardPostSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+const BoardPost: Model<IBoardPost> = mongoose.models.BoardPost || mongoose.model<IBoardPost>('BoardPost', BoardPostSchema);
+
+export default BoardPost;

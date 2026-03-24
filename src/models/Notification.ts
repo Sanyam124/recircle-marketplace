@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface INotification extends Document {
     recipient: mongoose.Types.ObjectId;
     sender?: mongoose.Types.ObjectId;
-    type: 'ORDER_PLACED' | 'SERVICE_REQUEST' | 'DELIVERY_UPDATE' | 'ORDER_UPDATE' | 'ADMIN_ALERT' | 'CHAT_MESSAGE' | 'OFFER_RECEIVED' | 'OFFER_ACCEPTED' | 'OFFER_DECLINED';
+    type: 'ORDER_PLACED' | 'SERVICE_REQUEST' | 'DELIVERY_UPDATE' | 'ORDER_UPDATE' | 'ADMIN_ALERT' | 'CHAT_MESSAGE' | 'OFFER_RECEIVED' | 'OFFER_ACCEPTED' | 'OFFER_DECLINED' | 'VERIFICATION_UPDATE';
     message: string;
     link?: string;
     isRead: boolean;
@@ -17,7 +17,7 @@ const NotificationSchema: Schema<INotification> = new Schema(
         sender: { type: Schema.Types.ObjectId, ref: 'User' },
         type: {
             type: String,
-            enum: ['ORDER_PLACED', 'SERVICE_REQUEST', 'DELIVERY_UPDATE', 'ORDER_UPDATE', 'ADMIN_ALERT', 'CHAT_MESSAGE', 'OFFER_RECEIVED', 'OFFER_ACCEPTED', 'OFFER_DECLINED'],
+            enum: ['ORDER_PLACED', 'SERVICE_REQUEST', 'DELIVERY_UPDATE', 'ORDER_UPDATE', 'ADMIN_ALERT', 'CHAT_MESSAGE', 'OFFER_RECEIVED', 'OFFER_ACCEPTED', 'OFFER_DECLINED', 'VERIFICATION_UPDATE'],
             required: true
         },
         message: { type: String, required: true },
