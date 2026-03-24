@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, use, useMemo } from 'react';
+import { useState, useEffect, use, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import Loader from '@/components/Loader';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ProfileSkeleton, ItemCardSkeleton } from '@/components/Skeletons';
 import ReviewSection from '@/components/ReviewSection';
 import ExpandableText from '@/components/ExpandableText';
 import ShareButton from '@/components/ShareButton';
@@ -226,19 +226,44 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const id = resolvedParams.id;
   const { user: authUser, refreshUser } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isOwner = authUser?.id === id;
+  const isFirstRender = useRef(true);
+
+  const tabParam = searchParams.get('tab') as TabKey;
+  const pPageParam = parseInt(searchParams.get('pPage') || '1');
+  const sPageParam = parseInt(searchParams.get('sPage') || '1');
+  const aPageParam = parseInt(searchParams.get('aPage') || '1');
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sectionLoading, setSectionLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>('all');
-  const [productPage, setProductPage] = useState(1);
-  const [servicePage, setServicePage] = useState(1);
-  const [allPage, setAllPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<TabKey>(tabParam || 'all');
+  const [productPage, setProductPage] = useState(pPageParam);
+  const [servicePage, setServicePage] = useState(sPageParam);
+  const [allPage, setAllPage] = useState(aPageParam);
   const [reportOpen, setReportOpen] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blocking, setBlocking] = useState(false);
+
+  // Sync state to URL 
+  useEffect(() => {
+    if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return;
+    }
+
+    const params = new URLSearchParams();
+    if (activeTab !== 'all') params.set('tab', activeTab);
+    if (productPage > 1) params.set('pPage', productPage.toString());
+    if (servicePage > 1) params.set('sPage', servicePage.toString());
+    if (allPage > 1) params.set('aPage', allPage.toString());
+    
+    const queryString = params.toString();
+    const url = `/profile/${id}${queryString ? `?${queryString}` : ''}`;
+    router.push(url, { scroll: false });
+  }, [activeTab, productPage, servicePage, allPage, id]); // Only sync when internal state changes
 
   useEffect(() => {
     fetchProfile(1, 1, 1, false);
@@ -331,7 +356,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     }
   };
 
-  if (loading) return <Loader />;
+  if (loading) return <ProfileSkeleton />;
   if (errorMsg) return (
      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
         <div className="bg-red-50 dark:bg-red-900/20 rounded-3xl p-12 border-2 border-red-100 dark:border-red-900/30 shadow-xl">
@@ -679,14 +704,18 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 <p className="text-gray-500 dark:text-gray-400 text-sm italic">No items found.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {allItems.map((item: any) => (
-                  <ItemCard
-                    key={item._id} item={item} type={item.type} isOwner={isOwner}
-                    onDelete={handleDelete}
-                    onToggleStatus={handleToggleStatus}
-                  />
-                ))}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 transition-all duration-300">
+                {sectionLoading ? (
+                  [...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)
+                ) : (
+                  allItems.map((item: any) => (
+                    <ItemCard
+                      key={item._id} item={item} type={item.type} isOwner={isOwner}
+                      onDelete={handleDelete}
+                      onToggleStatus={handleToggleStatus}
+                    />
+                  ))
+                )}
               </div>
             )}
             <PaginationControls page={allPage} totalPages={allPagination?.totalPages || 1} onPageChange={setAllPage} scrollTargetId="listings-top" />
@@ -703,14 +732,18 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {products.map((product: any) => (
-                    <ItemCard
-                      key={product._id} item={product} type="product" isOwner={isOwner}
-                      onDelete={handleDelete}
-                      onToggleStatus={handleToggleStatus}
-                    />
-                  ))}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 transition-all duration-300">
+                  {sectionLoading ? (
+                    [...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)
+                  ) : (
+                    products.map((product: any) => (
+                      <ItemCard
+                        key={product._id} item={product} type="product" isOwner={isOwner}
+                        onDelete={handleDelete}
+                        onToggleStatus={handleToggleStatus}
+                      />
+                    ))
+                  )}
                 </div>
                 <PaginationControls page={productPage} totalPages={productPagination?.totalPages || 1} onPageChange={setProductPage} scrollTargetId="listings-top" />
               </>
@@ -728,14 +761,18 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {services.map((service: any) => (
-                    <ItemCard
-                      key={service._id} item={service} type="service" isOwner={isOwner}
-                      onDelete={handleDelete}
-                      onToggleStatus={handleToggleStatus}
-                    />
-                  ))}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 transition-all duration-300">
+                  {sectionLoading ? (
+                    [...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)
+                  ) : (
+                    services.map((service: any) => (
+                      <ItemCard
+                        key={service._id} item={service} type="service" isOwner={isOwner}
+                        onDelete={handleDelete}
+                        onToggleStatus={handleToggleStatus}
+                      />
+                    ))
+                  )}
                 </div>
                 <PaginationControls page={servicePage} totalPages={servicePagination?.totalPages || 1} onPageChange={setServicePage} scrollTargetId="listings-top" />
               </>

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import Loader from '@/components/Loader';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { OrderRowSkeleton } from '@/components/Skeletons';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
 
@@ -55,7 +55,9 @@ function PaginationControls({
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'buyer' | 'seller'>('buyer');
+  const searchParams = useSearchParams();
+  const isFirstRender = useRef(true);
+  const [activeTab, setActiveTab] = useState<'buyer' | 'seller'>((searchParams.get('tab') as 'buyer' | 'seller') || 'buyer');
   
   useEffect(() => {
     if (!authLoading && !user) {
@@ -63,15 +65,39 @@ export default function OrdersPage() {
     }
   }, [user, authLoading, router]);
 
+  const [buyerOrders, setBuyerOrders] = useState<any[]>([]);
+  const initialBuyerPage = parseInt(searchParams.get('bPage') || '1');
+  const [buyerPagination, setBuyerPagination] = useState({ page: initialBuyerPage, totalPages: 1 });
+  const [buyerLoading, setBuyerLoading] = useState(true);
+
+  const [sellerOrders, setSellerOrders] = useState<any[]>([]);
+  const initialSellerPage = parseInt(searchParams.get('sPage') || '1');
+  const [sellerPagination, setSellerPagination] = useState({ page: initialSellerPage, totalPages: 1 });
+  const [sellerLoading, setSellerLoading] = useState(true);
+
+  // Sync state to URL 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tabOption = urlParams.get('tab');
-    const orderId = urlParams.get('orderId');
-    
-    if (tabOption === 'buyer' || tabOption === 'seller') {
-      setActiveTab(tabOption);
+    if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return;
     }
 
+    const params = new URLSearchParams();
+    params.set('tab', activeTab);
+    if (buyerPagination.page > 1) params.set('bPage', buyerPagination.page.toString());
+    if (sellerPagination.page > 1) params.set('sPage', sellerPagination.page.toString());
+    
+    // Check if we already have an orderId to preserve
+    const orderId = searchParams.get('orderId');
+    if (orderId) params.set('orderId', orderId);
+
+    const queryString = params.toString();
+    const url = `/orders${queryString ? `?${queryString}` : ''}`;
+    router.push(url, { scroll: false });
+  }, [activeTab, buyerPagination.page, sellerPagination.page]); // Removed router/searchParams to avoid sync loops
+
+  useEffect(() => {
+    const orderId = searchParams.get('orderId');
     if (orderId) {
       // Small delay to ensure items are rendered
       setTimeout(() => {
@@ -83,15 +109,7 @@ export default function OrdersPage() {
         }
       }, 800);
     }
-  }, []);
-
-  const [buyerOrders, setBuyerOrders] = useState<any[]>([]);
-  const [buyerPagination, setBuyerPagination] = useState({ page: 1, totalPages: 1 });
-  const [buyerLoading, setBuyerLoading] = useState(true);
-
-  const [sellerOrders, setSellerOrders] = useState<any[]>([]);
-  const [sellerPagination, setSellerPagination] = useState({ page: 1, totalPages: 1 });
-  const [sellerLoading, setSellerLoading] = useState(true);
+  }, [searchParams]);
 
   const [otpModalData, setOtpModalData] = useState<{ id: string, type: 'Product' | 'Service_Appointment', role: 'buyer' | 'seller', order: any } | null>(null);
   const [otpCode, setOtpCode] = useState('');
@@ -220,7 +238,7 @@ export default function OrdersPage() {
     }
   };
 
-  if (authLoading || !user) return <Loader />;
+  if (authLoading || !user) return <div className="max-w-5xl mx-auto px-4 py-12"><OrderRowSkeleton /><OrderRowSkeleton /><OrderRowSkeleton /></div>;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-8 pb-20">
@@ -262,7 +280,7 @@ export default function OrdersPage() {
         <div id="orders-top">
           {(() => {
             if (activeTab === 'buyer') {
-              if (buyerLoading) return <Loader />;
+              if (buyerLoading) return <div>{[...Array(5)].map((_, i) => <OrderRowSkeleton key={i} />)}</div>;
               if (buyerOrders.length === 0) {
                 return (
                   <div className="bg-white dark:bg-gray-800 rounded-3xl p-12 text-center border border-gray-100 dark:border-gray-700 shadow-sm">
@@ -290,7 +308,7 @@ export default function OrdersPage() {
                 </div>
               );
             } else {
-              if (sellerLoading) return <Loader />;
+              if (sellerLoading) return <div>{[...Array(5)].map((_, i) => <OrderRowSkeleton key={i} />)}</div>;
               if (sellerOrders.length === 0) {
                 return (
                   <div className="bg-white dark:bg-gray-800 rounded-3xl p-12 text-center border border-gray-100 dark:border-gray-700 shadow-sm">

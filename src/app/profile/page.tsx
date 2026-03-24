@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import Loader from '@/components/Loader';
+import { ProfileSkeleton } from '@/components/Skeletons';
 
 export default function ProfileRedirectPage() {
   const { user, loading } = useAuth();
@@ -19,5 +19,5 @@ export default function ProfileRedirectPage() {
     }
   }, [user, loading, router]);
 
-  return <Loader />;
+  return <ProfileSkeleton />;
 }
