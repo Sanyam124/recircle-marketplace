@@ -299,8 +299,11 @@ export async function GET(req: NextRequest) {
         resultsPipeline.push({
             $addFields: {
                 community: {
-                    _id: '$communityObj._id',
-                    name: '$communityObj.name'
+                    $cond: {
+                        if: { $ifNull: ['$communityObj._id', false] },
+                        then: { _id: '$communityObj._id', name: '$communityObj.name' },
+                        else: '$$REMOVE'
+                    }
                 }
             }
         });

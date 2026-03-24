@@ -124,7 +124,7 @@ export default function ProductCard({ product }: { product: Product }) {
             </button>
         </div>
         {/* Community Origin Tag */}
-        {communityName && (
+        {(communityName || product.location?.city) && (
           <div className={`absolute bottom-0 left-0 right-0 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white text-center ${
             isInternal ? 'bg-emerald-500/90' : 'bg-red-500/90'
           } backdrop-blur-sm`}>
