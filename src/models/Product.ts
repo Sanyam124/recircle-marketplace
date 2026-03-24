@@ -19,8 +19,8 @@ export interface IProduct extends Document {
 const ProductSchema: Schema<IProduct> = new Schema(
     {
         seller: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-        title: { type: String, required: true, trim: true, index: 'text', maxlength: 80 },
-        description: { type: String, required: true, trim: true, index: 'text', maxlength: 2000 },
+        title: { type: String, required: true, trim: true, maxlength: 80 },
+        description: { type: String, required: true, trim: true, maxlength: 2000 },
         price: { type: Number, required: true, min: 0, max: 1000000 },
         images: { type: [String], required: true }, // Array of image URLs
         category: { type: String, required: true, trim: true, index: true },
@@ -51,6 +51,12 @@ ProductSchema.index({ status: 1, createdAt: -1 });
 ProductSchema.index({ status: 1, price: 1 });
 ProductSchema.index({ status: 1, price: -1 });
 ProductSchema.index({ category: 1, status: 1, createdAt: -1 });
+
+// Full-text search index
+ProductSchema.index(
+  { title: 'text', description: 'text', category: 'text' },
+  { weights: { title: 10, category: 5, description: 1 }, name: "TextSearchIndex" }
+);
 
 const Product: Model<IProduct> =
     mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);
