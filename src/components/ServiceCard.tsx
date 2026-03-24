@@ -26,7 +26,7 @@ interface Service {
   providerRating?: number;
   reviewCount?: number;
   visibility?: 'Public' | 'Community';
-  community?: { _id: string; name: string };
+  community?: { _id: string; name: string } | string | any;
   location?: { pincode: string; city: string; state: string };
 }
 
@@ -37,9 +37,16 @@ export default function ServiceCard({ service }: { service: Service }) {
 
   // Community tag logic
   const userCommunityIds = (user?.verifiedCommunities || []).map((c: any) => (c._id || c.id || c).toString());
-  const communityName = service.community?.name;
-  const communityId = service.community?._id || service.community;
-  const isInternal = communityId ? userCommunityIds.includes(communityId.toString()) : false;
+  const communityName = typeof service.community === 'object' ? service.community?.name : undefined;
+  let communityId: string | undefined;
+  if (service.community) {
+    if (typeof service.community === 'object') {
+      communityId = service.community._id?.toString();
+    } else {
+      communityId = service.community.toString();
+    }
+  }
+  const isInternal = communityId ? userCommunityIds.includes(communityId) : false;
 
   useEffect(() => {
     if (user && user.wishlistedServices && service._id) {

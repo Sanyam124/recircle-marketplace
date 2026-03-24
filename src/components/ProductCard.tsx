@@ -26,7 +26,7 @@ interface Product {
   ownerRating?: number;
   reviewCount?: number;
   visibility?: 'Public' | 'Community';
-  community?: { _id: string; name: string };
+  community?: { _id: string; name: string } | string | any;
   location?: { pincode: string; city: string; state: string };
 }
 
@@ -37,9 +37,16 @@ export default function ProductCard({ product }: { product: Product }) {
 
   // Community tag logic: is this product from one of MY communities?
   const userCommunityIds = (user?.verifiedCommunities || []).map((c: any) => (c._id || c.id || c).toString());
-  const communityName = product.community?.name;
-  const communityId = product.community?._id || product.community;
-  const isInternal = communityId ? userCommunityIds.includes(communityId.toString()) : false;
+  const communityName = typeof product.community === 'object' ? product.community?.name : undefined;
+  let communityId: string | undefined;
+  if (product.community) {
+    if (typeof product.community === 'object') {
+      communityId = product.community._id?.toString();
+    } else {
+      communityId = product.community.toString();
+    }
+  }
+  const isInternal = communityId ? userCommunityIds.includes(communityId) : false;
 
   useEffect(() => {
     if (user && user.wishlist) {
