@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/oxide-win32-x64-msvc": "^4.2.1",
     "bcryptjs": "^3.0.3",
+    "browser-image-compression": "^2.0.2",
     "cloudinary": "^2.9.0",
     "dotenv": "^17.2.3",
     "google-auth-library": "^9.6.3",

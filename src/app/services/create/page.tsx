@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
+import imageCompression from 'browser-image-compression';
 
 export default function CreateServicePage() {
   const router = useRouter();
@@ -76,7 +77,7 @@ export default function CreateServicePage() {
   }
 
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
       if (files.length + images.length > 5) {
@@ -84,17 +85,25 @@ export default function CreateServicePage() {
         return;
       }
 
-      files.forEach(file => {
-        if (file.size > 2 * 1024 * 1024) {
-          setError('Image size should be less than 2MB');
-          return;
+      const options = {
+        maxSizeMB: 0.8,
+        maxWidthOrHeight: 1080,
+        useWebWorker: true,
+      };
+
+      for (const file of files) {
+        try {
+          const compressedFile = await imageCompression(file, options);
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setImages(prev => [...prev, reader.result as string]);
+          };
+          reader.readAsDataURL(compressedFile);
+        } catch (error) {
+          console.error("Image compression error:", error);
+          setError('Failed to process one or more images');
         }
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setImages(prev => [...prev, reader.result as string]);
-        };
-        reader.readAsDataURL(file);
-      });
+      }
     }
   };
 
