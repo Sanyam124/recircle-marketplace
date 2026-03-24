@@ -25,12 +25,21 @@ interface Product {
   };
   ownerRating?: number;
   reviewCount?: number;
+  visibility?: 'Public' | 'Community';
+  community?: { _id: string; name: string };
+  location?: { pincode: string; city: string; state: string };
 }
 
 export default function ProductCard({ product }: { product: Product }) {
   const { user, setUser } = useAuth();
   const [liked, setLiked] = useState(false);
   const router = useRouter();
+
+  // Community tag logic: is this product from one of MY communities?
+  const userCommunityIds = (user?.verifiedCommunities || []).map((c: any) => (c._id || c.id || c).toString());
+  const communityName = product.community?.name;
+  const communityId = product.community?._id || product.community;
+  const isInternal = communityId ? userCommunityIds.includes(communityId.toString()) : false;
 
   useEffect(() => {
     if (user && user.wishlist) {
@@ -107,6 +116,14 @@ export default function ProductCard({ product }: { product: Product }) {
                 </svg>
             </button>
         </div>
+        {/* Community Origin Tag */}
+        {communityName && (
+          <div className={`absolute bottom-0 left-0 right-0 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white text-center ${
+            isInternal ? 'bg-emerald-500/90' : 'bg-red-500/90'
+          } backdrop-blur-sm`}>
+            {isInternal ? `✓ Internal · ${communityName}` : (product.location?.city ? `↗ External · ${product.location.city}, ${product.location.state}` : `↗ External · ${communityName || 'Public'}`)}
+          </div>
+        )}
       </div>
       
       <div className="p-4 relative z-10 pointer-events-none">

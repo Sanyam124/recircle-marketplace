@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FilterCheckbox } from './FilterCheckbox';
 import { FilterSection } from './FilterSection';
+import { useAuth } from '@/context/AuthContext';
 
 export interface ExploreFilters {
   search: string;
@@ -13,6 +14,8 @@ export interface ExploreFilters {
   maxPrice: string;
   categories: string[];
   conditions: string[];
+  communityFilter: string;
+  city: string;
 }
 
 interface ExploreSidebarProps {
@@ -47,12 +50,37 @@ export default function ExploreSidebar({ currentFilters, onFilterChange }: Explo
 
   // Sync with parent when parent aggressively changes filters (like "Clear All" in empty state)
   useEffect(() => {
-    setFilters(currentFilters);
+    setFilters(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(currentFilters)) {
+            return prev;
+        }
+        return currentFilters;
+    });
   }, [currentFilters]);
 
+  const { user } = useAuth();
+  
   // Separate dropdown toggles so they can be opened independently
   const [productDocsOpen, setProductDocsOpen] = useState(false);
   const [serviceDocsOpen, setServiceDocsOpen] = useState(false);
+
+  const [availableCities, setAvailableCities] = useState<{ name: string; count: number }[]>([]);
+  const [citySearch, setCitySearch] = useState('');
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const res = await fetch('/api/explore/cities');
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableCities(data.cities || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch cities', err);
+      }
+    };
+    fetchCities();
+  }, []);
 
   useEffect(() => {
     if (filters.categories.some(c => PRODUCT_CATEGORIES.includes(c))) setProductDocsOpen(true);
@@ -109,6 +137,7 @@ export default function ExploreSidebar({ currentFilters, onFilterChange }: Explo
   };
 
   const clearFilters = () => {
+    setCitySearch('');
     setFilters({
       search: '',
       type: 'all',
@@ -116,7 +145,9 @@ export default function ExploreSidebar({ currentFilters, onFilterChange }: Explo
       minPrice: '',
       maxPrice: '',
       categories: [],
-      conditions: []
+      conditions: [],
+      communityFilter: 'All',
+      city: ''
     });
   };
 
@@ -140,8 +171,10 @@ export default function ExploreSidebar({ currentFilters, onFilterChange }: Explo
           
           <div className="flex items-center justify-between mb-4">
              <h3 className="font-bold text-gray-900 dark:text-white shrink-0">Explore</h3>
-             {(filters.categories.length > 0 || filters.conditions.length > 0 || filters.minPrice || filters.maxPrice || filters.search) && (
-                <button onClick={clearFilters} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors">Clear All</button>
+             {(filters.categories.length > 0 || filters.conditions.length > 0 || filters.minPrice || filters.maxPrice || filters.search || filters.city || filters.communityFilter !== 'All') ? (
+                <button onClick={clearFilters} className="text-xs font-bold text-orange-600 dark:text-orange-400 hover:text-orange-700 hover:underline transition-all">Clear All</button>
+             ) : (
+                <span className="text-[10px] text-gray-400 font-medium italic">No Active Filters</span>
              )}
           </div>
 
@@ -167,19 +200,19 @@ export default function ExploreSidebar({ currentFilters, onFilterChange }: Explo
             <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Item Type</h4>
             <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
                <button 
-                  onClick={() => setFilters({ search: '', type: 'all', sort: 'newest', minPrice: '', maxPrice: '', categories: [], conditions: [] })} 
+                  onClick={() => setFilters(prev => ({ ...prev, type: 'all' }))} 
                   className={`flex-1 text-xs py-1.5 font-bold rounded-lg transition-all ${filters.type === 'all' ? 'bg-white dark:bg-gray-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
                >
                  All
                </button>
                <button 
-                  onClick={() => setFilters({ search: '', type: 'products', sort: 'newest', minPrice: '', maxPrice: '', categories: [], conditions: [] })} 
+                  onClick={() => setFilters(prev => ({ ...prev, type: 'products' }))} 
                   className={`flex-1 text-xs py-1.5 font-bold rounded-lg transition-all ${filters.type === 'products' ? 'bg-white dark:bg-gray-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
                >
                  Products
                </button>
                <button 
-                  onClick={() => setFilters({ search: '', type: 'services', sort: 'newest', minPrice: '', maxPrice: '', categories: [], conditions: [] })} 
+                  onClick={() => setFilters(prev => ({ ...prev, type: 'services' }))} 
                   className={`flex-1 text-xs py-1.5 font-bold rounded-lg transition-all ${filters.type === 'services' ? 'bg-white dark:bg-gray-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
                >
                  Services
@@ -199,6 +232,88 @@ export default function ExploreSidebar({ currentFilters, onFilterChange }: Explo
               <option value="price_asc">Price: Low to High</option>
               <option value="price_desc">Price: High to Low</option>
               <option value="rating">Highest Rated</option>
+            </select>
+          </FilterSection>
+
+          {/* City Filter - Searchable Dynamic Version */}
+          <FilterSection title="Explore Cities">
+            <div className="space-y-3">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search cities..."
+                  value={citySearch}
+                  onChange={(e) => setCitySearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-none rounded-xl text-xs focus:ring-2 focus:ring-orange-500 transition-colors dark:text-white"
+                />
+              </div>
+
+              {/* Suggestions List */}
+              <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700 pr-1">
+                {(citySearch.trim() === '' 
+                  ? availableCities.slice(0, 5) 
+                  : availableCities.filter(city => city.name.toLowerCase().includes(citySearch.toLowerCase()))
+                ).map(city => (
+                    <button
+                      key={city.name}
+                      onClick={() => {
+                        setFilters(prev => ({ ...prev, city: city.name }));
+                        setCitySearch('');
+                      }}
+                      className={`flex justify-between items-center text-left px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        filters.city === city.name 
+                          ? 'bg-orange-500 text-white' 
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      <span className="truncate">{city.name}</span>
+                      <span className={`text-[10px] opacity-70 ${filters.city === city.name ? 'text-white' : 'text-gray-400'}`}>
+                        {city.count}
+                      </span>
+                    </button>
+                  ))}
+                
+                {availableCities.length > 5 && citySearch.trim() === '' && (
+                  <p className="text-[10px] text-center text-gray-400 py-1 italic">Type to search all cities...</p>
+                )}
+                
+                {availableCities.length === 0 && (
+                  <p className="text-[10px] text-gray-400 italic text-center py-2">No active cities found</p>
+                )}
+              </div>
+
+              {filters.city && (
+                <div className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-100 dark:border-orange-800/30">
+                  <span className="text-[10px] font-bold text-orange-700 dark:text-orange-300">Filtered by: {filters.city}</span>
+                  <button 
+                    onClick={() => setFilters(prev => ({ ...prev, city: '' }))}
+                    className="p-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full transition-colors"
+                  >
+                    <svg className="w-3 h-3 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+              )}
+            </div>
+          </FilterSection>
+
+          {/* Community Location Filter */}
+          <FilterSection title="Location (Circles)">
+            <select
+              name="communityFilter"
+              value={filters.communityFilter}
+              onChange={handleChange}
+              className="w-full font-semibold bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-900 dark:text-indigo-200 border-none rounded-xl text-sm py-2.5 px-3 focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm"
+            >
+              <option value="All" className="font-bold">🌍 Entire Network</option>
+              <option value="Public">🌐 Public Items Only</option>
+              {user?.verifiedCommunities?.map((c: any) => (
+                 <option key={c._id || c.id} value={c._id || c.id}>
+                    🔒 {c.name}
+                 </option>
+              ))}
             </select>
           </FilterSection>
 

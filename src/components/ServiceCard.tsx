@@ -25,12 +25,21 @@ interface Service {
   ownerRating?: number;
   providerRating?: number;
   reviewCount?: number;
+  visibility?: 'Public' | 'Community';
+  community?: { _id: string; name: string };
+  location?: { pincode: string; city: string; state: string };
 }
 
 export default function ServiceCard({ service }: { service: Service }) {
   const { user, setUser } = useAuth();
   const [liked, setLiked] = useState(false);
   const router = useRouter();
+
+  // Community tag logic
+  const userCommunityIds = (user?.verifiedCommunities || []).map((c: any) => (c._id || c.id || c).toString());
+  const communityName = service.community?.name;
+  const communityId = service.community?._id || service.community;
+  const isInternal = communityId ? userCommunityIds.includes(communityId.toString()) : false;
 
   useEffect(() => {
     if (user && user.wishlistedServices && service._id) {
@@ -108,6 +117,14 @@ export default function ServiceCard({ service }: { service: Service }) {
                 </svg>
             </button>
         </div>
+        {/* Community Origin Tag */}
+        {communityName && (
+          <div className={`absolute bottom-0 left-0 right-0 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white text-center ${
+            isInternal ? 'bg-emerald-500/90' : 'bg-red-500/90'
+          } backdrop-blur-sm`}>
+            {isInternal ? `✓ Internal · ${communityName}` : (service.location?.city ? `↗ External · ${service.location.city}, ${service.location.state}` : `↗ External · ${communityName || 'Public'}`)}
+          </div>
+        )}
       </div>
       <div className="p-4 relative z-10 pointer-events-none">
         <div className="flex justify-between items-start">

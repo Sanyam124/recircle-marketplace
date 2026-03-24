@@ -1,55 +1,84 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ExploreSidebar, { ExploreFilters } from '@/components/ExploreSidebar';
 import ProductCard from '@/components/ProductCard';
 import ServiceCard from '@/components/ServiceCard';
-import Loader from '@/components/Loader';
+import { ItemCardSkeleton } from '@/components/Skeletons';
 
 export default function ExplorePage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  
-  const initialCategory = searchParams.get('category') || '';
-  const initialSearch = searchParams.get('search') || '';
-  const initialType = (searchParams.get('type') as 'all' | 'products' | 'services') || 'all';
+  const router = useRouter();
+
+  const getInitialFilters = () => {
+    // Collect all category/categories[] values
+    const cats = [
+      ...searchParams.getAll('categories[]'),
+      ...searchParams.getAll('category')
+    ];
+    
+    return {
+      search: searchParams.get('search') || '',
+      type: (searchParams.get('type') as 'all' | 'products' | 'services') || 'all',
+      sort: searchParams.get('sort') || 'newest',
+      minPrice: searchParams.get('minPrice') || '',
+      maxPrice: searchParams.get('maxPrice') || '',
+      categories: Array.from(new Set(cats)), // Remove duplicates
+      conditions: searchParams.getAll('conditions[]') || [],
+      communityFilter: searchParams.get('communityFilter') || 'All',
+      city: searchParams.get('city') || ''
+    };
+  };
+
+  const initialFilters = useMemo(() => getInitialFilters(), [searchParams]);
+  const initialPage = useMemo(() => parseInt(searchParams.get('page') || '1'), [searchParams]);
 
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  const [filters, setFilters] = useState<ExploreFilters>({
-    search: initialSearch,
-    type: initialType,
-    sort: 'newest',
-    minPrice: '',
-    maxPrice: '',
-    categories: initialCategory ? [initialCategory] : [],
-    conditions: []
-  });
+  const [filters, setFilters] = useState<ExploreFilters>(initialFilters);
+  const isFirstRender = useRef(true);
+  const isInitializing = useRef(true);
 
-  // Next.js static rendering hydration fix: sync searchParams when client mounts/updates
+  // Mark initialization as complete after a short delay
   useEffect(() => {
-    const urlType = (searchParams.get('type') as 'all' | 'products' | 'services') || 'all';
-    const urlCategory = searchParams.get('category') || '';
-    const urlSearch = searchParams.get('search') || '';
+    const timer = setTimeout(() => {
+      isInitializing.current = false;
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
-    setFilters(prev => {
-      // Avoid infinite loop by only updating if there's an actual mismatch
-      if (prev.type === urlType && prev.categories.includes(urlCategory) && prev.search === urlSearch) {
-        return prev;
-      }
-      return {
-        ...prev,
-        type: urlType,
-        search: urlSearch,
-        categories: urlCategory ? [urlCategory] : [],
-      };
-    });
-  }, [searchParams]);
+  // Sync state to URL 
+  useEffect(() => {
+    // Skip if it's the very first render to preserve the URL that loaded the page
+    if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return;
+    }
+
+    const params = new URLSearchParams();
+    if (filters.search) params.set('search', filters.search);
+    if (filters.type !== 'all') params.set('type', filters.type);
+    if (filters.sort !== 'newest') params.set('sort', filters.sort);
+    if (filters.minPrice) params.set('minPrice', filters.minPrice);
+    if (filters.maxPrice) params.set('maxPrice', filters.maxPrice);
+    if (filters.communityFilter !== 'All') params.set('communityFilter', filters.communityFilter);
+    if (filters.city) params.set('city', filters.city);
+    
+    filters.categories.forEach(c => params.append('categories[]', c));
+    filters.conditions.forEach(c => params.append('conditions[]', c));
+    
+    if (page > 1) params.set('page', page.toString());
+
+    const queryString = params.toString();
+    const url = `/explore${queryString ? `?${queryString}` : ''}`;
+    
+    router.push(url, { scroll: false });
+  }, [filters, page]); // Only sync when internal filters or page change
 
   const fetchItems = useCallback(async (currentFilters: ExploreFilters, currentPage: number) => {
     try {
@@ -61,6 +90,8 @@ export default function ExplorePage() {
       if (currentFilters.sort) params.append('sort', currentFilters.sort);
       if (currentFilters.minPrice) params.append('minPrice', currentFilters.minPrice);
       if (currentFilters.maxPrice) params.append('maxPrice', currentFilters.maxPrice);
+      if (currentFilters.communityFilter !== 'All') params.append('communityFilter', currentFilters.communityFilter);
+      if (currentFilters.city) params.append('city', currentFilters.city);
       
       currentFilters.categories.forEach(c => params.append('categories[]', c));
       currentFilters.conditions.forEach(c => params.append('conditions[]', c));
@@ -92,8 +123,18 @@ export default function ExplorePage() {
   };
 
   const handleFilterChange = useCallback((newFilters: ExploreFilters) => {
-    setFilters(newFilters);
-    setPage(1);
+    if (isInitializing.current) return;
+
+    setFilters(prev => {
+      const filtersChanged = JSON.stringify(prev) !== JSON.stringify(newFilters);
+      
+      if (filtersChanged) {
+        // We defer setPage(1) to avoid side-effects in state updaters
+        setTimeout(() => setPage(1), 0);
+        return newFilters;
+      }
+      return prev;
+    });
   }, []);
 
   return (
@@ -132,7 +173,11 @@ export default function ExplorePage() {
 
             {/* Grid */}
             {loading ? (
-              <Loader />
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 transition-colors">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => <ItemCardSkeleton key={i} />)}
+                </div>
+              </div>
             ) : items.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-3xl p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
                 <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -141,7 +186,7 @@ export default function ExplorePage() {
                 <h3 className="text-xl font-extrabold text-gray-900 dark:text-white mb-2">No items found</h3>
                 <p className="text-gray-500 dark:text-gray-400 text-sm max-w-sm mx-auto">Try adjusting your filters, trying a different search term, or browsing a different category.</p>
                 <button 
-                  onClick={() => handleFilterChange({ search: '', type: 'all', sort: 'newest', minPrice: '', maxPrice: '', categories: [], conditions: [] })}
+                  onClick={() => handleFilterChange({ search: '', type: 'all', sort: 'newest', minPrice: '', maxPrice: '', categories: [], conditions: [], communityFilter: 'All', city: '' })}
                   className="mt-6 px-6 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
                 >
                   Clear All Filters
