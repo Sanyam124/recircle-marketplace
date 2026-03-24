@@ -28,3 +28,32 @@ export async function uploadToCloudinary(file: string, folder: string = 'recircl
         throw error;
     }
 }
+
+export async function deleteFromCloudinary(url: string | null | undefined): Promise<void> {
+    if (!url || !url.includes('cloudinary.com')) return;
+    
+    // Safety check for keys
+    if (!process.env.CLOUDINARY_API_KEY || !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) return;
+
+    try {
+        // Extract public ID from Cloudinary URL (e.g. upload/v1234/folder/filename.ext)
+        const parts = url.split('/upload/');
+        if (parts.length < 2) return;
+        
+        // Remove version number (v1234567) if present
+        let suffix = parts[1];
+        if (suffix.match(/^v\d+\//)) {
+            suffix = suffix.replace(/^v\d+\//, '');
+        }
+        
+        // Remove file extension (.jpg, .png, .webp)
+        const publicId = suffix.split('.')[0];
+        
+        if (publicId) {
+            await cloudinary.uploader.destroy(publicId);
+            console.log(`Cloudinary Cleanup: Removed ${publicId}`);
+        }
+    } catch (error) {
+        console.error('Cloudinary delete error:', error);
+    }
+}

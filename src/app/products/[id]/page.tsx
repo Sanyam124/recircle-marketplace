@@ -4,7 +4,7 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import Loader from '@/components/Loader';
+import { DetailSkeleton } from '@/components/Skeletons';
 import ImageCarousel from '@/components/ImageCarousel';
 import ShareButton from '@/components/ShareButton';
 import ReportModal from '@/components/ReportModal';
@@ -155,7 +155,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const isBlockedByMe = user?.blockedUsers?.some((id: any) => id.toString() === product?.seller._id.toString());
 
-  if (loading) return <Loader />;
+  if (loading) return <DetailSkeleton />;
   
   if (isBlocked) {
     return (

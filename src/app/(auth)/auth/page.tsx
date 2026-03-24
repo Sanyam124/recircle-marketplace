@@ -267,8 +267,16 @@ export default function AuthPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Registration failed');
 
-            login(data.user);
-            router.push(redirectUrl);
+            // Auto-Verification trigger for Homepage Toast
+            if (data.autoVerifiedCommunities && data.autoVerifiedCommunities.length > 0) {
+                sessionStorage.setItem('newVerification', data.autoVerifiedCommunities.join(', '));
+            }
+
+            // Short delay to ensure Storage is written before page unmounts
+            setTimeout(() => {
+                login(data.user);
+                router.push(redirectUrl);
+            }, 100);
         } catch (err: any) {
             setError(err.message);
             setIsLoading(false);

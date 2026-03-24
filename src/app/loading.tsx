@@ -1,5 +1,14 @@
-import Loader from '@/components/Loader';
+'use client';
+
+import { PageSkeleton, HomeSkeleton } from '@/components/Skeletons';
+import { usePathname } from 'next/navigation';
 
 export default function Loading() {
-  return <Loader fullScreen={true} />;
+  const pathname = usePathname();
+  
+  if (pathname === '/') {
+    return <HomeSkeleton />;
+  }
+  
+  return <PageSkeleton />;
 }

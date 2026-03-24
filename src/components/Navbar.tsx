@@ -3,14 +3,30 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import NotificationBell from './NotificationBell';
+import Community from '@/models/Community'; // Register for populate
+import { Skeleton } from './Skeletons';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const [messageUnreadCount, setMessageUnreadCount] = useState(0);
+  const [newVerification, setNewVerification] = useState<string | null>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    // Re-check for verification notification on every path change
+    const vc = sessionStorage.getItem('newVerification');
+    if (vc) {
+      setNewVerification(vc);
+      sessionStorage.removeItem('newVerification');
+      const timer = setTimeout(() => setNewVerification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [pathname]);
 
   const fetchUnreadCount = async () => {
     if (!user) return;
@@ -35,6 +51,22 @@ export default function Navbar() {
   }, [user]);
 
   return (
+    <>
+    {/* Global Verification Toast */}
+    <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[60] transition-all duration-700 ease-in-out transform ${newVerification ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-12 opacity-0 scale-95 pointer-events-none'}`}>
+        <div className="bg-white dark:bg-gray-800 shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-2 border-green-500 dark:border-green-400 rounded-2xl py-4 px-8 flex items-center space-x-4 min-w-[320px] max-w-md animate-in fade-in zoom-in duration-300">
+            <div className="flex-shrink-0 bg-green-100 dark:bg-green-900/50 rounded-xl p-2 animate-bounce">
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <div>
+                <p className="text-xs font-black uppercase tracking-widest text-green-600 dark:text-green-400 mb-0.5">Verification Success</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                    Verified for <span className="underline decoration-2 underline-offset-4 decoration-green-500/30">{newVerification}</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
     <nav className="bg-white dark:bg-gray-900 shadow-md dark:shadow-gray-900/50 sticky top-0 z-50 transition-colors duration-300 border-b border-transparent dark:border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
@@ -46,10 +78,19 @@ export default function Navbar() {
               <Link href="/explore" className="text-gray-900 dark:text-gray-300 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-indigo-500 dark:hover:text-white text-sm font-medium transition-colors">
                 Explore
               </Link>
+              <Link href="/board" className="text-gray-900 dark:text-gray-300 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-indigo-500 dark:hover:text-white text-sm font-medium transition-colors">
+                Board
+              </Link>
+
             </div>
           </div>
           <div className="hidden md:flex sm:items-center">
-            {user ? (
+            {loading ? (
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full animate-pulse bg-gray-200 dark:bg-gray-700" />
+                <div className="h-4 w-20 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+              </div>
+            ) : user ? (
               <div className="flex items-center gap-2 lg:gap-3">
                 <NotificationBell />
                 <div className="flex items-center gap-1 lg:gap-2">
@@ -122,6 +163,14 @@ export default function Navbar() {
                     </div>
                 )}
 
+                {user.role === 'verifier' && (
+                    <div className="flex items-center gap-1 border-l pl-2 border-gray-200 dark:border-gray-700">
+                     <Link href="/verifier-dashboard" className="p-2 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all" title="Campus Dashboard">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                     </Link>
+                    </div>
+                )}
+
                 <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
 
                 <div className="flex items-center gap-2">
@@ -180,6 +229,9 @@ export default function Navbar() {
             <Link onClick={() => setIsMobileMenuOpen(false)} href="/explore" className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               <span className="text-xl">🔍</span> Explore
             </Link>
+            <Link onClick={() => setIsMobileMenuOpen(false)} href="/board" className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
+              <span className="text-xl">🏛️</span> Board
+            </Link>
           </div>
           
           <div className="pt-2 pb-2 border-t border-gray-100 dark:border-gray-800 space-y-1 px-4">
@@ -192,7 +244,15 @@ export default function Navbar() {
           </div>
 
           <div className="pt-4 pb-6 border-t border-gray-100 dark:border-gray-800 px-4">
-            {user ? (
+            {loading ? (
+              <div className="flex items-center gap-3 px-3 py-3">
+                <div className="h-10 w-10 rounded-full animate-pulse bg-gray-200 dark:bg-gray-700" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 w-24 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div className="h-3 w-16 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+                </div>
+              </div>
+            ) : user ? (
               <div className="space-y-1">
                 <Link onClick={() => setIsMobileMenuOpen(false)} href="/profile" className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm font-bold border border-indigo-200 dark:border-indigo-800">
@@ -240,6 +300,15 @@ export default function Navbar() {
                     </div>
                 )}
 
+                {user.role === 'verifier' && (
+                  <div className="mt-2 text-center">
+                    <Link onClick={() => setIsMobileMenuOpen(false)} href="/verifier-dashboard" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-indigo-600 dark:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wide">
+                        🛡️ Campus Dashboard
+                    </Link>
+                  </div>
+                )}
+
+
                 <button
                     onClick={() => { setIsMobileMenuOpen(false); logout(); }}
                     className="mt-6 flex items-center justify-center gap-2 w-full px-4 py-4 rounded-2xl text-base font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
@@ -259,5 +328,6 @@ export default function Navbar() {
         </div>
       )}
     </nav>
+    </>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import StartEarningModal from "@/components/StartEarningModal";
 import { getIcon } from "@/components/Icons";
@@ -41,6 +41,7 @@ export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
   const [earningModalOpen, setEarningModalOpen] = useState(false);
+  // Notification moved to Navbar for global visibility
 
   const handleStartEarning = () => {
     if (!user) {
@@ -50,14 +51,14 @@ export default function Home() {
     setEarningModalOpen(true);
   };
 
-  return (
-    <div className="bg-white dark:bg-gray-900 transition-colors duration-300">
-      {/* 
-        HERO SECTION 
-        - Centered, Symmetrical, Modern Gradient
-      */}
-      <div className="relative isolate pt-14">
-        <div
+    return (
+      <div className="bg-white dark:bg-gray-900 transition-colors duration-300 min-h-screen">
+        {/* 
+          HERO SECTION 
+          - Centered, Symmetrical, Modern Gradient
+        */}
+        <div className="relative isolate pt-14">
+          <div
           className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80"
           aria-hidden="true"
         >

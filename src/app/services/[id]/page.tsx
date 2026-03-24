@@ -5,7 +5,7 @@ import { formatTimeAgo } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import Loader from '@/components/Loader';
+import { DetailSkeleton } from '@/components/Skeletons';
 import ImageCarousel from '@/components/ImageCarousel';
 import ShareButton from '@/components/ShareButton';
 import ReportModal from '@/components/ReportModal';
@@ -147,7 +147,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
 
   const isBlockedByMe = user?.blockedUsers?.some((id: any) => id.toString() === service?.provider._id.toString());
 
-  if (loading) return <Loader />;
+  if (loading) return <DetailSkeleton />;
   
   if (isBlocked) {
     return (

@@ -19,6 +19,7 @@ interface User {
   isPhoneVerified?: boolean;
   isOnVacation?: boolean;
   blockedUsers?: string[];
+  verifiedCommunities?: any[];
 }
 
 interface AuthContextType {

@@ -7,6 +7,7 @@ import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ReportModal from './ReportModal';
 import { formatChatMessageDate } from '@/lib/utils';
+import { ChatSidebarSkeleton } from './Skeletons';
 import { ChatItem } from './ChatItem';
 
 export default function ChatSidebar() {
@@ -246,9 +247,7 @@ export default function ChatSidebar() {
             </div>
             <div className="flex-1 overflow-y-auto">
                 {loading && conversations.length === 0 && (
-                    <div className="flex justify-center items-center h-32">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
-                    </div>
+                    <ChatSidebarSkeleton />
                 )}
                 {!loading && filteredConversations.length === 0 && (
                     <div className="p-10 text-center">

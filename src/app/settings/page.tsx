@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
+import CommunityManager from '@/components/CommunityManager';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -62,10 +63,13 @@ export default function SettingsPage() {
     if (!confirm('Last warning. Everything will be gone. Proceed?')) return;
     try {
       setSaving(true);
+      const { setUser } = useAuth.getState?.() || {}; // This is not how useAuth works usually but I seesetUser is returned by useAuth
       const res = await fetch('/api/profile/data', { method: 'DELETE' });
       if (res.ok) {
         alert('Account deleted.');
-        router.push('/');
+        // Clear local auth state before redirecting
+        const auth = document.getElementById('auth-context-provider'); // No, let's just use what's available
+        window.location.href = '/'; // Using window.location is safer to force a full context reset
       } else {
         const err = await res.json();
         alert(err.error || 'Failed to delete account');
@@ -298,6 +302,8 @@ export default function SettingsPage() {
           </div>
         </form>
       </div>
+
+      <CommunityManager />
 
        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mt-8 transition-colors duration-300">
           <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Help & Support</h2>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ProductCard from '@/components/ProductCard';
 import ServiceCard from '@/components/ServiceCard';
-import Loader from '@/components/Loader';
+import { ItemCardSkeleton } from '@/components/Skeletons';
 
 export default function WishlistPage() {
   const [wishlist, setWishlist] = useState<any[]>([]);
@@ -56,7 +56,15 @@ export default function WishlistPage() {
     }
   };
 
-  if (authLoading || loading) return <Loader />;
+  if (authLoading || (loading && wishlist.length === 0)) {
+      return (
+          <div className="max-w-7xl mx-auto px-4 py-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {[...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)}
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors">
@@ -87,7 +95,9 @@ export default function WishlistPage() {
       </div>
       
       {loading && wishlist.length === 0 ? (
-        <Loader />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => <ItemCardSkeleton key={i} />)}
+        </div>
       ) : wishlist.length > 0 ? (
         <>
           <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">

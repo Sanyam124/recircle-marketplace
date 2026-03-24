@@ -27,10 +27,47 @@ export default function CreateServicePage() {
     priceUnit: 'per hour',
     category: 'Academic Help (Tutoring, Notes)',
     availability: '',
+    visibility: 'Public',
+    communityId: '',
   });
+
+  const [location, setLocation] = useState({
+    pincode: '',
+    city: '',
+    state: '',
+  });
+  const [fetchingLocation, setFetchingLocation] = useState(false);
+
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const pin = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setLocation(prev => ({ ...prev, pincode: pin }));
+
+    if (pin.length === 6) {
+      setFetchingLocation(true);
+      try {
+        const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+        const data = await res.json();
+        if (data[0].Status === 'Success') {
+          const postOffice = data[0].PostOffice[0];
+          setLocation(prev => ({
+            ...prev,
+            city: postOffice.District,
+            state: postOffice.State
+          }));
+        } else {
+          setError('Invalid Pincode. Please check again.');
+        }
+      } catch (err) {
+        console.error('Pincode fetch error:', err);
+      } finally {
+        setFetchingLocation(false);
+      }
+    }
+  };
 
   // Prevent form flicker while loading auth or if redirect is imminent
   // Moved after state declarations to comply with Rules of Hooks
@@ -78,6 +115,9 @@ export default function CreateServicePage() {
           ...formData,
           price: Number(formData.price),
           images,
+          visibility: formData.visibility,
+          communityId: formData.visibility === 'Community' ? formData.communityId : undefined,
+          location: formData.visibility === 'Public' ? location : undefined,
         }),
       });
 
@@ -230,6 +270,89 @@ export default function CreateServicePage() {
                 <option value="Weekdays (Daytime)">Weekdays (Daytime)</option>
               </select>
             </div>
+
+            {/* Circles Feature: Visibility & Community Selection */}
+            <div className="sm:col-span-3 border-l-2 border-indigo-500 pl-4 py-1 bg-indigo-50/30 dark:bg-indigo-900/10 rounded-r-lg">
+              <label htmlFor="visibility" className="block text-sm font-bold text-gray-900 dark:text-gray-100 italic">Service Visibility</label>
+              <select
+                id="visibility"
+                name="visibility"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white font-semibold"
+                value={formData.visibility}
+                onChange={(e) => {
+                   const val = e.target.value;
+                   setFormData({ 
+                     ...formData, 
+                     visibility: val as any,
+                     communityId: (val === 'Community' && user?.verifiedCommunities?.length) ? (user.verifiedCommunities[0]._id || user.verifiedCommunities[0].id || user.verifiedCommunities[0]) : ''
+                   });
+                }}
+              >
+                <option value="Public">🌐 Public (Everyone can see)</option>
+                <option value="Community" disabled={!user?.verifiedCommunities?.length}>
+                   🔒 My Communities (Campus exclusive)
+                </option>
+              </select>
+              {!user?.verifiedCommunities?.length && (
+                 <p className="mt-1 text-[10px] text-gray-500 italic">Join a community to list services exclusively for students there.</p>
+              )}
+            </div>
+
+            {formData.visibility === 'Public' && (
+              <div className="sm:col-span-6 grid grid-cols-1 sm:grid-cols-3 gap-4 border-l-2 border-orange-500 pl-4 py-2 bg-orange-50/30 dark:bg-orange-900/10 rounded-r-lg animate-in fade-in slide-in-from-left-2 transition-all">
+                <div className="sm:col-span-1">
+                  <label htmlFor="pincode" className="block text-sm font-bold text-gray-900 dark:text-gray-100 italic">Pincode</label>
+                  <input
+                    type="text"
+                    id="pincode"
+                    required
+                    placeholder="6-digit Pincode"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white font-medium"
+                    value={location.pincode}
+                    onChange={handlePincodeChange}
+                  />
+                </div>
+                <div className="sm:col-span-1">
+                  <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 italic opacity-60">City</label>
+                  <input
+                    type="text"
+                    disabled
+                    placeholder={fetchingLocation ? "Fetching..." : "Auto-filled"}
+                    className="mt-1 block w-full rounded-md border-gray-100 bg-gray-50/50 sm:text-sm h-10 px-3 border text-gray-500 font-medium"
+                    value={location.city}
+                  />
+                </div>
+                <div className="sm:col-span-1">
+                  <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 italic opacity-60">State</label>
+                  <input
+                    type="text"
+                    disabled
+                    placeholder={fetchingLocation ? "Fetching..." : "Auto-filled"}
+                    className="mt-1 block w-full rounded-md border-gray-100 bg-gray-50/50 sm:text-sm h-10 px-3 border text-gray-500 font-medium"
+                    value={location.state}
+                  />
+                </div>
+              </div>
+            )}
+
+            {formData.visibility === 'Community' && user?.verifiedCommunities?.length && (
+               <div className="sm:col-span-3 border-l-2 border-emerald-500 pl-4 py-1 bg-emerald-50/30 dark:bg-emerald-900/10 rounded-r-lg animate-in fade-in slide-in-from-left-2 transition-all">
+                  <label htmlFor="communityId" className="block text-sm font-bold text-gray-900 dark:text-gray-100 italic">Select Community</label>
+                  <select
+                    id="communityId"
+                    name="communityId"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white font-medium"
+                    value={formData.communityId}
+                    onChange={(e) => setFormData({ ...formData, communityId: e.target.value })}
+                  >
+                    {user.verifiedCommunities.map((c: any) => (
+                      <option key={c._id || c.id || c} value={c._id || c.id || c}>
+                        🏢 {c.name || 'Your Community'}
+                      </option>
+                    ))}
+                  </select>
+               </div>
+            )}
             
             <div className="sm:col-span-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">Portfolio/Images (Max 5)</label>

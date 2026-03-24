@@ -13,6 +13,10 @@ export default function AdminUsersPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [totalUsers, setTotalUsers] = useState(0);
     const [updatingRole, setUpdatingRole] = useState<string | null>(null);
+    const [communities, setCommunities] = useState<any[]>([]);
+    const [showCommunityModal, setShowCommunityModal] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+    const [selectedCommunityId, setSelectedCommunityId] = useState('');
 
     useEffect(() => {
         setPage(1);
@@ -21,6 +25,17 @@ export default function AdminUsersPage() {
     useEffect(() => {
         fetchUsers();
     }, [page, search, roleFilter]);
+
+    useEffect(() => {
+        const fetchCommunities = async () => {
+            const res = await fetch('/api/admin/communities');
+            if (res.ok) {
+                const data = await res.json();
+                setCommunities(data.communities || []);
+            }
+        };
+        fetchCommunities();
+    }, []);
 
     const fetchUsers = async () => {
         try {
@@ -45,17 +60,26 @@ export default function AdminUsersPage() {
         }
     };
 
-    const handleRoleUpdate = async (userId: string, newRole: string) => {
+    const handleRoleUpdate = async (userId: string, newRole: string, communityId?: string) => {
+        // If selecting verifier without a community assignment yet, show modal
+        if (newRole === 'verifier' && !communityId) {
+            setSelectedUserId(userId);
+            setShowCommunityModal(true);
+            return;
+        }
+
         if (!confirm(`Change this user's role to "${newRole}"?`)) return;
         setUpdatingRole(userId);
         try {
             const res = await fetch('/api/admin/users', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, role: newRole }),
+                body: JSON.stringify({ userId, role: newRole, communityId }),
             });
             if (res.ok) {
                 setUsers(prev => prev.map(u => u._id === userId ? { ...u, role: newRole } : u));
+                setShowCommunityModal(false);
+                setSelectedCommunityId('');
             } else {
                 const json = await res.json();
                 alert(json.error || 'Failed to update role');
@@ -90,9 +114,9 @@ export default function AdminUsersPage() {
                     value={roleFilter}
                     onChange={(e) => setRoleFilter(e.target.value)}
                 >
-                    <option value="">All Roles</option>
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
+                    <option value="verifier">Verifier</option>
                 </select>
             </div>
 
@@ -169,6 +193,7 @@ export default function AdminUsersPage() {
                                         >
                                             <option value="user">User</option>
                                             <option value="admin">Admin</option>
+                                            <option value="verifier">Verifier</option>
                                         </select>
                                     </td>
 
@@ -191,37 +216,53 @@ export default function AdminUsersPage() {
                 </div>
             )}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-between transition-colors">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Page {page} of {totalPages}</p>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => { document.getElementById('users-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); setPage(p => Math.max(1, p - 1)); }}
-                            disabled={page === 1}
-                            className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                            Previous
-                        </button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => Math.abs(p - page) <= 2).map(p => (
-                            <button
-                                key={p}
-                                onClick={() => { document.getElementById('users-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); setPage(p); }}
-                                className={`w-9 h-9 text-sm font-bold rounded-lg transition-colors ${p === page ? 'bg-indigo-600 dark:bg-indigo-500 text-white' : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-                            >
-                                {p}
-                            </button>
-                        ))}
-                        <button
-                            onClick={() => { document.getElementById('users-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); setPage(p => Math.min(totalPages, p + 1)); }}
-                            disabled={page === totalPages}
-                            className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                            Next
-                        </button>
+            {/* Community Assignment Modal */}
+            {showCommunityModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-md p-8 shadow-2xl border border-gray-100 dark:border-gray-700 animate-in zoom-in slide-in-from-bottom-4 duration-300">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            </div>
+                            <h3 className="text-2xl font-black text-gray-900 dark:text-white">Assign Community</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-medium">Select which campus this Verifier will manage.</p>
+                        </div>
+                        
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1">Select Campus Circle</label>
+                                <select 
+                                    value={selectedCommunityId}
+                                    onChange={(e) => setSelectedCommunityId(e.target.value)}
+                                    className="w-full rounded-2xl border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all outline-none appearance-none"
+                                >
+                                    <option value="">-- Choose Community --</option>
+                                    {communities.map((c) => (
+                                        <option key={c._id} value={c._id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button 
+                                    onClick={() => { setShowCommunityModal(false); setSelectedCommunityId(''); }}
+                                    className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={() => handleRoleUpdate(selectedUserId!, 'verifier', selectedCommunityId)}
+                                    disabled={!selectedCommunityId || updatingRole === selectedUserId}
+                                    className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-black uppercase tracking-widest text-white bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-400 shadow-lg shadow-indigo-100 dark:shadow-none disabled:opacity-50 transition-all active:scale-95"
+                                >
+                                    {updatingRole === selectedUserId ? 'Assigning...' : 'Assign & Save'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
+
         </div>
     );
 }

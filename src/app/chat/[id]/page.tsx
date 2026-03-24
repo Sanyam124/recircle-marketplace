@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Loader from '@/components/Loader';
+import { MessageBubbleSkeleton } from '@/components/Skeletons';
 
 export default function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
@@ -506,7 +506,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         "I'm interested!"
     ];
 
-    if (authLoading || loading) return <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900"><Loader /></div>;
+    if (authLoading || loading) return <MessageBubbleSkeleton />;
 
     return (
         <>
