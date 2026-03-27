@@ -63,7 +63,6 @@ export default function SettingsPage() {
     if (!confirm('Last warning. Everything will be gone. Proceed?')) return;
     try {
       setSaving(true);
-      const { setUser } = useAuth.getState?.() || {}; // This is not how useAuth works usually but I seesetUser is returned by useAuth
       const res = await fetch('/api/profile/data', { method: 'DELETE' });
       if (res.ok) {
         alert('Account deleted.');

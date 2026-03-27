@@ -36,8 +36,12 @@ export async function POST(req: NextRequest) {
         }
 
         // Check if already verified
-        if (user.verifiedCommunities?.includes(community._id)) {
-            return NextResponse.json({ message: 'Already verified for this community' }, { status: 200 });
+        if (user.verifiedCommunities?.some(id => id.toString() === community._id.toString())) {
+            return NextResponse.json({ 
+                success: true, 
+                message: 'Already verified for this community',
+                mode: 'auto' 
+            }, { status: 200 });
         }
 
         // 1. Automatic Verification (Email Suffix Match)
@@ -81,7 +85,7 @@ export async function POST(req: NextRequest) {
         const request = await VerificationRequest.create({
             user: user._id,
             community: community._id,
-            proofUrls,
+            idProof: proofUrls[0], // Schema expects a single string for idProof
             status: 'Pending'
         });
 

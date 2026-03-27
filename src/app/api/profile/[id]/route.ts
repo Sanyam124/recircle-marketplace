@@ -31,7 +31,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const boughtProductSkip = (boughtProductPage - 1) * boughtLimit;
         const boughtServiceSkip = (boughtServicePage - 1) * boughtLimit;
 
-        const user = await User.findById(id).select('name username email profilePicture gender createdAt role bio isVerified allowEmailContact authProvider isPhoneVerified phone allowPhoneContact address isOnVacation blockedUsers');
+        const user = await User.findById(id)
+            .select('name username email profilePicture gender createdAt role bio isVerified allowEmailContact authProvider isPhoneVerified phone allowPhoneContact address isOnVacation blockedUsers verifiedCommunities')
+            .populate('verifiedCommunities', 'name image isActive');
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
@@ -198,7 +200,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 reviewCount: totalReviews,
                 allowEmailContact: user.allowEmailContact,
                 address: user.address,
-                isOnVacation: user.isOnVacation
+                isOnVacation: user.isOnVacation,
+                verifiedCommunities: user.verifiedCommunities || []
             },
             isOwner,
             allItems,

@@ -84,12 +84,18 @@ export async function PUT(req: NextRequest) {
 
         user.role = role;
 
-        // If promoting to verifier and a community is provided, add it to their verified communities
+        // If promoting to verifier and a community is provided, ensure it's the primary verified community
         if (role === 'verifier' && communityId) {
-            if (!user.verifiedCommunities.includes(communityId)) {
-                user.verifiedCommunities.push(communityId);
-                user.isVerified = true; // Verifiers should be verified themselves!
+            const index = user.verifiedCommunities.findIndex((id: any) => id.toString() === communityId.toString());
+            if (index > -1) {
+                // Move existing community to front
+                const [comm] = user.verifiedCommunities.splice(index, 1);
+                user.verifiedCommunities.unshift(comm);
+            } else {
+                // Add as primary community
+                user.verifiedCommunities.unshift(communityId);
             }
+            user.isVerified = true;
         }
 
         await user.save();

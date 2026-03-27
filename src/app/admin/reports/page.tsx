@@ -153,11 +153,11 @@ export default function AdminReportsPage() {
 
                 {/* Actions */}
                 {report.status === 'Pending' && (
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
                     <button
                       onClick={() => handleUpdate(report._id, 'Reviewed')}
                       disabled={updating === report._id}
-                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 transition-colors"
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/60 disabled:opacity-50 transition-colors"
                     >
                       Mark Reviewed
                     </button>
@@ -168,6 +168,47 @@ export default function AdminReportsPage() {
                     >
                       Dismiss
                     </button>
+                    
+                    {/* High-Stakes Actions */}
+                    <button
+                      onClick={async () => {
+                         if (confirm(`Ban user ${report.targetUser?.name}? They will no longer be able to log in.`)) {
+                             setUpdating(report._id);
+                             const res = await fetch(`/api/admin/reports/${report._id}`, {
+                                 method: 'PATCH',
+                                 headers: { 'Content-Type': 'application/json' },
+                                 body: JSON.stringify({ actionType: 'ban_user' })
+                             });
+                             if (res.ok) fetchReports();
+                             setUpdating(null);
+                         }
+                      }}
+                      disabled={updating === report._id}
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-all shadow-sm"
+                    >
+                      Take Down User
+                    </button>
+
+                    {report.itemType !== 'none' && report.itemId && (
+                      <button
+                        onClick={async () => {
+                           if (confirm(`Remove this ${report.itemType}? Data will be permanently deleted.`)) {
+                               setUpdating(report._id);
+                               const res = await fetch(`/api/admin/reports/${report._id}`, {
+                                   method: 'PATCH',
+                                   headers: { 'Content-Type': 'application/json' },
+                                   body: JSON.stringify({ actionType: 'delete_content' })
+                               });
+                               if (res.ok) fetchReports();
+                               setUpdating(null);
+                           }
+                        }}
+                        disabled={updating === report._id}
+                        className="px-3 py-1.5 text-xs font-bold rounded-lg bg-zinc-800 text-white hover:bg-black disabled:opacity-50 transition-all shadow-sm"
+                      >
+                        Remove Content
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

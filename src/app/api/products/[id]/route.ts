@@ -109,10 +109,46 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         }
 
         await Product.findByIdAndDelete(id);
-
         return NextResponse.json({ message: 'Product deleted' }, { status: 200 });
 
     } catch (error: any) {
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        const token = req.cookies.get('token')?.value;
+        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const user = verifyToken(token);
+        if (!user) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+        await connectToDatabase();
+        const { id } = await params;
+        const body = await req.json();
+
+        let product = await Product.findById(id);
+        if (!product) {
+            return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+        }
+
+        // Only the seller can update their own product
+        if (product.seller.toString() !== user.userId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        // Apply permitted status updates
+        if (body.status && ['Available', 'Inactive', 'Reserved', 'Sold'].includes(body.status)) {
+            // For simple toggle from profile, we usually switch between Available/Inactive
+            product.status = body.status;
+        }
+
+        await product.save();
+
+        return NextResponse.json({ message: 'Product updated', product }, { status: 200 });
+
+    } catch (error: any) {
+        console.error("PUT /api/products/[id] Error:", error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
