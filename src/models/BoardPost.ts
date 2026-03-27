@@ -5,6 +5,11 @@ export interface IBoardPost extends Document {
     community: mongoose.Types.ObjectId;
     content: string;
     upvotes: mongoose.Types.ObjectId[];
+    replies: {
+        author: mongoose.Types.ObjectId;
+        content: string;
+        createdAt: Date;
+    }[];
     expiresAt: Date;
     createdAt: Date;
     updatedAt: Date;
@@ -16,11 +21,19 @@ const BoardPostSchema: Schema<IBoardPost> = new Schema(
         community: { type: mongoose.Schema.Types.ObjectId, ref: 'Community', required: true },
         content: { type: String, required: true, maxlength: 500, trim: true },
         upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-        expiresAt: { 
-            type: Date, 
-            default: () => new Date(+new Date() + 48*60*60*1000), // Default to 48 hours from now
-        },
+    replies: {
+        type: [{
+            author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+            content: { type: String, required: true, maxlength: 300, trim: true },
+            createdAt: { type: Date, default: Date.now }
+        }],
+        default: []
     },
+    expiresAt: { 
+        type: Date, 
+        default: () => new Date(+new Date() + 48*60*60*1000), // Default to 48 hours from now
+    },
+},
     { timestamps: true }
 );
 

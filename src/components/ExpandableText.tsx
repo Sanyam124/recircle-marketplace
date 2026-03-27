@@ -9,6 +9,8 @@ interface ExpandableTextProps {
   className?: string;
   isHtml?: boolean;
   showReadMore?: boolean;
+  scrollOnCollapse?: boolean;
+  onCollapse?: () => void;
 }
 
 export default function ExpandableText({ 
@@ -17,18 +19,45 @@ export default function ExpandableText({
   incrementalLines = 0, // 0 means expand all at once
   className = "",
   isHtml = false,
-  showReadMore = false
+  showReadMore = false,
+  scrollOnCollapse = false,
+  onCollapse
 }: ExpandableTextProps) {
   const [currentMaxLines, setCurrentMaxLines] = useState(maxLines);
   const [isFullyExpanded, setIsFullyExpanded] = useState(false);
   const [showButton, setShowButton] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+
+  const [shouldScroll, setShouldScroll] = useState(false);
 
   // Sync state with props when they change (crucial for navigation and dynamic prop updates)
   useEffect(() => {
     setCurrentMaxLines(maxLines);
     setIsFullyExpanded(false);
   }, [maxLines, text]);
+
+  // Handle scroll after collapse
+  useEffect(() => {
+    if (shouldScroll && containerRef.current && !isFullyExpanded) {
+        // We use a small timeout to allow the browser to complete the height transition before finalizing the scroll position
+        const timer = setTimeout(() => {
+            const element = containerRef.current;
+            if (element) {
+                const headerOffset = 135; 
+                const elementPosition = element.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }
+            setShouldScroll(false);
+        }, 350); // Match transition duration (300ms) + small buffer
+        return () => clearTimeout(timer);
+    }
+  }, [shouldScroll, isFullyExpanded]);
 
   useEffect(() => {
     const checkOverflow = () => {
@@ -54,6 +83,8 @@ export default function ExpandableText({
       // Revert to initial
       setCurrentMaxLines(maxLines);
       setIsFullyExpanded(false);
+      onCollapse?.();
+      if (scrollOnCollapse) setShouldScroll(true);
     } else {
       if (incrementalLines > 0) {
         // Expand by increment
@@ -75,7 +106,7 @@ export default function ExpandableText({
   }, [showButton, currentMaxLines, maxLines, incrementalLines]);
 
   return (
-    <div className={`relative ${className}`}>
+    <div ref={containerRef} className={`relative ${className}`}>
       <div 
         ref={textRef}
         className="transition-all duration-300"

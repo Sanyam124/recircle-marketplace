@@ -12,6 +12,10 @@ import mongoose from 'mongoose';
 export async function GET(req: NextRequest) {
     try {
         await connectToDatabase();
+        require('@/models/User');
+        require('@/models/Community');
+        require('@/models/BoardPost');
+
         const { searchParams } = new URL(req.url);
         const communityId = searchParams.get('communityId');
 
@@ -19,12 +23,20 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Valid Community ID required' }, { status: 400 });
         }
 
-        // Fetch non-expired posts for this community, sorted by newest
-        const posts = await BoardPost.find({
-            community: communityId,
-            expiresAt: { $gt: new Date() }
-        })
+        const query = {
+            community: new mongoose.Types.ObjectId(communityId),
+        };
+        
+        console.log('Fetching Board for Community:', communityId);
+
+        // Fetch posts for this community, sorted by newest
+        const posts = await BoardPost.find(query)
         .populate('author', 'name profilePicture username')
+        .populate({
+            path: 'replies.author',
+            select: 'name profilePicture username',
+            strictPopulate: false
+        })
         .sort({ createdAt: -1 });
 
         return NextResponse.json({ posts }, { status: 200 });
@@ -71,40 +83,59 @@ export async function POST(req: NextRequest) {
     }
 }
 
-/**
- * Upvote logic (Toggle)
- */
 export async function PATCH(req: NextRequest) {
     try {
         const token = req.cookies.get('token')?.value;
         if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
         const decoded = verifyToken(token);
         if (!decoded) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
 
         await connectToDatabase();
-        const { postId } = await req.json();
+        const { postId, action, content } = await req.json();
 
         const post = await BoardPost.findById(postId);
         if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 });
 
         const userId = new mongoose.Types.ObjectId(decoded.userId);
-        const upvoteIndex = post.upvotes.indexOf(userId);
 
-        if (upvoteIndex > -1) {
-            // Already upvoted, remove it
-            post.upvotes.splice(upvoteIndex, 1);
-        } else {
-            // Add upvote
-            post.upvotes.push(userId);
+        if (action === 'upvote') {
+            const upvoteIndex = post.upvotes.indexOf(userId);
+            if (upvoteIndex > -1) {
+                post.upvotes.splice(upvoteIndex, 1);
+            } else {
+                post.upvotes.push(userId);
+            }
+            await post.save();
+            return NextResponse.json({ 
+                upvotes: post.upvotes.length,
+                isUpvoted: post.upvotes.includes(userId)
+            }, { status: 200 });
+        } 
+        
+        else if (action === 'reply') {
+            if (!content || content.length > 300) {
+                return NextResponse.json({ error: 'Reply must be 1-300 characters' }, { status: 400 });
+            }
+            
+            if (!post.replies) post.replies = [];
+            
+            post.replies.push({
+                author: userId,
+                content: content.trim(),
+                createdAt: new Date()
+            });
+            
+            await post.save();
+            
+            // Return the full post with populated authors (including new reply author)
+            const updatedPost = await BoardPost.findById(postId)
+                .populate('author', 'name profilePicture username')
+                .populate('replies.author', 'name profilePicture username');
+                
+            return NextResponse.json({ success: true, post: updatedPost }, { status: 200 });
         }
 
-        await post.save();
-
-        return NextResponse.json({ 
-            upvotes: post.upvotes.length,
-            isUpvoted: post.upvotes.includes(userId)
-        }, { status: 200 });
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 
     } catch (error: any) {
         console.error('Board PATCH error:', error);
