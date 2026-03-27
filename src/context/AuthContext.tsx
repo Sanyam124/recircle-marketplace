@@ -38,15 +38,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Load from cache or API on mount
   useEffect(() => {
+    // 1. Check LocalStorage for an "optimistic" UI update
+    const cachedUser = typeof window !== 'undefined' ? localStorage.getItem('recircle_user') : null;
+    if (cachedUser) {
+      try {
+        setUser(JSON.parse(cachedUser));
+      } catch (e) {
+        console.error('Failed to parse cached user');
+      }
+    }
+
     async function loadUser() {
       try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
+          // Sync with LocalStorage for next time
+          localStorage.setItem('recircle_user', JSON.stringify(data.user));
         } else {
           setUser(null);
+          localStorage.removeItem('recircle_user');
         }
       } catch (error) {
         console.error('Failed to load user', error);
@@ -61,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = (userData: User) => {
     setUser(userData);
+    localStorage.setItem('recircle_user', JSON.stringify(userData));
     router.push('/');
   };
 
@@ -71,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Logout failed', error);
     } finally {
       setUser(null);
+      localStorage.removeItem('recircle_user');
       router.push('/auth');
     }
   };
@@ -81,8 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
+        localStorage.setItem('recircle_user', JSON.stringify(data.user));
       } else {
         setUser(null);
+        localStorage.removeItem('recircle_user');
       }
     } catch (error) {
       console.error('Failed to refresh user', error);
