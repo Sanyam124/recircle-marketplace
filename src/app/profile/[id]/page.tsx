@@ -122,26 +122,31 @@ function ItemCard({
       </div>
       {/* Owner action bar */}
       {isOwner && (
-        <div className="px-3 py-2 bg-gray-50/60 dark:bg-gray-700/60 border-t border-gray-100 dark:border-gray-600 flex gap-2 mt-auto">
-          {type === 'service' && (
-            <button
-              onClick={() => {
-                  const currentStatus = item.status || 'Active';
-                  const nextStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-                  onToggleStatus?.(item._id, nextStatus, 'services');
-              }}
-              className={`text-xs font-bold px-2 py-1 flex-1 text-center transition-colors ${
-                item.status === 'Active'
-                  ? 'text-gray-500 hover:text-orange-500 dark:text-gray-400 dark:hover:text-orange-400' 
-                  : 'text-emerald-500 hover:text-emerald-600'
-              }`}
-            >
-              {item.status === 'Active' ? 'Mark Inactive' : 'Mark Active'}
-            </button>
-          )}
+        <div className="px-3 py-2 bg-gray-50/60 dark:bg-gray-700/60 border-t border-gray-100 dark:border-gray-600 flex gap-2 mt-auto relative z-20">
           <button
-            onClick={() => onDelete?.(item._id, type === 'product' ? 'products' : 'services')}
-            className="text-xs font-bold text-red-400 hover:text-red-600 px-2 py-1 ml-auto transition-colors"
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const currentStatus = item.status || (type === 'product' ? 'Available' : 'Active');
+                const isItemActive = currentStatus === 'Active' || currentStatus === 'Available';
+                const nextStatus = isItemActive ? 'Inactive' : (type === 'product' ? 'Available' : 'Active');
+                onToggleStatus?.(item._id, nextStatus, type === 'product' ? 'products' : 'services');
+            }}
+            className={`text-xs font-bold px-2 py-1 flex-1 text-center transition-colors ${
+              (item.status === 'Active' || item.status === 'Available')
+                ? 'text-gray-500 hover:text-orange-500 dark:text-gray-400 dark:hover:text-orange-400' 
+                : 'text-emerald-500 hover:text-emerald-600'
+            }`}
+          >
+            {(item.status === 'Active' || item.status === 'Available') ? 'Mark Inactive' : 'Mark Active'}
+          </button>
+          <button
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete?.(item._id, type === 'product' ? 'products' : 'services');
+            }}
+            className="text-xs font-bold text-red-500 hover:text-red-600 px-2 py-1 ml-auto transition-colors"
           >
             Delete
           </button>
@@ -251,6 +256,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     if (isFirstRender.current) {
         isFirstRender.current = false;
+        setActiveTab(tabParam || 'all');
+        setProductPage(pPageParam);
+        setServicePage(sPageParam);
+        setAllPage(aPageParam);
         return;
     }
 
@@ -420,6 +429,20 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 Joined {new Date(user.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </span>
             </div>
+            
+            {/* Verified Communities Tags */}
+            {user.verifiedCommunities && user.verifiedCommunities.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-4">
+                {user.verifiedCommunities.map((community: any) => (
+                  <div key={community._id} className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-full text-emerald-700 dark:text-emerald-400 shadow-sm transition-transform hover:scale-105 select-none">
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-xs font-bold whitespace-nowrap">{community.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Contact Info Rows */}
             <div className="flex flex-col gap-2 mb-4">
@@ -626,26 +649,40 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
           </div>
         </div>
 
-        {/* Stats Bar */}
-        <div className="border-t border-gray-100 dark:border-gray-700 px-6 py-4 grid grid-cols-2 gap-4 bg-gray-50/60 dark:bg-gray-700/40">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{stats?.totalProducts ?? 0}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">Products</p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
-              {stats?.totalProductsAvailable ?? 0} available · {stats?.totalProductsSold ?? 0} sold
-            </p>
+        {/* Stats Bar - Premium Bento Style */}
+        <div className="border-t border-gray-100 dark:border-gray-700 px-4 sm:px-6 py-5 grid grid-cols-2 gap-3 sm:gap-4 bg-gray-50/60 dark:bg-gray-700/40">
+          <div className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl bg-white dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all hover:shadow-md hover:scale-[1.02]">
+            <div className="flex items-center gap-2 mb-1">
+               <span className="text-lg sm:text-xl">📦</span>
+               <p className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400">{stats?.totalProducts ?? 0}</p>
+            </div>
+            <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 dark:text-gray-500">Products</p>
+            <div className="flex flex-wrap justify-center gap-1.5 mt-3">
+              <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800/30">
+                {stats?.totalProductsAvailable ?? 0} ACTIVE
+              </span>
+              <span className="text-[9px] font-black text-gray-500 bg-gray-50 dark:bg-gray-700 px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-600/50">
+                {stats?.totalProductsSold ?? 0} SOLD
+              </span>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{isOwner ? (stats?.totalServices ?? 0) : (stats?.totalServicesActive ?? 0)}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">Services</p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{stats?.totalEnrollments ?? 0} users served</p>
+          
+          <div className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl bg-white dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all hover:shadow-md hover:scale-[1.02]">
+             <div className="flex items-center gap-2 mb-1">
+               <span className="text-lg sm:text-xl">🛠️</span>
+               <p className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400">{isOwner ? (stats?.totalServices ?? 0) : (stats?.totalServicesActive ?? 0)}</p>
+            </div>
+            <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 dark:text-gray-500">Services</p>
+            <div className="mt-3 text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-800/30 uppercase tracking-tighter">
+              {stats?.totalEnrollments ?? 0} Clients Served
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── Tab Bar ────────────────────────────────────────────────── */}
+      {/* ── Tab Bar (Sticky on Mobile) ────────────────────────────────────────────────── */}
       <div className={`transition-opacity duration-200 ${sectionLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-        <div id="listings-top" className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl max-w-full overflow-x-auto scrollbar-hide mb-6 transition-colors">
+        <div id="listings-top" className="sticky top-[64px] sm:static z-20 flex items-center gap-1 p-1 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sm:bg-gray-100 sm:dark:bg-gray-800 rounded-xl max-w-full overflow-x-auto scrollbar-hide mb-6 transition-all border-b sm:border-none border-gray-100 dark:border-gray-800">
           {/* All */}
           <button
             onClick={() => setActiveTab('all')}

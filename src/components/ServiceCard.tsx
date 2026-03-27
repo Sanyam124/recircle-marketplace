@@ -124,14 +124,6 @@ export default function ServiceCard({ service }: { service: Service }) {
                 </svg>
             </button>
         </div>
-        {/* Community Origin Tag */}
-        {(communityName || service.location?.city) && (
-          <div className={`absolute bottom-0 left-0 right-0 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white text-center ${
-            isInternal ? 'bg-emerald-500/90' : 'bg-red-500/90'
-          } backdrop-blur-sm`}>
-            {isInternal ? `✓ Internal · ${communityName}` : (service.location?.city ? `↗ External · ${service.location.city}, ${service.location.state}` : `↗ External · ${communityName || 'Public'}`)}
-          </div>
-        )}
       </div>
       <div className="p-4 relative z-10 pointer-events-none">
         <div className="flex justify-between items-start">
@@ -169,6 +161,29 @@ export default function ServiceCard({ service }: { service: Service }) {
             <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">{formatTimeAgo(service.createdAt)}</span>
           </div>
         </div>
+
+        {/* Origin Metadata Footer */}
+        {(communityName || service.location?.city) && (
+          <div className="mt-4 pt-3 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between text-[10px] sm:text-[11px] font-semibold transition-colors">
+            <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+              {isInternal ? (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg ring-1 ring-inset ring-emerald-500/10">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                  <span className="uppercase tracking-tight">Campus Verified</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-lg ring-1 ring-inset ring-gray-400/10">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <span className="uppercase tracking-tight">Public Presence</span>
+                </div>
+              )}
+            </div>
+            
+            <span className="text-gray-400 dark:text-gray-500 truncate max-w-[120px]">
+              {isInternal ? communityName : (service.location?.city ? `${service.location.city}, ${service.location.state}` : (communityName || 'Across Campus'))}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
