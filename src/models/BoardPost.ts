@@ -37,9 +37,14 @@ const BoardPostSchema: Schema<IBoardPost> = new Schema(
     { timestamps: true }
 );
 
+// Optimization: Compound indexes for common query + sort patterns
+BoardPostSchema.index({ community: 1, createdAt: -1 });
+BoardPostSchema.index({ author: 1, createdAt: -1 });
+
 // TTL Index: Deletes the document precisely when the `expiresAt` date is reached
 BoardPostSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const BoardPost: Model<IBoardPost> = mongoose.models.BoardPost || mongoose.model<IBoardPost>('BoardPost', BoardPostSchema);
+
 
 export default BoardPost;

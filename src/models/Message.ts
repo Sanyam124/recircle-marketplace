@@ -42,6 +42,9 @@ MessageSchema.index({ sender: 1, recipient: 1, service: 1, createdAt: -1 });
 // Index for fetching conversation history between two users
 MessageSchema.index({ sender: 1, recipient: 1, createdAt: -1 });
 
+// Optimization: Speed up unread count queries for recipients
+MessageSchema.index({ recipient: 1, isRead: 1 });
+
 if (mongoose.models.Message) {
     delete mongoose.models.Message;
 }

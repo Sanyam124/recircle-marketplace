@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Loader from '@/components/Loader';
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-client';
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<any[]>([]);
@@ -145,8 +146,16 @@ export default function AdminUsersPage() {
                                     {/* Name + Email */}
                                     <td className="py-4 pl-6 pr-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm border border-indigo-200 dark:border-indigo-800 flex-shrink-0 transition-colors">
-                                                {user.name?.charAt(0) || 'U'}
+                                            <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm border border-indigo-200 dark:border-indigo-800 flex-shrink-0 overflow-hidden transition-colors">
+                                                {user.profilePicture ? (
+                                                    <img 
+                                                        src={optimizeCloudinaryUrl(user.profilePicture, { width: 40, height: 40 })} 
+                                                        alt="" 
+                                                        className="w-full h-full object-cover" 
+                                                    />
+                                                ) : (
+                                                    user.name?.charAt(0) || 'U'
+                                                )}
                                             </div>
                                             <div>
                                                 <Link

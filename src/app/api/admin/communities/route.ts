@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     try {
         await connectToDatabase();
-        const { name, emailDomains, description } = await req.json();
+        const { name, emailDomains, description, image } = await req.json();
 
         if (!name || !emailDomains || !Array.isArray(emailDomains)) {
             return NextResponse.json({ error: 'Name and email domains array are required' }, { status: 400 });
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
             name,
             emailDomains: emailDomains.map(d => d.toLowerCase().trim()),
             description,
+            image,
             isActive: true
         });
 
