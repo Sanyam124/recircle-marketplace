@@ -25,7 +25,7 @@ export default function CreateProductPage() {
     title: '',
     description: '',
     price: '',
-    category: 'Books',
+    category: 'Textbooks',
     condition: 'Good',
     visibility: 'Public',
     communityId: '',

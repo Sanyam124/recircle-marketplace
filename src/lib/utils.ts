@@ -61,3 +61,33 @@ export function formatChatMessageDate(date: Date | string | undefined): string {
         return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     }
 }
+
+/**
+ * Strips MongoDB operators (keys starting with $) from an object recursively
+ * to prevent NoSQL injection.
+ */
+export function sanitize(input: any): any {
+    if (input instanceof Array) {
+        for (let i = 0; i < input.length; i++) {
+            input[i] = sanitize(input[i]);
+        }
+    } else if (input !== null && typeof input === 'object') {
+        Object.keys(input).forEach(key => {
+            if (key.startsWith('$')) {
+                delete input[key];
+            } else {
+                input[key] = sanitize(input[key]);
+            }
+        });
+    }
+    return input;
+}
+
+/**
+ * Ensures an input is a clean, trimmed string. 
+ * Returns an empty string if the input is not a string (preventing object-based injection).
+ */
+export function safeString(input: any): string {
+    if (typeof input !== 'string') return '';
+    return input.trim();
+}

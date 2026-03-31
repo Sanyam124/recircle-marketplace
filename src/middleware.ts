@@ -19,14 +19,33 @@ const protectedPaths = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('token')?.value;
+  const method = request.method;
+
+  // 1. Initial Response Object
+  let response = NextResponse.next();
+
+  // --- CSRF Protection for state-changing API requests ---
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && pathname.startsWith('/api')) {
+    const origin = request.headers.get('origin');
+    const host = request.headers.get('host');
+    
+    // Validation: Origin must match Host in production
+    if (process.env.NODE_ENV === 'production' && origin) {
+      try {
+        const originHost = new URL(origin).host;
+        if (originHost !== host) {
+          return NextResponse.json({ error: 'Security: Invalid Request Origin' }, { status: 403 });
+        }
+      } catch (e) {
+        return NextResponse.json({ error: 'Security: Malformed Origin' }, { status: 403 });
+      }
+    }
+  }
 
   // --- API Rate Limiting ---
   if (pathname.startsWith('/api')) {
-    // Next.js Middleware provides request.ip, but we cast to any to avoid TS errors in some environments
     const ip = (request as any).ip || request.headers.get('x-forwarded-for') || '127.0.0.1';
     
-    // Default: 60 requests per minute
-    // Stricter for Auth: 5 requests per minute
     let limit = 60;
     if (pathname.includes('/api/auth/login') || pathname.includes('/api/auth/register') || pathname.includes('/api/auth/otp')) {
       limit = 10; 
@@ -51,12 +70,9 @@ export async function middleware(request: NextRequest) {
       );
     }
     
-    // Continue with headers for success
-    const response = NextResponse.next();
     response.headers.set('X-RateLimit-Limit', limit.toString());
     response.headers.set('X-RateLimit-Remaining', result.remaining.toString());
     response.headers.set('X-RateLimit-Reset', result.reset.toString());
-    return response;
   }
 
 
@@ -65,7 +81,6 @@ export async function middleware(request: NextRequest) {
     pathname === path || pathname.startsWith(`${path}/`)
   );
 
-  // If path is protected and there is no token, redirect to auth
   if (isProtectedPath && !token) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth';
@@ -73,26 +88,28 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Prevent logged-in users from seeing the auth page
   if (pathname === '/auth' && token) {
     const url = request.nextUrl.clone();
     url.pathname = '/explore';
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  // --- Global Security Headers ---
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+
+  return response;
 }
 
 // Configure which paths the middleware should run on
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - logo (any static assets like .png, .jpg)
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.jpeg$).*)',
   ],
 };

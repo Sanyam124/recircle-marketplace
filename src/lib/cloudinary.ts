@@ -1,4 +1,8 @@
+import 'server-only';
 import { v2 as cloudinary } from 'cloudinary';
+
+// Re-export client-safe utilities for convenience in server files
+export { optimizeCloudinaryUrl } from './cloudinary-client';
 
 cloudinary.config({
     cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -40,14 +44,23 @@ export async function deleteFromCloudinary(url: string | null | undefined): Prom
         const parts = url.split('/upload/');
         if (parts.length < 2) return;
         
+        // Remove transformations if present (handles optimized links too)
+        let rest = parts[1];
+        if (rest.includes('/')) {
+            const pathParts = rest.split('/');
+            // If the first part is NOT a version number (v123), it's probably transformations
+            if (!pathParts[0].match(/^v\d+$/)) {
+                rest = pathParts.slice(1).join('/');
+            }
+        }
+        
         // Remove version number (v1234567) if present
-        let suffix = parts[1];
-        if (suffix.match(/^v\d+\//)) {
-            suffix = suffix.replace(/^v\d+\//, '');
+        if (rest.match(/^v\d+\//)) {
+            rest = rest.replace(/^v\d+\//, '');
         }
         
         // Remove file extension (.jpg, .png, .webp)
-        const publicId = suffix.split('.')[0];
+        const publicId = rest.split('.')[0];
         
         if (publicId) {
             await cloudinary.uploader.destroy(publicId);
