@@ -42,7 +42,7 @@ export default function WishlistPage() {
   const fetchWishlist = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/wishlist?page=${page}&limit=12&type=${type}`);
+      const res = await fetch(`/api/wishlist?page=${page}&limit=20&type=${type}`);
       if (res.ok) {
         const data = await res.json();
         setWishlist(data.wishlist || []);
@@ -58,8 +58,8 @@ export default function WishlistPage() {
 
   if (authLoading || (loading && wishlist.length === 0)) {
       return (
-          <div className="max-w-7xl mx-auto px-4 py-10">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="max-w-[1600px] mx-auto px-4 py-10">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
                   {[...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)}
               </div>
           </div>
@@ -67,7 +67,7 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
           <h1 id="wishlist-top" className="text-2xl font-bold text-gray-900 dark:text-white">My Wishlist ({totalItems})</h1>
           
@@ -95,14 +95,14 @@ export default function WishlistPage() {
       </div>
       
       {loading && wishlist.length === 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
             {[...Array(4)].map((_, i) => <ItemCardSkeleton key={i} />)}
         </div>
       ) : wishlist.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
             {wishlist.map((item) => {
-               const itemType = item.type || (type === 'all' ? 'product' : type);
+               const itemType = item.itemType || (type === 'all' ? 'product' : type);
                return itemType === 'product' ? (
                    <ProductCard key={item._id} product={item} />
                ) : (

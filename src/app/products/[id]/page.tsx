@@ -10,6 +10,7 @@ import ShareButton from '@/components/ShareButton';
 import ReportModal from '@/components/ReportModal';
 import ReviewSection from '@/components/ReviewSection';
 import ExpandableText from '@/components/ExpandableText';
+import Image from 'next/image';
 
 interface Product {
   _id: string;
@@ -35,14 +36,6 @@ interface Product {
 import { formatTimeAgo } from '@/lib/utils';
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  // Unwrap params using React.use() for Next.js 15+ compatibility if passed as Promise
-  // But strictly `params` in Page props is a Promise in Next.js 15? 
-  // Wait, in Next.js 15 app router, params is a Promise.
-  // I will assume standard usage or await it.
-  
-  // NOTE: In Client Components, we can't await props directly in the component body easily without `use`.
-  // Let's handle it with `use` or useEffect.
-  
   const resolvedParams = use(params);
   const id = resolvedParams.id;
 
@@ -236,7 +229,18 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <Link href={`/profile/${product.seller._id}`} className="flex items-center group bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-3 hover:shadow-md transition-all">
               <div className="flex-shrink-0">
                 <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold overflow-hidden border border-indigo-200 dark:border-indigo-800 group-hover:border-indigo-400 transition-colors uppercase">
-                   {product.seller.name?.charAt(0) || 'U'}
+                   {product.seller.profilePicture ? (
+                     <Image 
+                        src={product.seller.profilePicture} 
+                        alt={product.seller.name} 
+                        width={40} 
+                        height={40} 
+                        className="object-cover w-full h-full"
+                        referrerPolicy="no-referrer"
+                      />
+                   ) : (
+                     product.seller.name?.charAt(0) || 'U'
+                   )}
                 </div>
               </div>
               <div className="ml-4 flex-1 min-w-0">

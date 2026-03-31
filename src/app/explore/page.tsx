@@ -44,6 +44,34 @@ export default function ExplorePage() {
   const isFirstRender = useRef(true);
   const isInitializing = useRef(true);
 
+  // Sync state to URL 
+  useEffect(() => {
+    // Collect all category/categories[] values
+    const cats = [
+      ...searchParams.getAll('categories[]'),
+      ...searchParams.getAll('category')
+    ];
+    const urlFilters = {
+      search: searchParams.get('search') || '',
+      type: (searchParams.get('type') as 'all' | 'products' | 'services') || 'all',
+      sort: searchParams.get('sort') || 'newest',
+      minPrice: searchParams.get('minPrice') || '',
+      maxPrice: searchParams.get('maxPrice') || '',
+      categories: Array.from(new Set(cats)),
+      conditions: searchParams.getAll('conditions[]') || [],
+      communityFilter: searchParams.get('communityFilter') || 'All',
+      city: searchParams.get('city') || ''
+    };
+    
+    setFilters(prev => {
+      const isDifferent = JSON.stringify(prev) !== JSON.stringify(urlFilters);
+      return isDifferent ? urlFilters : prev;
+    });
+    
+    const urlPage = parseInt(searchParams.get('page') || '1');
+    if (page !== urlPage) setPage(urlPage);
+  }, [searchParams]);
+
   // Mark initialization as complete after a short delay
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -97,7 +125,7 @@ export default function ExplorePage() {
       currentFilters.conditions.forEach(c => params.append('conditions[]', c));
       
       params.append('page', currentPage.toString());
-      params.append('limit', '12');
+      params.append('limit', '20');
 
       const res = await fetch(`/api/explore?${params.toString()}`);
       if (res.ok) {
@@ -139,7 +167,7 @@ export default function ExplorePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Header */}
         <div className="mb-6 flex flex-col md:flex-row justify-between md:items-end gap-4">
@@ -173,8 +201,8 @@ export default function ExplorePage() {
 
             {/* Grid */}
             {loading ? (
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 transition-colors">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 py-12 transition-colors">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
                     {[...Array(6)].map((_, i) => <ItemCardSkeleton key={i} />)}
                 </div>
               </div>
@@ -194,7 +222,7 @@ export default function ExplorePage() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
                   {items.map(item => (
                     item.itemType === 'product' 
                       ? <ProductCard key={`prod-${item._id}`} product={item} />

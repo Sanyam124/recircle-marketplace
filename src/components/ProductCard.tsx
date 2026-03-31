@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import ExpandableText from './ExpandableText';
 
 import { formatTimeAgo } from '@/lib/utils';
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-client';
 
 interface Product {
   _id: string;
@@ -28,9 +29,22 @@ interface Product {
   visibility?: 'Public' | 'Community';
   community?: { _id: string; name: string } | string | any;
   location?: { pincode: string; city: string; state: string };
+  status?: string;
 }
 
-export default function ProductCard({ product }: { product: Product }) {
+interface ProductCardProps {
+  product: Product;
+  isOwner?: boolean;
+  onDelete?: (id: string, type: 'products' | 'services') => void;
+  onToggleStatus?: (id: string, newStatus: string, type: 'products' | 'services') => void;
+}
+
+export default function ProductCard({ 
+  product, 
+  isOwner = false, 
+  onDelete, 
+  onToggleStatus 
+}: ProductCardProps) {
   const { user, setUser } = useAuth();
   const [liked, setLiked] = useState(false);
   const router = useRouter();
@@ -96,13 +110,13 @@ export default function ProductCard({ product }: { product: Product }) {
       </Link>
 
       {/* Image Section */}
-      <div className="relative h-56 w-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+      <div className="relative h-40 sm:h-56 w-full overflow-hidden bg-gray-200 dark:bg-gray-700">
         {product.images && product.images.length > 0 ? (
           <Image
-            src={product.images[0]}
+            src={optimizeCloudinaryUrl(product.images[0], { width: 600, height: 400 })}
             alt={product.title}
             fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            sizes="(max-width: 768px) 50vw, 33vw"
             className="object-cover object-center group-hover:scale-105 transition-transform duration-200"
           />
         ) : (
@@ -110,80 +124,127 @@ export default function ProductCard({ product }: { product: Product }) {
             No Image
           </div>
         )}
-        <div className="absolute top-2 right-2 flex gap-2">
-            <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 pointer-events-none">
+        <div className="absolute top-1.5 right-1.5 flex gap-1.5">
+            <div className="hidden sm:block bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm px-2 py-1 rounded-md text-[10px] font-medium text-gray-700 dark:text-gray-300 pointer-events-none">
                 {product.category}
             </div>
             <button 
                 onClick={toggleWishlist}
-                className={`p-1.5 rounded-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm transition-colors z-20 ${liked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                className={`p-1 sm:p-1.5 rounded-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm transition-colors z-20 ${liked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
             >
-                <svg className="w-5 h-5" fill={liked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill={liked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
             </button>
         </div>
       </div>
       
-      <div className="p-4 relative z-10 pointer-events-none">
+      <div className="p-2 sm:p-4 relative z-10 pointer-events-none">
         <div className="flex justify-between items-start">
           <div className="w-full min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1 min-h-[1.6em]">{product.title}</h3>
-            <div className="mt-1 flex items-start justify-between text-sm text-gray-500 dark:text-gray-400 gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-3 mb-1 sm:mb-2">
+                <Link href={`/profile/${product.seller._id}`} className="shrink-0 pointer-events-auto">
+                    <div className="h-4 w-4 sm:h-6 sm:w-6 rounded-full bg-indigo-50 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-[8px] sm:text-[10px] ring-1 ring-indigo-200 dark:ring-indigo-800 overflow-hidden shadow-sm">
+                        {product.seller?.profilePicture ? (
+                            <Image 
+                              src={product.seller.profilePicture} 
+                              alt={product.seller.name} 
+                              width={24} 
+                              height={24} 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer"
+                            />
+                        ) : (
+                            product.seller?.name?.charAt(0).toUpperCase() || 'U'
+                        )}
+                    </div>
+                </Link>
+                <Link href={`/profile/${product.seller._id}`} className="text-[9px] sm:text-[10px] font-bold text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors pointer-events-auto truncate max-w-[80px] sm:max-w-[120px]">
+                    {product.seller?.name}
+                </Link>
+            </div>
+            <h3 className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1 min-h-[1.4em]">{product.title}</h3>
+            <div className="mt-0.5 sm:mt-1 flex items-start justify-between text-sm text-gray-500 dark:text-gray-400 gap-2">
               <div className="flex-1 min-w-0">
                 <ExpandableText 
                   text={product.description || ''} 
-                  maxLines={2} 
-                  className="text-[11px] leading-normal min-h-[3em]" 
+                  maxLines={1} 
+                  className="text-[10px] sm:text-[11px] leading-tight sm:leading-normal min-h-[1.2em] sm:min-h-[3em]" 
                   showReadMore={false} 
                 />
               </div>
               
               <div className="flex items-center shrink-0">
-                 <svg className="h-4 w-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                 <svg className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 mr-0.5 sm:mr-1" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                  </svg>
-                 <span className="font-semibold text-gray-900 dark:text-white">
+                 <span className="font-bold text-[10px] sm:text-sm text-gray-900 dark:text-white">
                     {product.ownerRating ? (typeof product.ownerRating === 'number' ? product.ownerRating.toFixed(1) : product.ownerRating) : 'New'}
                  </span>
-                 {product.reviewCount ? (
-                    <span className="ml-1 text-gray-500 dark:text-gray-400">({product.reviewCount})</span>
-                 ) : null}
               </div>
             </div>
           </div>
         </div>
         
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-2 sm:mt-3 flex items-center justify-between">
            <div className="flex flex-col">
-               <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">₹{product.price}</span>
-               <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">{formatTimeAgo(product.createdAt)}</span>
+               <span className="text-base sm:text-lg font-bold text-indigo-600 dark:text-indigo-400">₹{product.price}</span>
+               <span className="text-[9px] sm:text-[10px] text-gray-400 dark:text-gray-500 font-medium">{formatTimeAgo(product.createdAt)}</span>
            </div>
-           <span className="inline-flex items-center rounded-full bg-gray-50 dark:bg-gray-700 px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 ring-1 ring-inset ring-gray-500/10 dark:ring-gray-600">
+           <span className="inline-flex items-center rounded-full bg-gray-50 dark:bg-gray-700 px-1.5 py-0.5 sm:px-2 sm:py-1 text-[9px] sm:text-xs font-medium text-gray-600 dark:text-gray-300 ring-1 ring-inset ring-gray-500/10 dark:ring-gray-600">
              {product.condition}
            </span>
         </div>
 
         {/* Origin Metadata Footer */}
         {(communityName || product.location?.city) && (
-          <div className="mt-4 pt-3 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between text-[10px] sm:text-[11px] font-semibold transition-colors">
-            <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+          <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between text-[8px] sm:text-[11px] font-semibold transition-colors">
+            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
               {isInternal ? (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg ring-1 ring-inset ring-emerald-500/10">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                  <span className="uppercase tracking-tight">Campus Verified</span>
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg ring-1 ring-inset ring-emerald-500/10">
+                  <span className="uppercase tracking-tight">Campus</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-lg ring-1 ring-inset ring-gray-400/10">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  <span className="uppercase tracking-tight">Public Presence</span>
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-lg ring-1 ring-inset ring-gray-400/10">
+                  <span className="uppercase tracking-tight">Public</span>
                 </div>
               )}
             </div>
             
-            <span className="text-gray-400 dark:text-gray-500 truncate max-w-[120px]">
-              {isInternal ? communityName : (product.location?.city ? `${product.location.city}, ${product.location.state}` : (communityName || 'Across Campus'))}
+            <span className="text-gray-400 dark:text-gray-500 truncate max-w-[60px] sm:max-w-[120px]">
+              {isInternal ? communityName : (product.location?.city ? product.location.city : (communityName || 'Campus'))}
             </span>
+          </div>
+        )}
+        {/* Owner action bar */}
+        {isOwner && (
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex gap-2 relative z-20 pointer-events-auto">
+            <button
+              onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const currentStatus = product.status || 'Available';
+                  const nextStatus = currentStatus === 'Available' ? 'Inactive' : 'Available';
+                  onToggleStatus?.(product._id, nextStatus, 'products');
+              }}
+              className={`text-xs font-bold px-3 py-1.5 flex-1 rounded-lg transition-colors ${
+                product.status === 'Available'
+                  ? 'bg-gray-50 dark:bg-gray-700 text-gray-500 hover:text-orange-500' 
+                  : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 hover:text-emerald-700'
+              }`}
+            >
+              {product.status === 'Available' ? 'Mark Inactive' : 'Mark Active'}
+            </button>
+            <button
+              onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete?.(product._id, 'products');
+              }}
+              className="text-xs font-bold text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Delete
+            </button>
           </div>
         )}
       </div>

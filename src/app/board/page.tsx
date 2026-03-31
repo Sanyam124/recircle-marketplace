@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { PostSkeleton, ProfileSkeleton } from '@/components/Skeletons';
+import { PostSkeleton } from '@/components/Skeletons';
 import { formatTimeAgo } from '@/lib/utils';
 import ExpandableText from '@/components/ExpandableText';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Post {
     _id: string;
@@ -62,7 +63,15 @@ export default function BoardPage() {
             params.set('communityId', selectedCommunityId);
             router.push(`/board?${params.toString()}`, { scroll: false });
         }
-    }, [selectedCommunityId]); // Only sync when community selection changes
+    }, [selectedCommunityId, router]); // Only sync when community selection changes
+
+    // Sync URL -> State (Back button)
+    useEffect(() => {
+        const urlId = searchParams.get('communityId');
+        if (urlId && urlId !== selectedCommunityId) {
+            setSelectedCommunityId(urlId);
+        }
+    }, [searchParams, selectedCommunityId]);
 
     // Verification check & initial community selection
     useEffect(() => {
@@ -76,7 +85,7 @@ export default function BoardPage() {
                 setSelectedCommunityId(firstId);
             }
         }
-    }, [user, authLoading, router]);
+    }, [user, authLoading, router, selectedCommunityId]);
 
     // Load posts when community is changed
     useEffect(() => {
@@ -141,7 +150,7 @@ export default function BoardPage() {
             });
 
             if (res.ok) {
-                const { upvotes: count, isUpvoted } = await res.json();
+                const { isUpvoted } = await res.json();
                 setPosts(posts.map(post => {
                     if (post._id === postId) {
                         return { 
@@ -244,8 +253,19 @@ export default function BoardPage() {
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-3 sm:p-4 mb-6 transition-all hover:shadow-md">
                     <form onSubmit={handleCreatePost}>
                         <div className="flex gap-3 sm:gap-4">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold shrink-0 border border-indigo-200 dark:border-indigo-800">
-                                {user?.name?.[0]?.toUpperCase()}
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold shrink-0 border border-indigo-200 dark:border-indigo-800 overflow-hidden shadow-sm">
+                                {user?.profilePicture ? (
+                                    <Image 
+                                      src={user.profilePicture} 
+                                      alt="You" 
+                                      width={40} 
+                                      height={40} 
+                                      className="w-full h-full object-cover" 
+                                      referrerPolicy="no-referrer"
+                                    />
+                                ) : (
+                                    user?.name?.[0]?.toUpperCase()
+                                )}
                             </div>
                             <div className="flex-1">
                                 <textarea
@@ -367,7 +387,14 @@ function PostCard({
                 <Link href={`/profile/${post.author._id}`} className="shrink-0 transition-transform hover:scale-105 active:scale-95">
                     <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600 overflow-hidden shadow-sm">
                         {post.author.profilePicture ? (
-                                <img src={post.author.profilePicture} className="w-full h-full object-cover" />
+                                <Image 
+                                  src={post.author.profilePicture} 
+                                  alt={post.author.name} 
+                                  width={40} 
+                                  height={40} 
+                                  className="w-full h-full object-cover" 
+                                  referrerPolicy="no-referrer"
+                                />
                         ) : (
                             <span className="text-gray-500 dark:text-gray-400 font-bold text-xs">{post.author.name?.[0].toUpperCase()}</span>
                         )}
@@ -427,8 +454,19 @@ function PostCard({
                         <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-300">
                              {/* Write a reply input */}
                             <div className="flex gap-3 items-center">
-                                <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/20 shrink-0 flex items-center justify-center font-bold text-indigo-600 text-[10px] border border-indigo-100/50 dark:border-indigo-800/30">
-                                    {user?.name?.[0].toUpperCase()}
+                                <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/20 shrink-0 flex items-center justify-center font-bold text-indigo-600 text-[10px] border border-indigo-100/50 dark:border-indigo-800/30 overflow-hidden shadow-sm">
+                                    {user?.profilePicture ? (
+                                        <Image 
+                                          src={user.profilePicture} 
+                                          alt="You" 
+                                          width={32} 
+                                          height={32} 
+                                          className="w-full h-full object-cover" 
+                                          referrerPolicy="no-referrer"
+                                        />
+                                    ) : (
+                                        user?.name?.[0].toUpperCase()
+                                    )}
                                 </div>
                                 <input 
                                     type="text"
@@ -464,7 +502,14 @@ function PostCard({
                                         <Link href={`/profile/${reply.author._id}`} className="shrink-0 transition-transform hover:scale-105 active:scale-95">
                                             <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden">
                                                 {reply.author.profilePicture ? (
-                                                    <img src={reply.author.profilePicture} className="w-full h-full object-cover" />
+                                                    <Image 
+                                                      src={reply.author.profilePicture} 
+                                                      alt={reply.author.name} 
+                                                      width={24} 
+                                                      height={24} 
+                                                      className="w-full h-full object-cover" 
+                                                      referrerPolicy="no-referrer"
+                                                    />
                                                 ) : (
                                                     <span className="text-[8px] flex items-center justify-center h-full font-bold text-gray-400">{reply.author.name?.[0].toUpperCase()}</span>
                                                 )}

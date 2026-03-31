@@ -11,6 +11,7 @@ import ShareButton from '@/components/ShareButton';
 import ReportModal from '@/components/ReportModal';
 import ReviewSection from '@/components/ReviewSection';
 import ExpandableText from '@/components/ExpandableText';
+import Image from 'next/image';
 
 interface Service {
   _id: string;
@@ -229,8 +230,19 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
             </div>
             <Link href={`/profile/${service.provider._id}`} className="mt-4 flex items-center group bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-3 hover:shadow-md transition-all">
               <div className="flex-shrink-0">
-                <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold border border-indigo-700 shadow-sm overflow-hidden group-hover:scale-105 transition-transform uppercase">
-                  {service.provider.name.charAt(0)}
+                <div className="h-10 w-10 border border-gray-100 dark:border-gray-700 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold overflow-hidden group-hover:scale-105 transition-transform uppercase">
+                   {service.provider.profilePicture ? (
+                     <Image 
+                        src={service.provider.profilePicture} 
+                        alt={service.provider.name} 
+                        width={40} 
+                        height={40} 
+                        className="object-cover w-full h-full"
+                        referrerPolicy="no-referrer"
+                      />
+                   ) : (
+                     service.provider.name.charAt(0)
+                   )}
                 </div>
               </div>
               <div className="ml-4 flex-1 min-w-0">

@@ -184,7 +184,7 @@ export async function GET(req: NextRequest) {
                 pipeline: [
                     { $match: serviceMatch },
                     { $addFields: { itemType: 'service' } },
-                    { $project: { community: 1, visibility: 1, title: 1, price: 1, images: 1, category: 1, description: 1, status: 1, createdAt: 1, priceUnit: 1, provider: 1, location: 1 } }
+                    { $project: { community: 1, visibility: 1, title: 1, price: 1, images: 1, category: 1, description: 1, status: 1, createdAt: 1, priceUnit: 1, provider: 1, location: 1, availability: 1 } }
                 ]
             };
 
@@ -208,7 +208,8 @@ export async function GET(req: NextRequest) {
                 provider: 1,
                 community: 1,
                 visibility: 1,
-                location: 1
+                location: 1,
+                availability: 1
             }
         });
 

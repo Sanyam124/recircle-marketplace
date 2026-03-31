@@ -94,7 +94,25 @@ export default function OrdersPage() {
     const queryString = params.toString();
     const url = `/orders${queryString ? `?${queryString}` : ''}`;
     router.push(url, { scroll: false });
-  }, [activeTab, buyerPagination.page, sellerPagination.page]); // Removed router/searchParams to avoid sync loops
+  }, [activeTab, buyerPagination.page, sellerPagination.page]);
+
+  // Sync URL -> State (Back button)
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab') as 'buyer' | 'seller';
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+
+    const bPFromUrl = parseInt(searchParams.get('bPage') || '1');
+    if (bPFromUrl !== buyerPagination.page) {
+      setBuyerPagination(prev => ({ ...prev, page: bPFromUrl }));
+    }
+
+    const sPFromUrl = parseInt(searchParams.get('sPage') || '1');
+    if (sPFromUrl !== sellerPagination.page) {
+      setSellerPagination(prev => ({ ...prev, page: sPFromUrl }));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const orderId = searchParams.get('orderId');

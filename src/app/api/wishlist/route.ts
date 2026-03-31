@@ -20,45 +20,58 @@ export async function GET(req: NextRequest) {
         const skip = (page - 1) * limit;
 
         await connectToDatabase();
-        let wishlist: any[] = [];
-
-        if (type === 'service' || type === 'all') {
-            const servicePopulate = {
+        
+        // Use a single user fetch for efficiency
+        const user = await User.findById(userData.userId)
+            .populate({
+                path: 'wishlist',
+                select: 'title price images category description condition seller createdAt status community visibility location',
+                populate: [
+                    { path: 'seller', select: 'name profilePicture' },
+                    { path: 'community', select: 'name' }
+                ],
+                model: Product
+            })
+            .populate({
                 path: 'wishlistedServices',
-                select: 'title price priceUnit images category description provider createdAt status',
-                populate: { path: 'provider', select: 'name' }
-            };
-            const userWithServices = await User.findById(userData.userId).populate(servicePopulate);
-            const services = (userWithServices?.wishlistedServices || [])
-                .filter((s: any) => s != null)
-                .map((s: any) => ({ ...s.toObject(), type: 'service' }));
-            wishlist = [...wishlist, ...services];
-        }
+                select: 'title price priceUnit images category description provider createdAt status community visibility location availability',
+                populate: [
+                    { path: 'provider', select: 'name profilePicture' },
+                    { path: 'community', select: 'name' }
+                ],
+                model: Service
+            })
+            .lean();
+
+        if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+        let allItems: any[] = [];
 
         if (type === 'product' || type === 'all') {
-            const productPopulate = {
-                path: 'wishlist',
-                select: 'title price images category description condition seller createdAt status',
-                populate: { path: 'seller', select: 'name' }
-            };
-            const userWithProducts = await User.findById(userData.userId).populate(productPopulate);
-            const products = (userWithProducts?.wishlist || [])
-                .filter((p: any) => p != null)
-                .map((p: any) => ({ ...p.toObject(), type: 'product' }));
-            wishlist = [...wishlist, ...products];
+            const products = (user.wishlist || [])
+                .filter((p: any) => p != null && typeof p === 'object')
+                .map((p: any) => ({ ...p, itemType: 'product' }));
+            allItems = [...allItems, ...products];
         }
 
-        // Sort by createdAt descending if we have multiple types
-        if (type === 'all') {
-            wishlist.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        if (type === 'service' || type === 'all') {
+            const services = (user.wishlistedServices || [])
+                .filter((s: any) => s != null && typeof s === 'object')
+                .map((s: any) => ({ ...s, itemType: 'service' }));
+            allItems = [...allItems, ...services];
         }
 
-        const totalItems = wishlist.length;
+        // Sort by createdAt descending
+        allItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        const totalItems = allItems.length;
         const totalPages = Math.ceil(totalItems / limit);
-        const paginated = wishlist.slice(skip, skip + limit);
+        const paginated = allItems.slice(skip, skip + limit);
 
         // Fetch ratings for paginated items
-        const ownerIds = paginated.map(item => item.type === 'product' ? item.seller?._id : item.provider?._id).filter(id => id != null);
+        const ownerIds = paginated.map(item => 
+            item.itemType === 'product' ? item.seller?._id : item.provider?._id
+        ).filter(id => id != null);
 
         const reviews = await Review.aggregate([
             { $match: { target: { $in: ownerIds } } },
@@ -68,7 +81,7 @@ export async function GET(req: NextRequest) {
         const reviewMap = new Map(reviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
 
         const wishlistWithRatings = paginated.map(item => {
-            const ownerId = item.type === 'product' ? item.seller?._id?.toString() : item.provider?._id?.toString();
+            const ownerId = item.itemType === 'product' ? item.seller?._id?.toString() : item.provider?._id?.toString();
             const stats = reviewMap.get(ownerId) || { average: 0, count: 0 };
             return {
                 ...item,
