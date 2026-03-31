@@ -73,6 +73,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             : (user.isOnVacation ? { _id: null } : { seller: objectId, status: 'Available' });
 
         const products = await Product.find(productQuery)
+            .populate('seller', 'name profilePicture')
             .populate('community', 'name')
             .sort({ createdAt: -1 })
             .skip(productSkip)
@@ -90,6 +91,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             : (user.isOnVacation ? { _id: null } : { provider: objectId, status: 'Active' });
 
         const services = await Service.find(serviceQuery)
+            .populate('provider', 'name profilePicture')
             .populate('community', 'name')
             .sort({ createdAt: -1 })
             .skip(serviceSkip)

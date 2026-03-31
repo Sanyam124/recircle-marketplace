@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
+import ImageUpload from '@/components/ImageUpload';
 
 interface UserData {
     id: string;
@@ -15,6 +16,7 @@ interface UserData {
     gender: string;
     bio: string;
     phone: string;
+    profilePicture?: string;
     isPhoneVerified: boolean;
     usernameChangeCount: number;
 }
@@ -36,7 +38,8 @@ export default function EditProfilePage() {
         gender: 'none',
         bio: '',
         phone: '',
-        address: ''
+        address: '',
+        profilePicture: ''
     });
 
     useEffect(() => {
@@ -56,7 +59,8 @@ export default function EditProfilePage() {
                     gender: data.user.gender || 'none',
                     bio: data.user.bio || '',
                     phone: data.user.phone || '',
-                    address: data.user.address || ''
+                    address: data.user.address || '',
+                    profilePicture: data.user.profilePicture || ''
                 });
             }
         } catch (error) {
@@ -162,7 +166,8 @@ export default function EditProfilePage() {
                     username: formData.username,
                     gender: formData.gender,
                     bio: formData.bio,
-                    address: formData.address
+                    address: formData.address,
+                    profilePicture: formData.profilePicture
                 })
             });
 
@@ -227,6 +232,19 @@ export default function EditProfilePage() {
                 className="bg-white dark:bg-gray-800 shadow rounded-xl p-6 space-y-6 border border-gray-100 dark:border-gray-700 transition-colors"
             >
                 
+                {/* Profile Picture Upload Section */}
+                <div className="flex flex-col items-center pb-6 border-b border-gray-50 dark:border-gray-700">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4 self-start">Profile Presentation</h3>
+                    <ImageUpload
+                        label="Change Profile Photo"
+                        folder="recircle/profiles"
+                        currentImage={formData.profilePicture}
+                        onUpload={(url) => setFormData(prev => ({ ...prev, profilePicture: url }))}
+                        imageClassName="w-32 h-32 rounded-full ring-4 ring-indigo-50 dark:ring-indigo-900/30"
+                    />
+                    <p className="mt-3 text-[10px] text-gray-400 font-medium">Clear photos build trust in the community</p>
+                </div>
+
                 {/* Basic Info Group */}
                 <div className="space-y-4">
                     <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Basic Identity</h3>

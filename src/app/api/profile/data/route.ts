@@ -72,7 +72,7 @@ export async function PUT(req: NextRequest) {
         await connectToDatabase();
         require('@/models/Community');
         const body = await req.json();
-        const { name, username, gender, address, bio, allowEmailContact, allowPhoneContact, isOnVacation } = body;
+        const { name, username, gender, address, bio, allowEmailContact, allowPhoneContact, isOnVacation, profilePicture } = body;
 
         const user = await User.findById(decoded.userId);
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -139,6 +139,7 @@ export async function PUT(req: NextRequest) {
         if (allowEmailContact !== undefined) updateData.allowEmailContact = allowEmailContact;
         if (allowPhoneContact !== undefined) updateData.allowPhoneContact = allowPhoneContact;
         if (isOnVacation !== undefined) updateData.isOnVacation = isOnVacation;
+        if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
 
         const updatedUser = await User.findByIdAndUpdate(
             decoded.userId,

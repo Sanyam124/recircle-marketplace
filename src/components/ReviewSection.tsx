@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import StarRating from './StarRating';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Review {
   _id: string;
@@ -235,29 +236,30 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
         {reviews.map((review) => (
           <div key={review._id} className="flex space-x-4">
              <div className="flex-shrink-0">
-               {review.reviewer?._id ? (
-                 <Link href={`/profile/${review.reviewer._id}`}>
-                   <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold border border-gray-200 dark:border-gray-600 text-base hover:ring-2 hover:ring-indigo-500 transition-all cursor-pointer">
-                     {review.reviewer?.name?.charAt(0).toUpperCase() || 'U'}
-                   </div>
-                 </Link>
-               ) : (
-                 <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold border border-gray-200 dark:border-gray-600 text-base">
-                   {review.reviewer?.name?.charAt(0).toUpperCase() || 'U'}
+               <Link href={`/profile/${review.reviewer?._id || ''}`}>
+                 <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold border border-gray-200 dark:border-gray-600 text-base hover:ring-2 hover:ring-indigo-500 transition-all cursor-pointer overflow-hidden">
+                    {review.reviewer?.profilePicture ? (
+                        <Image 
+                          src={review.reviewer.profilePicture} 
+                          alt={review.reviewer.name} 
+                          width={40} 
+                          height={40} 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
+                    ) : (
+                        review.reviewer?.name?.charAt(0).toUpperCase() || 'U'
+                    )}
                  </div>
-               )}
+               </Link>
              </div>
              <div className="flex-1">
                <div className="flex items-center justify-between">
-                 {review.reviewer?._id ? (
-                   <Link href={`/profile/${review.reviewer._id}`}>
-                     <h4 className="text-sm font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline cursor-pointer">
-                       {review.reviewer?.name || 'Deleted User'}
-                     </h4>
-                   </Link>
-                 ) : (
-                   <h4 className="text-sm font-bold text-gray-900 dark:text-white">{review.reviewer?.name || 'Deleted User'}</h4>
-                 )}
+                 <Link href={`/profile/${review.reviewer?._id || ''}`}>
+                   <h4 className="text-sm font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline cursor-pointer">
+                     {review.reviewer?.name || 'Deleted User'}
+                   </h4>
+                 </Link>
                  <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(review.createdAt).toLocaleDateString()}</span>
                </div>
                <div className="mt-1">

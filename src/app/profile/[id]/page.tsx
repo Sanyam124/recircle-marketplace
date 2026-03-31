@@ -10,6 +10,8 @@ import ExpandableText from '@/components/ExpandableText';
 import ShareButton from '@/components/ShareButton';
 import ReportModal from '@/components/ReportModal';
 import { useAuth } from '@/context/AuthContext';
+import ProductCard from '@/components/ProductCard';
+import ServiceCard from '@/components/ServiceCard';
 
 // ── Pagination Controls ───────────────────────────────────────────────────────
 
@@ -61,100 +63,6 @@ function PaginationControls({
 
 // ── Item Card (public listing card) ──────────────────────────────────────────
 
-function ItemCard({
-  item, type, isOwner,
-  onDelete, onToggleStatus
-}: {
-  item: any; type: 'product' | 'service'; isOwner: boolean;
-  onDelete?: (id: string, type: 'products' | 'services') => void;
-  onToggleStatus?: (id: string, newStatus: string, type: 'products' | 'services') => void;
-}) {
-  const href = type === 'product' ? `/products/${item._id}` : `/services/${item._id}`;
-  const image = item.images?.[0];
-  const price = type === 'product'
-    ? `₹${item.price}`
-    : `₹${item.price}${item.priceUnit ? `/${item.priceUnit}` : ''}`;
-
-  return (
-    <div className="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden hover:shadow-md transition-all duration-200 flex flex-col select-none cursor-pointer">
-      <Link href={href} className="absolute inset-0 z-0">
-        <span className="sr-only">View {item.title}</span>
-      </Link>
-      
-      <div className="relative h-36 overflow-hidden bg-gray-50 dark:bg-gray-700 z-10 pointer-events-none">
-        {image ? (
-          <Image
-            src={image}
-            alt={item.title}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            referrerPolicy="no-referrer"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
-            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        )}
-        <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-0.5 rounded-full ${
-          item.status === 'Available' || item.status === 'Active'
-            ? 'bg-green-100 text-green-700'
-            : 'bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300'
-        }`}>
-          {item.status || 'Active'}
-        </div>
-      </div>
-      <div className="px-3 pt-3 pb-2 flex-1 flex flex-col pointer-events-none">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white line-clamp-1 mb-1 min-h-[1.6em]">{item.title}</h3>
-        
-        <div className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">
-          <ExpandableText text={item.description} maxLines={2} className="min-h-[3em]" showReadMore={false} />
-        </div>
-        <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-1">{price}</p>
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700 px-2 py-0.5 rounded-full">{item.category}</span>
-          {type === 'product' && item.condition && (
-            <span className="text-[10px] text-gray-400 dark:text-gray-500">{item.condition}</span>
-          )}
-        </div>
-      </div>
-      {/* Owner action bar */}
-      {isOwner && (
-        <div className="px-3 py-2 bg-gray-50/60 dark:bg-gray-700/60 border-t border-gray-100 dark:border-gray-600 flex gap-2 mt-auto relative z-20">
-          <button
-            onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const currentStatus = item.status || (type === 'product' ? 'Available' : 'Active');
-                const isItemActive = currentStatus === 'Active' || currentStatus === 'Available';
-                const nextStatus = isItemActive ? 'Inactive' : (type === 'product' ? 'Available' : 'Active');
-                onToggleStatus?.(item._id, nextStatus, type === 'product' ? 'products' : 'services');
-            }}
-            className={`text-xs font-bold px-2 py-1 flex-1 text-center transition-colors ${
-              (item.status === 'Active' || item.status === 'Available')
-                ? 'text-gray-500 hover:text-orange-500 dark:text-gray-400 dark:hover:text-orange-400' 
-                : 'text-emerald-500 hover:text-emerald-600'
-            }`}
-          >
-            {(item.status === 'Active' || item.status === 'Available') ? 'Mark Inactive' : 'Mark Active'}
-          </button>
-          <button
-            onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onDelete?.(item._id, type === 'product' ? 'products' : 'services');
-            }}
-            className="text-xs font-bold text-red-500 hover:text-red-600 px-2 py-1 ml-auto transition-colors"
-          >
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Order Card (owner My Orders) ─────────────────────────────────────────────
 
@@ -252,14 +160,27 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [isBlocked, setIsBlocked] = useState(false);
   const [blocking, setBlocking] = useState(false);
 
+  // Sync URL -> State (Back button)
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab') as TabKey;
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+
+    const pPFromUrl = parseInt(searchParams.get('pPage') || '1');
+    if (pPFromUrl !== productPage) setProductPage(pPFromUrl);
+
+    const sPFromUrl = parseInt(searchParams.get('sPage') || '1');
+    if (sPFromUrl !== servicePage) setServicePage(sPFromUrl);
+
+    const aPFromUrl = parseInt(searchParams.get('aPage') || '1');
+    if (aPFromUrl !== allPage) setAllPage(aPFromUrl);
+  }, [searchParams]);
+
   // Sync state to URL 
   useEffect(() => {
     if (isFirstRender.current) {
         isFirstRender.current = false;
-        setActiveTab(tabParam || 'all');
-        setProductPage(pPageParam);
-        setServicePage(sPageParam);
-        setAllPage(aPageParam);
         return;
     }
 
@@ -295,7 +216,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
       url.searchParams.append('productPage', pPage.toString());
       url.searchParams.append('servicePage', sPage.toString());
       url.searchParams.append('allPage', aPage.toString());
-      url.searchParams.append('limit', '8');
+      url.searchParams.append('limit', '20');
       
       const res = await fetch(url.toString(), { cache: 'no-store' });
       
@@ -395,14 +316,25 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const allPagination = pagination?.all;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors duration-300">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors duration-300">
 
       {/* ── Profile Header ─────────────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8 overflow-hidden transition-colors duration-300">
         <div className="p-8 flex flex-col md:flex-row items-center md:items-start gap-6">
           {/* Avatar */}
-          <div className="h-24 w-24 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-5xl font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 flex-shrink-0">
-            {user.name?.charAt(0).toUpperCase() || 'U'}
+          <div className="h-24 w-24 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-4xl font-bold text-indigo-600 dark:text-indigo-400 border-4 border-white dark:border-gray-800 shadow-xl overflow-hidden flex-shrink-0">
+            {user.profilePicture ? (
+              <Image 
+                src={user.profilePicture} 
+                alt={user.name} 
+                width={96} 
+                height={96} 
+                className="object-cover w-full h-full"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              user.name?.charAt(0).toUpperCase() || 'U'
+            )}
           </div>
 
           {/* Info */}
@@ -741,16 +673,24 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 <p className="text-gray-500 dark:text-gray-400 text-sm italic">No items found.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 transition-all duration-300">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 transition-all duration-300">
                 {sectionLoading ? (
                   [...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)
                 ) : (
                   allItems.map((item: any) => (
-                    <ItemCard
-                      key={item._id} item={item} type={item.type} isOwner={isOwner}
-                      onDelete={handleDelete}
-                      onToggleStatus={handleToggleStatus}
-                    />
+                    item.type === 'product' ? (
+                      <ProductCard
+                        key={item._id} product={item} isOwner={isOwner}
+                        onDelete={handleDelete}
+                        onToggleStatus={handleToggleStatus}
+                      />
+                    ) : (
+                      <ServiceCard
+                        key={item._id} service={item} isOwner={isOwner}
+                        onDelete={handleDelete}
+                        onToggleStatus={handleToggleStatus}
+                      />
+                    )
                   ))
                 )}
               </div>
@@ -769,13 +709,13 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 transition-all duration-300">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6 transition-all duration-300">
                   {sectionLoading ? (
                     [...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)
                   ) : (
                     products.map((product: any) => (
-                      <ItemCard
-                        key={product._id} item={product} type="product" isOwner={isOwner}
+                      <ProductCard
+                        key={product._id} product={product} isOwner={isOwner}
                         onDelete={handleDelete}
                         onToggleStatus={handleToggleStatus}
                       />
@@ -798,13 +738,13 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 transition-all duration-300">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 transition-all duration-300">
                   {sectionLoading ? (
                     [...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)
                   ) : (
                     services.map((service: any) => (
-                      <ItemCard
-                        key={service._id} item={service} type="service" isOwner={isOwner}
+                      <ServiceCard
+                        key={service._id} service={service} isOwner={isOwner}
                         onDelete={handleDelete}
                         onToggleStatus={handleToggleStatus}
                       />
