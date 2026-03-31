@@ -3,6 +3,7 @@ import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
 import Community from '@/models/Community';
 import { hashPassword, generateToken } from '@/lib/auth';
+import { sanitize, safeString } from '@/lib/utils';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 
@@ -14,13 +15,25 @@ export async function POST(req: NextRequest) {
     try {
         await connectToDatabase();
 
-        const { name, username, email, password, emailToken, googleToken } = await req.json();
+        let body = await req.json();
+        body = sanitize(body);
+
+        let { name, username, email, password, emailToken, googleToken } = body;
+        
+        name = safeString(name);
+        username = safeString(username);
+        email = safeString(email);
+        password = safeString(password);
+        emailToken = safeString(emailToken);
+        googleToken = safeString(googleToken);
 
         if (!name || name.trim().length < 3 || name.trim().length > 30) {
             return NextResponse.json({ error: 'Name must be between 3 and 30 characters' }, { status: 400 });
         }
 
-        if (!username || !email || !password || (!emailToken && !googleToken)) {
+        const isGoogleAuth = !!googleToken;
+
+        if (!username || !email || (!password && !isGoogleAuth) || (!emailToken && !isGoogleAuth)) {
             return NextResponse.json(
                 { error: 'Missing required fields. Verification is mandatory.' },
                 { status: 400 }
@@ -105,7 +118,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Username already taken.' }, { status: 409 });
         }
 
-        const hashedPassword = await hashPassword(password);
+        const hashedPassword = isGoogleAuth ? undefined : await hashPassword(password);
 
         // Community Auto-Verification (Email Domain Match)
         const emailDomain = normalizedEmail.split('@')[1];
@@ -119,11 +132,11 @@ export async function POST(req: NextRequest) {
             name,
             username,
             email,
-            password: hashedPassword,
+            ...(hashedPassword && { password: hashedPassword }),
             role: 'user', // Default Role
             gender: 'none', // Default Gender
             isVerified: true,
-            authProvider: googleToken ? 'google' : 'email',
+            authProvider: isGoogleAuth ? 'google' : 'email',
             verifiedCommunities: verifiedCommunityIds,
             ...(verifiedGoogleId && { googleId: verifiedGoogleId })
         });

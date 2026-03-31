@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
 import { verifyPassword, generateToken } from '@/lib/auth';
+import { safeString } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
     try {
         await connectToDatabase();
 
-        const { identifier, password } = await req.json(); // identifier can be email or username
+        let { identifier, password } = await req.json(); // identifier can be email or username
+        identifier = safeString(identifier);
+        password = safeString(password);
 
         if (!identifier || !password) {
             return NextResponse.json(
@@ -31,7 +34,15 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const isValid = await verifyPassword(password, user.password!);
+        // If no password exists, it means this was a Google-only registration
+        if (!user.password) {
+            return NextResponse.json(
+                { error: 'No password set for this email. Please sign in with Google or Reset Password.' },
+                { status: 401 }
+            );
+        }
+
+        const isValid = await verifyPassword(password, user.password);
 
         if (!isValid) {
             return NextResponse.json(

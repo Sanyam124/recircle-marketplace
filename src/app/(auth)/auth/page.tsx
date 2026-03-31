@@ -7,12 +7,16 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function AuthPage() {
     // --- State ---
-    const [step, setStep] = useState<1 | 2 | 3>(1); // 1 = Email, 2 = Login, 3 = Register
+    const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1); // 1 = Email, 2 = Login, 3 = Register, 4 = Forgot (Email), 5 = Forgot (OTP), 6 = Forgot (New Password)
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    
+    // Recovery State
+    const [recoveryToken, setRecoveryToken] = useState('');
+    const [recoveryError, setRecoveryError] = useState('');
     
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +29,7 @@ export default function AuthPage() {
     const [emailVerified, setEmailVerified] = useState(false);
     const [emailToken, setEmailToken] = useState('');
     const [googleToken, setGoogleToken] = useState('');
+    const [userAuthProvider, setUserAuthProvider] = useState<'email' | 'google' | 'both' | null>(null);
     const [emailError, setEmailError] = useState('');
 
     const { login } = useAuth();
@@ -49,9 +54,17 @@ export default function AuthPage() {
                     callback: handleGoogleCallback,
                 });
                 const btn = document.getElementById('googleSignInBtn');
+                const btn2 = document.getElementById('googleSignInBtnStep2'); 
+                
                 if (btn) {
                     window.google.accounts.id.renderButton(
                         btn,
+                        { theme: 'outline', size: 'large', width: '100%' }
+                    );
+                }
+                if (btn2) {
+                    window.google.accounts.id.renderButton(
+                        btn2,
                         { theme: 'outline', size: 'large', width: '100%' }
                     );
                 }
@@ -63,7 +76,8 @@ export default function AuthPage() {
                 document.body.removeChild(script);
             } catch (e) {}
         }
-    }, [step]); // Re-render button if we go back to step 1
+    }, [step]); 
+
 
     const handleGoogleCallback = async (response: any) => {
         try {
@@ -143,9 +157,11 @@ export default function AuthPage() {
             const data = await res.json();
             
             if (data.exists) {
+                setUserAuthProvider(data.authProvider);
                 setStep(2); // Go to Login
-                // Focus password input on next tick
-                setTimeout(() => passwordInputRef.current?.focus(), 100);
+                if (data.authProvider === 'email') {
+                    setTimeout(() => passwordInputRef.current?.focus(), 100);
+                }
             } else {
                 setStep(3); // Go to Registration
             }
@@ -190,7 +206,7 @@ export default function AuthPage() {
             const res = await fetch('/api/auth/otp/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ target: email, type: 'email' })
+                body: JSON.stringify({ target: email, type: 'email', purpose: 'register' })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
@@ -236,7 +252,7 @@ export default function AuthPage() {
         e.preventDefault();
         setError('');
 
-        if (password !== confirmPassword) {
+        if (!googleToken && password !== confirmPassword) {
             setError('Passwords do not match');
             return;
         }
@@ -267,18 +283,99 @@ export default function AuthPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Registration failed');
 
-            // Auto-Verification trigger for Homepage Toast
             if (data.autoVerifiedCommunities && data.autoVerifiedCommunities.length > 0) {
                 sessionStorage.setItem('newVerification', data.autoVerifiedCommunities.join(', '));
             }
 
-            // Short delay to ensure Storage is written before page unmounts
             setTimeout(() => {
                 login(data.user);
                 router.push(redirectUrl);
             }, 100);
         } catch (err: any) {
             setError(err.message);
+            setIsLoading(false);
+        }
+    };
+
+    // --- Password Recovery Actions ---
+
+    const handleSendRecoveryOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setRecoveryError('');
+        try {
+            const res = await fetch('/api/auth/otp/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: email, type: 'email', purpose: 'reset' })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            setStep(5);
+            alert(`Recovery OTP sent to ${email}`);
+        } catch (err: any) {
+            setRecoveryError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleVerifyRecoveryOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setRecoveryError('');
+        try {
+            const res = await fetch('/api/auth/otp/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: email, otp: emailOtp, type: 'email' })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            setRecoveryToken(data.token);
+            setStep(6);
+        } catch (err: any) {
+            setRecoveryError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleResetPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setRecoveryError('');
+
+        if (password !== confirmPassword) {
+            setRecoveryError('Passwords do not match');
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    email: email.toLowerCase(), 
+                    verificationToken: recoveryToken, 
+                    newPassword: password 
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            alert(data.message);
+            setUserAuthProvider('both'); // [FIX] Update local state to show password login next
+            setError(''); // [FIX] Clear any previous error box (e.g., "No password set")
+            setStep(2); // Go back to Login
+            setPassword('');
+            setConfirmPassword('');
+        } catch (err: any) {
+            setRecoveryError(err.message);
+        } finally {
             setIsLoading(false);
         }
     };
@@ -293,12 +390,16 @@ export default function AuthPage() {
                 {/* Header Phase */}
                 <div className="text-center">
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white font-outfit">
-                        {step === 1 ? 'Welcome to ReCircle' : step === 2 ? 'Welcome back' : 'Create your account'}
+                        {step === 1 ? 'Welcome to ReCircle' : 
+                         step === 2 ? 'Welcome back' : 
+                         step === 3 ? 'Complete Your Profile' : 
+                         'Reset your password'}
                     </h2>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                         {step === 1 && 'Enter your email to sign in or create an account'}
-                        {step === 2 && 'Enter your password to sign in'}
-                        {step === 3 && 'Just a few more details to join the community'}
+                        {step === 2 && (userAuthProvider === 'google' ? 'Continue with your linked account' : 'Enter your password to sign in')}
+                        {step === 3 && 'Please provide a few details to finalize your account setup.'}
+                        {(step === 4 || step === 5 || step === 6) && 'Follow the steps to recover your access'}
                     </p>
                 </div>
 
@@ -350,38 +451,65 @@ export default function AuthPage() {
                     <form className="mt-8 space-y-6 animate-in slide-in-from-right-4 duration-300" onSubmit={handleLoginSubmit}>
                         <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-between items-center mb-6">
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate mr-4">{email}</span>
-                            <button type="button" onClick={() => {setStep(1); setPassword(''); setError('');}} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 uppercase shrink-0">Edit</button>
+                            <button type="button" onClick={() => {setStep(1); setPassword(''); setError(''); setUserAuthProvider(null);}} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 uppercase shrink-0">Edit</button>
                         </div>
 
-                        <div>
-                            <div className="flex justify-between items-center mb-1">
-                                <label htmlFor="password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                    Password
-                                </label>
+                        {userAuthProvider === 'google' ? (
+                            <div className="space-y-6">
+                                <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 rounded-xl p-4 text-center">
+                                    <p className="text-sm text-indigo-800 dark:text-indigo-300 font-bold mb-1">Google account exists</p>
+                                    <p className="text-xs text-indigo-600 dark:text-indigo-400">Please sign in using your Google account below.</p>
+                                </div>
+                                <div id="googleSignInBtnStep2" className="w-full"></div>
+                                <div className="text-center pt-2">
+                                    <button type="button" onClick={() => setUserAuthProvider('email')} className="text-xs text-gray-400 hover:text-indigo-600 dark:text-gray-500 dark:hover:text-indigo-400 font-medium uppercase tracking-wider transition-colors">
+                                        Back to Manual Login
+                                    </button>
+                                </div>
                             </div>
-                            <input
-                                id="password"
-                                type="password"
-                                required
-                                ref={passwordInputRef}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border transition-colors"
-                                placeholder="••••••••"
-                            />
-                        </div>
+                        ) : (
+                            <>
+                                <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label htmlFor="password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                            Password
+                                        </label>
+                                        <button type="button" onClick={() => setStep(4)} className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                                            Forgot Password?
+                                        </button>
+                                    </div>
+                                    <input
+                                        id="password"
+                                        type="password"
+                                        required
+                                        ref={passwordInputRef}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border transition-colors"
+                                        placeholder="••••••••"
+                                    />
+                                </div>
 
-                        {error && <div className="text-red-600 dark:text-red-400 text-sm py-2 px-3 rounded-lg bg-red-50 dark:bg-red-900/20">{error}</div>}
+                                {error && <div className="text-red-600 dark:text-red-400 text-sm py-2 px-3 rounded-lg bg-red-50 dark:bg-red-900/20">{error}</div>}
 
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className={`w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold tracking-wide text-white transition-all transform active:scale-[0.98] ${
-                                isLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
-                            }`}
-                        >
-                            {isLoading ? 'Signing in...' : 'Sign In'}
-                        </button>
+                                <button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className={`w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold tracking-wide text-white transition-all transform active:scale-[0.98] ${
+                                        isLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
+                                    }`}
+                                >
+                                    {isLoading ? 'Signing in...' : 'Sign In'}
+                                </button>
+
+                                {userAuthProvider === 'both' && (
+                                    <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                                        <p className="text-center text-xs text-gray-500 mb-4 italic">or use your Google account</p>
+                                        <div id="googleSignInBtnStep2" className="w-full"></div>
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </form>
                 )}
 
@@ -399,7 +527,7 @@ export default function AuthPage() {
 
                         {!emailVerified && (
                            <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 rounded-xl p-4">
-                               <p className="text-xs text-indigo-800 dark:text-indigo-300 mb-3 font-medium">Please verify your email to create an account.</p>
+                               <p className="text-xs text-indigo-800 dark:text-indigo-300 mb-3 font-medium">Confirm your email to complete your registration.</p>
                                {!emailOtpSent ? (
                                    <button type="button" onClick={sendOtp} disabled={isLoading} className="w-full bg-indigo-600 text-white text-sm font-bold py-2 rounded-lg hover:bg-indigo-700 transition">Send Verification Code</button>
                                ) : (
@@ -437,20 +565,22 @@ export default function AuthPage() {
                                 <p className="mt-1.5 text-[10px] text-gray-500 dark:text-gray-400 font-medium">3-20 chars, lowercase alphanumeric, underscores, dots.</p>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                                    <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                                        className="block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border" />
+                            {!googleToken && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                                        <input type="password" required={!googleToken} value={password} onChange={(e) => setPassword(e.target.value)}
+                                            className="block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Confirm</label>
+                                        <input type="password" required={!googleToken} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                                            className={`block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border ${
+                                                confirmPassword && password === confirmPassword ? 'border-green-500' : confirmPassword ? 'border-red-400' : ''
+                                            }`} />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Confirm</label>
-                                    <input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className={`block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border ${
-                                            confirmPassword && password === confirmPassword ? 'border-green-500' : confirmPassword ? 'border-red-400' : ''
-                                        }`} />
-                                </div>
-                            </div>
+                            )}
                         </div>
 
                         {error && <div className="text-red-600 dark:text-red-400 text-sm py-2 px-3 rounded-lg bg-red-50 dark:bg-red-900/20 mt-4">{error}</div>}
@@ -463,6 +593,61 @@ export default function AuthPage() {
                             }`}
                         >
                             {isLoading ? 'Creating Account...' : 'Sign Up'}
+                        </button>
+                    </form>
+                )}
+
+                {/* --- Step 4: Forgot Password (Email) --- */}
+                {step === 4 && (
+                    <form className="mt-8 space-y-6 animate-in slide-in-from-right-4 duration-300" onSubmit={handleSendRecoveryOtp}>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Verify Email for Recovery</label>
+                            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                                className="block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:ring-indigo-500 sm:text-sm px-4 py-3 border"
+                                placeholder="you@example.com" />
+                        </div>
+                        {recoveryError && <p className="text-xs text-red-500 font-bold">{recoveryError}</p>}
+                        <button type="submit" disabled={isLoading} className="w-full flex justify-center py-3 px-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition">
+                            {isLoading ? 'Sending...' : 'Send Recovery Code'}
+                        </button>
+                        <button type="button" onClick={() => setStep(2)} className="w-full text-xs text-gray-500 font-bold uppercase tracking-widest">Back to Login</button>
+                    </form>
+                )}
+
+                {/* --- Step 5: Forgot Password (OTP) --- */}
+                {step === 5 && (
+                    <form className="mt-8 space-y-6 animate-in slide-in-from-right-4 duration-300" onSubmit={handleVerifyRecoveryOtp}>
+                        <div className="text-center">
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Enter the code sent to <b>{email}</b></p>
+                            <input type="text" maxLength={6} required value={emailOtp} onChange={(e) => setEmailOtp(e.target.value)}
+                                className="block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-2xl font-bold text-center tracking-[1rem] py-4 border mb-6"
+                                placeholder="000000" />
+                        </div>
+                        {recoveryError && <p className="text-xs text-red-500 font-bold">{recoveryError}</p>}
+                        <button type="submit" disabled={isLoading} className="w-full flex justify-center py-3 px-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition">
+                            {isLoading ? 'Verifying...' : 'Verify Code'}
+                        </button>
+                    </form>
+                )}
+
+                {/* --- Step 6: Forgot Password (New Password) --- */}
+                {step === 6 && (
+                    <form className="mt-8 space-y-6 animate-in slide-in-from-right-4 duration-300" onSubmit={handleResetPassword}>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">New Password</label>
+                                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                                    className="block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:ring-indigo-500 sm:text-sm px-4 py-3 border" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Confirm New Password</label>
+                                <input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className="block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:ring-indigo-500 sm:text-sm px-4 py-3 border" />
+                            </div>
+                        </div>
+                        {recoveryError && <p className="text-xs text-red-500 font-bold">{recoveryError}</p>}
+                        <button type="submit" disabled={isLoading} className="w-full flex justify-center py-3 px-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition">
+                            {isLoading ? 'Resetting...' : 'Set New Password'}
                         </button>
                     </form>
                 )}

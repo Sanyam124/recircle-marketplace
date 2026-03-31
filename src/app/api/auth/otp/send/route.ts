@@ -7,21 +7,26 @@ import { hashPassword } from '@/lib/auth';
 export async function POST(req: NextRequest) {
     try {
         await connectToDatabase();
-        const { target, type } = await req.json();
+        const { target, type, purpose } = await req.json(); // [NEW] Added 'purpose'
 
         if (!target || !type) {
             return NextResponse.json({ error: 'Missing target or type' }, { status: 400 });
         }
 
-        // 1. Check Uniqueness
+        // 1. Check Purpose and Uniqueness
         if (type !== 'email') {
             return NextResponse.json({ error: 'Only email verification is supported' }, { status: 400 });
         }
 
         const existingUser = await User.findOne({ email: target });
-        if (existingUser) {
-            // Allow re-verification if user exists but is NOT verified
-            if (existingUser.isVerified) {
+        
+        if (purpose === 'reset') {
+            if (!existingUser) {
+                return NextResponse.json({ error: 'No account found with this email' }, { status: 404 });
+            }
+        } else {
+            // Default: Registration Purpose
+            if (existingUser && existingUser.isVerified) {
                 return NextResponse.json(
                     { error: 'Email is already registered.' },
                     { status: 409 }

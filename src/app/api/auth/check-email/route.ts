@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
         if (user) {
             return NextResponse.json(
-                { exists: true, message: 'Email found' },
+                { exists: true, message: 'Email found', authProvider: user.authProvider },
                 { status: 200 }
             );
         } else {

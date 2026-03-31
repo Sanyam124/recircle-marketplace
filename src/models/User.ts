@@ -22,7 +22,7 @@ export interface IUser extends Document {
     wishlistedServices: mongoose.Types.ObjectId[];
     blockedUsers: mongoose.Types.ObjectId[]; // [NEW] For Block feature
     verifiedCommunities: mongoose.Types.ObjectId[]; // [NEW] Circles Feature: Permanent verified Residents
-    authProvider: 'email' | 'google';
+    authProvider: 'email' | 'google' | 'both';
     googleId?: string;
     otp?: string;
     otpExpiry?: Date;
@@ -64,7 +64,7 @@ const UserSchema: Schema<IUser> = new Schema(
         wishlistedServices: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Service' }],
         blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         verifiedCommunities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Community' }],
-        authProvider: { type: String, enum: ['email', 'google'], default: 'email' },
+        authProvider: { type: String, enum: ['email', 'google', 'both'], default: 'email' },
         googleId: { type: String, unique: true, sparse: true },
         otp: { type: String, select: false },
         otpExpiry: { type: Date, select: false },
@@ -82,8 +82,10 @@ if (mongoose.models.User) {
     const isOldBioLimit = bioPath?.options?.maxlength === 300;
     const rolePath = currentSchema.path('role') as any;
     const isOldRoleEnum = !rolePath?.options?.enum?.includes('verifier');
+    const authProviderPath = currentSchema.path('authProvider') as any;
+    const isOldAuthProviderEnum = !authProviderPath?.options?.enum?.includes('both');
 
-    if (isOldRoleEnum || isOldBioLimit || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('verifiedCommunities') || !currentSchema.path('status') || !currentSchema.path('authProvider') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || (currentSchema.path('address') as any)?.options?.maxlength !== 150 || !currentSchema.path('isOnVacation')) {
+    if (isOldRoleEnum || isOldBioLimit || isOldAuthProviderEnum || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('verifiedCommunities') || !currentSchema.path('status') || !currentSchema.path('authProvider') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || (currentSchema.path('address') as any)?.options?.maxlength !== 150 || !currentSchema.path('isOnVacation')) {
         delete mongoose.models.User;
     }
 }

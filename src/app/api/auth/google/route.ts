@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
         // Search for user by either email OR googleId
         let user = await User.findOne({
             $or: [{ email }, { googleId }]
-        });
+        }).select('+password');
 
         if (!user) {
             // New user: Return data for auto-fill in register page
@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
         // Link Google ID if user exists by email but hasn't linked Google yet
         if (!user.googleId) {
             user.googleId = googleId;
-            user.authProvider = 'google';
+            // They are a "both" user if they have a password, otherwise "google"
+            user.authProvider = user.password ? 'both' : 'google';
             user.isVerified = true;
             await user.save();
         }
