@@ -3,6 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
 import { generateToken } from '@/lib/auth';
+import { siteConfig } from '@/lib/config';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -41,6 +42,23 @@ export async function POST(req: NextRequest) {
                     googleId
                 }
             }, { status: 200 });
+        }
+
+        // Block banned users from logging in via Google (auto-unban if expired)
+        if (user.status === 'Banned') {
+            if (user.bannedUntil && new Date() > new Date(user.bannedUntil)) {
+                user.status = 'Active';
+                user.bannedUntil = undefined;
+                await user.save();
+            } else {
+                const expiryMsg = user.bannedUntil 
+                    ? ` Your ban expires on ${new Date(user.bannedUntil).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}.`
+                    : '';
+                return NextResponse.json(
+                    { error: `Your account has been banned.${expiryMsg} To appeal, contact ${siteConfig.supportEmail}` },
+                    { status: 403 }
+                );
+            }
         }
 
         // Link Google ID if user exists by email but hasn't linked Google yet

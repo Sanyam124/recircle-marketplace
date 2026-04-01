@@ -38,6 +38,20 @@ export async function GET(req: NextRequest) {
             );
         }
 
+        // Force-logout banned users by destroying their session (auto-unban if expired)
+        if (user.status === 'Banned') {
+            if (user.bannedUntil && new Date() > new Date(user.bannedUntil)) {
+                // Ban expired — auto-unban silently
+                user.status = 'Active';
+                user.bannedUntil = undefined;
+                await user.save();
+            } else {
+                const res = NextResponse.json({ error: 'Account banned' }, { status: 401 });
+                res.cookies.set('token', '', { maxAge: 0, path: '/' });
+                return res;
+            }
+        }
+
         return NextResponse.json(
             {
                 user: {
@@ -55,7 +69,8 @@ export async function GET(req: NextRequest) {
                     usernameChangeCount: user.usernameChangeCount || 0,
                     authProvider: user.authProvider,
                     blockedUsers: user.blockedUsers || [],
-                    verifiedCommunities: user.verifiedCommunities || []
+                    verifiedCommunities: user.verifiedCommunities || [],
+                    status: user.status
                 }
             },
             { status: 200 }

@@ -3,6 +3,7 @@ import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
 import { verifyPassword, generateToken } from '@/lib/auth';
 import { safeString } from '@/lib/utils';
+import { siteConfig } from '@/lib/config';
 
 export async function POST(req: NextRequest) {
     try {
@@ -32,6 +33,24 @@ export async function POST(req: NextRequest) {
                 { error: 'Invalid credentials' },
                 { status: 401 }
             );
+        }
+
+        // Block banned users from logging in (auto-unban if expired)
+        if (user.status === 'Banned') {
+            if (user.bannedUntil && new Date() > new Date(user.bannedUntil)) {
+                // Ban expired — auto-unban
+                user.status = 'Active';
+                user.bannedUntil = undefined;
+                await user.save();
+            } else {
+                const expiryMsg = user.bannedUntil 
+                    ? ` Your ban expires on ${new Date(user.bannedUntil).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}.`
+                    : '';
+                return NextResponse.json(
+                    { error: `Your account has been banned.${expiryMsg} To appeal, contact ${siteConfig.supportEmail}` },
+                    { status: 403 }
+                );
+            }
         }
 
         // If no password exists, it means this was a Google-only registration

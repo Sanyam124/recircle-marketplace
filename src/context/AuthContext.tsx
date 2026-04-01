@@ -20,6 +20,7 @@ interface User {
   isOnVacation?: boolean;
   blockedUsers?: string[];
   verifiedCommunities?: any[];
+  status?: string;
 }
 
 interface AuthContextType {

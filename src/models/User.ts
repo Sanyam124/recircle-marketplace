@@ -15,6 +15,7 @@ export interface IUser extends Document {
     isPhoneVerified: boolean; // [NEW] Level 2 verification
     allowPhoneContact?: boolean; // [NEW] Privacy toggle
     status: 'Active' | 'Banned' | 'Deactivated'; // [NEW] Admin status
+    bannedUntil?: Date; // [NEW] Auto-expiry for timed bans
     gender?: 'male' | 'female' | 'other' | 'none';
     allowEmailContact?: boolean;
     isOnVacation: boolean;
@@ -56,6 +57,7 @@ const UserSchema: Schema<IUser> = new Schema(
         isPhoneVerified: { type: Boolean, default: false },
         allowPhoneContact: { type: Boolean, default: false },
         status: { type: String, enum: ['Active', 'Banned', 'Deactivated'], default: 'Active' },
+        bannedUntil: { type: Date },
         role: { type: String, enum: ['user', 'admin', 'verifier'], default: 'user' },
         address: { type: String, trim: true, maxlength: 150 },
         isVerified: { type: Boolean, default: false },
@@ -85,7 +87,7 @@ if (mongoose.models.User) {
     const authProviderPath = currentSchema.path('authProvider') as any;
     const isOldAuthProviderEnum = !authProviderPath?.options?.enum?.includes('both');
 
-    if (isOldRoleEnum || isOldBioLimit || isOldAuthProviderEnum || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('verifiedCommunities') || !currentSchema.path('status') || !currentSchema.path('authProvider') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || (currentSchema.path('address') as any)?.options?.maxlength !== 150 || !currentSchema.path('isOnVacation')) {
+    if (isOldRoleEnum || isOldBioLimit || isOldAuthProviderEnum || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('verifiedCommunities') || !currentSchema.path('status') || !currentSchema.path('bannedUntil') || !currentSchema.path('authProvider') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || (currentSchema.path('address') as any)?.options?.maxlength !== 150 || !currentSchema.path('isOnVacation')) {
         delete mongoose.models.User;
     }
 }

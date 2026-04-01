@@ -396,7 +396,7 @@ export default function AuthPage() {
                          'Reset your password'}
                     </h2>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        {step === 1 && 'Enter your email to sign in or create an account'}
+                        {step === 1 && 'Enter your email to sign in or get started'}
                         {step === 2 && (userAuthProvider === 'google' ? 'Continue with your linked account' : 'Enter your password to sign in')}
                         {step === 3 && 'Please provide a few details to finalize your account setup.'}
                         {(step === 4 || step === 5 || step === 6) && 'Follow the steps to recover your access'}
