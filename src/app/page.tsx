@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import StartEarningModal from "@/components/StartEarningModal";
 import { getIcon } from "@/components/Icons";
+import { siteConfig } from "@/lib/config";
 
 function CategoryGrid({ 
   title, subtitle, categories, baseUrl 
@@ -71,48 +72,48 @@ export default function Home() {
           />
         </div>
         
-        <div className="py-24 sm:py-32 lg:pb-40">
+        <div className="py-20 sm:py-32 lg:pb-40 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mx-auto max-w-3xl text-center">
-              <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-6xl transition-colors">
+            <div className="mx-auto max-w-4xl text-center">
+              <h1 className="text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-800 to-indigo-900 dark:from-white dark:via-gray-100 dark:to-indigo-300 sm:text-7xl transition-colors leading-[1.1] pb-2 drop-shadow-sm">
                 The Student's Marketplace.
-                <span className="block text-indigo-600 dark:text-indigo-400 mt-2 hover:text-indigo-500 transition-colors">Buy. Sell. Freelance.</span>
+                <span className="block mt-3 text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">Buy. Sell. Freelance.</span>
               </h1>
-              <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300 transition-colors">
-                ReCircle is the open community platform for students to securely trade essentials and offer freelance services. 
-                Say goodbye to platform fees and hello to direct student connections.
+              <p className="mt-8 text-lg sm:text-xl leading-8 text-gray-600 dark:text-gray-300 transition-colors max-w-2xl mx-auto font-medium">
+                ReCircle is the open community platform for students to securely trade essentials and offer freelance skills. 
+                Keep 100% of your earnings with zero platform fees.
               </p>
               
-              <div className="mt-10 flex items-center justify-center gap-x-6">
+              <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
                 <Link
                   href="/explore"
-                  className="rounded-full bg-indigo-600 px-8 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all hover:scale-105"
+                  className="w-full sm:w-auto rounded-2xl bg-indigo-600 px-8 py-4 text-base font-bold text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 hover:shadow-indigo-500/50 transition-all hover:scale-105 active:scale-95"
                 >
-                  Start Exploring
+                  Start Exploring 🔍
                 </Link>
                 <button
                   onClick={handleStartEarning}
-                  className="text-sm font-semibold leading-6 text-gray-900 dark:text-white flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                  className="w-full sm:w-auto rounded-2xl bg-white dark:bg-gray-800/80 px-8 py-4 text-base font-bold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all hover:scale-105 active:scale-95 cursor-pointer flex justify-center items-center gap-2 group"
                 >
-                  Start Earning <span aria-hidden="true">→</span>
+                  Start Earning ✨ <span aria-hidden="true" className="group-hover:translate-x-1 transition-transform">→</span>
                 </button>
               </div>
             </div>
             
             {/* Trust Banner - Qualitative */}
-            <div className="mt-16 sm:mt-24 border-y border-gray-100 dark:border-gray-800 py-8 bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-2xl transition-colors">
-              <dl className="grid grid-cols-1 gap-x-8 gap-y-12 text-center lg:grid-cols-3">
-                <div className="mx-auto flex max-w-sm flex-col gap-y-2 px-6">
-                  <dt className="text-base leading-7 text-gray-500 dark:text-gray-400">Keep 100% of your earnings. No hidden charges or listing fees for buyers, sellers, or freelancers.</dt>
-                  <dd className="order-first text-xl font-semibold tracking-tight text-gray-900 dark:text-white mb-2">Zero Platform Fees</dd>
+            <div className="mt-16 sm:mt-24">
+              <dl className="grid grid-cols-1 gap-4 text-center lg:grid-cols-3">
+                <div className="mx-auto flex max-w-sm flex-col gap-y-2 px-8 py-10 bg-white/40 dark:bg-gray-800/40 backdrop-blur-md rounded-3xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:bg-white/60 dark:hover:bg-gray-800/60 transition-colors">
+                  <dd className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">💸 Zero Platform Fees</dd>
+                  <dt className="text-sm font-medium leading-relaxed text-gray-600 dark:text-gray-400">Keep 100% of your earnings. No hidden charges or listing fees for buyers, sellers, or freelancers.</dt>
                 </div>
-                <div className="mx-auto flex max-w-sm flex-col gap-y-2 px-6 lg:border-x lg:border-gray-200 dark:lg:border-gray-800">
-                  <dt className="text-base leading-7 text-gray-500 dark:text-gray-400">Negotiate, meet up on campus, and exchange goods or services directly without middlemen.</dt>
-                  <dd className="order-first text-xl font-semibold tracking-tight text-gray-900 dark:text-white mb-2">Direct Peer-to-Peer</dd>
+                <div className="mx-auto flex max-w-sm flex-col gap-y-2 px-8 py-10 bg-white/40 dark:bg-gray-800/40 backdrop-blur-md rounded-3xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:bg-white/60 dark:hover:bg-gray-800/60 transition-colors">
+                  <dd className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">🤝 Direct Peer-to-Peer</dd>
+                  <dt className="text-sm font-medium leading-relaxed text-gray-600 dark:text-gray-400">Negotiate, meet up on campus, and exchange goods or services directly without middlemen.</dt>
                 </div>
-                <div className="mx-auto flex max-w-sm flex-col gap-y-2 px-6">
-                  <dt className="text-base leading-7 text-gray-500 dark:text-gray-400">Built exclusively for students to easily exchange textbooks, sell essentials, and offer freelance skills locally.</dt>
-                  <dd className="order-first text-xl font-semibold tracking-tight text-gray-900 dark:text-white mb-2">Campus Focused</dd>
+                <div className="mx-auto flex max-w-sm flex-col gap-y-2 px-8 py-10 bg-white/40 dark:bg-gray-800/40 backdrop-blur-md rounded-3xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:bg-white/60 dark:hover:bg-gray-800/60 transition-colors">
+                  <dd className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">🎓 Campus Focused</dd>
+                  <dt className="text-sm font-medium leading-relaxed text-gray-600 dark:text-gray-400">Built exclusively for students to easily exchange textbooks, sell essentials, and offer skills locally.</dt>
                 </div>
               </dl>
             </div>
@@ -240,21 +241,21 @@ export default function Home() {
                     {/* Connecting Line (Desktop) */}
                     <div className="hidden md:block absolute top-8 left-[16%] right-[16%] h-0.5 bg-indigo-100 dark:bg-indigo-900/50 -z-10" />
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-                        <div className="relative bg-white dark:bg-gray-900 transition-colors pt-4">
-                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-2xl font-bold text-white shadow-lg mb-6 ring-8 ring-white dark:ring-gray-900">1</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center relative z-10">
+                        <div className="group relative bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm transition-all hover:-translate-y-2 hover:shadow-2xl rounded-3xl p-8 border border-gray-100 dark:border-gray-700">
+                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-2xl font-bold text-white shadow-lg mb-6 ring-8 ring-indigo-50 dark:ring-indigo-900/30 group-hover:bg-indigo-500 transition-colors">1</div>
                             <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">Post or Discover</h3>
-                            <p className="text-gray-600 dark:text-gray-400 px-4">Snap photos to list your items or define your freelance service instantly. Or, explore what other students are offering nearby.</p>
+                            <p className="text-gray-600 dark:text-gray-400">Snap photos to list your items or define your freelance service instantly. Or, explore what other students are offering nearby.</p>
                         </div>
-                        <div className="relative bg-white dark:bg-gray-900 transition-colors pt-4">
-                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-2xl font-bold text-white shadow-lg mb-6 ring-8 ring-white dark:ring-gray-900">2</div>
+                        <div className="group relative bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm transition-all hover:-translate-y-2 hover:shadow-2xl rounded-3xl p-8 border border-gray-100 dark:border-gray-700">
+                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-2xl font-bold text-white shadow-lg mb-6 ring-8 ring-indigo-50 dark:ring-indigo-900/30 group-hover:bg-indigo-500 transition-colors">2</div>
                             <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">Chat & Negotiate</h3>
-                            <p className="text-gray-600 dark:text-gray-400 px-4">Use our real-time messenger to ask questions, discuss gig details, send offers, and agree on a fair rate directly.</p>
+                            <p className="text-gray-600 dark:text-gray-400">Use our real-time messenger to ask questions, discuss gig details, send offers, and agree on a fair rate directly.</p>
                         </div>
-                        <div className="relative bg-white dark:bg-gray-900 transition-colors pt-4">
-                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-2xl font-bold text-white shadow-lg mb-6 ring-8 ring-white dark:ring-gray-900">3</div>
+                        <div className="group relative bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm transition-all hover:-translate-y-2 hover:shadow-2xl rounded-3xl p-8 border border-gray-100 dark:border-gray-700">
+                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-2xl font-bold text-white shadow-lg mb-6 ring-8 ring-indigo-50 dark:ring-indigo-900/30 group-hover:bg-indigo-500 transition-colors">3</div>
                             <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">Meet & Complete</h3>
-                            <p className="text-gray-600 dark:text-gray-400 px-4">Arrange a safe meetup spot on campus to inspect the item or finalize the service, and complete your secure exchange.</p>
+                            <p className="text-gray-600 dark:text-gray-400">Arrange a safe meetup spot on campus to inspect the item or finalize the service, and complete your secure exchange.</p>
                         </div>
                     </div>
                 </div>
@@ -290,10 +291,10 @@ export default function Home() {
                         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 text-center group hover:bg-white/20 transition-all cursor-default shadow-lg">
                             <p className="text-indigo-100 mb-2 font-medium tracking-wide uppercase text-xs">Direct Support</p>
                             <a 
-                                href="mailto:sanyam.sharma.work@gmail.com" 
+                                href={`mailto:${siteConfig.supportEmail}`} 
                                 className="text-xl sm:text-2xl font-black text-white hover:text-indigo-200 transition-colors break-all underline decoration-2 underline-offset-8 decoration-white/30"
                             >
-                                sanyam.sharma.work@gmail.com
+                                {siteConfig.supportEmail}
                             </a>
                         </div>
                     </div>
