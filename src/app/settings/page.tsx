@@ -7,6 +7,7 @@ import { useTheme } from 'next-themes';
 import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
 import CommunityManager from '@/components/CommunityManager';
+import { siteConfig } from '@/lib/config';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -308,7 +309,7 @@ export default function SettingsPage() {
           <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Help & Support</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Need assistance or want to report an issue? Contact the administration team directly.</p>
           <a
-            href="mailto:sanyam.sharma.work@gmail.com?subject=Support%20Request%20-%20ReCircle"
+            href={`mailto:${siteConfig.supportEmail}?subject=Support%20Request%20-%20ReCircle`}
             className="inline-flex items-center justify-center px-5 py-2.5 border border-indigo-200 dark:border-indigo-800 text-sm font-bold rounded-xl text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 shadow-sm transition-all active:scale-95 gap-2"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

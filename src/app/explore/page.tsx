@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ExploreSidebar, { ExploreFilters } from '@/components/ExploreSidebar';
 import ProductCard from '@/components/ProductCard';
@@ -34,11 +35,8 @@ export default function ExplorePage() {
   const initialFilters = useMemo(() => getInitialFilters(), [searchParams]);
   const initialPage = useMemo(() => parseInt(searchParams.get('page') || '1'), [searchParams]);
 
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [cols, setCols] = useState<3 | 4 | 5>(3);
   const [page, setPage] = useState(initialPage);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
 
   const [filters, setFilters] = useState<ExploreFilters>(initialFilters);
   const isFirstRender = useRef(true);
@@ -108,42 +106,36 @@ export default function ExplorePage() {
     router.push(url, { scroll: false });
   }, [filters, page]); // Only sync when internal filters or page change
 
-  const fetchItems = useCallback(async (currentFilters: ExploreFilters, currentPage: number) => {
-    try {
-      setLoading(true);
+  const fetcher = (url: string) => fetch(url).then(res => res.json());
+
+  const getQueryUrl = () => {
       const params = new URLSearchParams();
-
-      if (currentFilters.search) params.append('search', currentFilters.search);
-      if (currentFilters.type !== 'all') params.append('type', currentFilters.type);
-      if (currentFilters.sort) params.append('sort', currentFilters.sort);
-      if (currentFilters.minPrice) params.append('minPrice', currentFilters.minPrice);
-      if (currentFilters.maxPrice) params.append('maxPrice', currentFilters.maxPrice);
-      if (currentFilters.communityFilter !== 'All') params.append('communityFilter', currentFilters.communityFilter);
-      if (currentFilters.city) params.append('city', currentFilters.city);
+      if (filters.search) params.append('search', filters.search);
+      if (filters.type !== 'all') params.append('type', filters.type);
+      if (filters.sort) params.append('sort', filters.sort);
+      if (filters.minPrice) params.append('minPrice', filters.minPrice);
+      if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
+      if (filters.communityFilter !== 'All') params.append('communityFilter', filters.communityFilter);
+      if (filters.city) params.append('city', filters.city);
       
-      currentFilters.categories.forEach(c => params.append('categories[]', c));
-      currentFilters.conditions.forEach(c => params.append('conditions[]', c));
+      filters.categories.forEach(c => params.append('categories[]', c));
+      filters.conditions.forEach(c => params.append('conditions[]', c));
       
-      params.append('page', currentPage.toString());
+      params.append('page', page.toString());
       params.append('limit', '20');
+      return `/api/explore?${params.toString()}`;
+  };
 
-      const res = await fetch(`/api/explore?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data.items);
-        setTotalPages(data.pagination.totalPages);
-        setTotalItems(data.pagination.totalItems);
-      }
-    } catch (error) {
-      console.error('Failed to fetch explore items', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isLoading, isValidating } = useSWR(getQueryUrl(), fetcher, { 
+    keepPreviousData: true,
+    revalidateOnFocus: false
+  });
 
-  useEffect(() => {
-    fetchItems(filters, page);
-  }, [filters, page, fetchItems]);
+  const loading = !data && isLoading; 
+  const isFetchingFiltered = isValidating && data; 
+  const items = data?.items || [];
+  const totalPages = data?.pagination?.totalPages || 1;
+  const totalItems = data?.pagination?.totalItems || 0;
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -167,7 +159,7 @@ export default function ExplorePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Header */}
         <div className="mb-6 flex flex-col md:flex-row justify-between md:items-end gap-4">
@@ -192,18 +184,23 @@ export default function ExplorePage() {
           {/* Main Content */}
           <div className="flex-1">
             
-            {/* Results Info */}
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6 flex justify-between items-center transition-colors">
+            {/* Results Info and Controls */}
+            <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6 flex justify-between items-center transition-colors">
               <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">
-                {loading ? 'Searching...' : `Found ${totalItems} ${filters.type === 'all' ? 'items' : filters.type}`}
+                {isFetchingFiltered ? 'Updating...' : loading ? 'Searching...' : `Found ${totalItems} ${filters.type === 'all' ? 'items' : filters.type}`}
               </p>
+              
+              <div className="hidden sm:flex items-center gap-1 bg-gray-50 dark:bg-gray-900 overflow-hidden p-1 rounded-lg border border-gray-200 dark:border-gray-700">
+                 <button onClick={() => setCols(3)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 3 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>3 Wide</button>
+                 <button onClick={() => setCols(4)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 4 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>4 Wide</button>
+                 <button onClick={() => setCols(5)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 5 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>5 Wide</button>
+              </div>
             </div>
 
-            {/* Grid */}
             {loading ? (
               <div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 py-12 transition-colors">
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
-                    {[...Array(6)].map((_, i) => <ItemCardSkeleton key={i} />)}
+                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
+                    {[...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)}
                 </div>
               </div>
             ) : items.length === 0 ? (
@@ -222,8 +219,8 @@ export default function ExplorePage() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
-                  {items.map(item => (
+                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
+                  {items.map((item: any) => (
                     item.itemType === 'product' 
                       ? <ProductCard key={`prod-${item._id}`} product={item} />
                       : <ServiceCard key={`serv-${item._id}`} service={item} />

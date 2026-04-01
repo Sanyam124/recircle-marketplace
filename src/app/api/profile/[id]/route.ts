@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
+import Community from '@/models/Community';
 import Product from '@/models/Product';
 import Service from '@/models/Service';
 import Review from '@/models/Review';
@@ -33,7 +34,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
         const user = await User.findById(id)
             .select('name username email profilePicture gender createdAt role bio isVerified allowEmailContact authProvider isPhoneVerified phone allowPhoneContact address isOnVacation blockedUsers verifiedCommunities')
-            .populate('verifiedCommunities', 'name image isActive');
+            .populate('verifiedCommunities', 'name image isActive')
+            .lean();
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
@@ -77,7 +79,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             .populate('community', 'name')
             .sort({ createdAt: -1 })
             .skip(productSkip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         // Services: public shows only Active; owner sees all
         const [totalServicesActive, totalServicesInactive, totalEnrollments] = await Promise.all([
@@ -95,7 +98,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             .populate('community', 'name')
             .sort({ createdAt: -1 })
             .skip(serviceSkip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         // Efficient Unified "All" View using Aggregation
         const allItemsPipeline: any[] = [
@@ -131,7 +135,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                                 seller: { $ifNull: ['$ownerObj', { _id: objectId, name: user.name }] },
                                 provider: { $ifNull: ['$ownerObj', { _id: objectId, name: user.name }] }
                             }
-                        }
+                        },
+                        {
+                            $lookup: {
+                                from: 'communities',
+                                localField: 'community',
+                                foreignField: '_id',
+                                as: 'communityObj'
+                            }
+                        },
+                        { $unwind: { path: '$communityObj', preserveNullAndEmptyArrays: true } },
+                        {
+                            $addFields: {
+                                community: {
+                                    $cond: {
+                                        if: { $ifNull: ['$communityObj._id', false] },
+                                        then: { _id: '$communityObj._id', name: '$communityObj.name' },
+                                        else: '$$REMOVE'
+                                    }
+                                }
+                            }
+                        },
+                        { $project: { communityObj: 0 } }
                     ]
                 }
             }

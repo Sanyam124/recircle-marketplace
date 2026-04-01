@@ -61,6 +61,7 @@ export default function ProductCard({
     }
   }
   const isInternal = communityId ? userCommunityIds.includes(communityId) : false;
+  const isCampusOwned = !!communityId || product.visibility === 'Community';
 
   useEffect(() => {
     if (user && user.wishlist) {
@@ -139,8 +140,8 @@ export default function ProductCard({
         </div>
       </div>
       
-      <div className="p-2 sm:p-4 relative z-10 pointer-events-none">
-        <div className="flex justify-between items-start">
+      <div className="p-2 sm:p-4 relative z-10 pointer-events-none flex flex-col flex-1">
+        <div className="flex justify-between items-start flex-1 mb-auto">
           <div className="w-full min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-3 mb-1 sm:mb-2">
                 <Link href={`/profile/${product.seller._id}`} className="shrink-0 pointer-events-auto">
@@ -163,13 +164,13 @@ export default function ProductCard({
                     {product.seller?.name}
                 </Link>
             </div>
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1 min-h-[1.4em]">{product.title}</h3>
+            <h3 className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2 min-h-[2.8em]">{product.title}</h3>
             <div className="mt-0.5 sm:mt-1 flex items-start justify-between text-sm text-gray-500 dark:text-gray-400 gap-2">
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 min-h-[3.6em] sm:min-h-[4.5em]">
                 <ExpandableText 
                   text={product.description || ''} 
-                  maxLines={1} 
-                  className="text-[10px] sm:text-[11px] leading-tight sm:leading-normal min-h-[1.2em] sm:min-h-[3em]" 
+                  maxLines={3} 
+                  className="text-[10px] sm:text-[12px] leading-tight sm:leading-relaxed text-gray-500 dark:text-gray-400" 
                   showReadMore={false} 
                 />
               </div>
@@ -186,7 +187,8 @@ export default function ProductCard({
           </div>
         </div>
         
-        <div className="mt-2 sm:mt-3 flex items-center justify-between">
+        <div className="flex flex-col mt-auto shrink-0">
+          <div className="pt-2 sm:pt-3 flex items-center justify-between">
            <div className="flex flex-col">
                <span className="text-base sm:text-lg font-bold text-indigo-600 dark:text-indigo-400">₹{product.price}</span>
                <span className="text-[9px] sm:text-[10px] text-gray-400 dark:text-gray-500 font-medium">{formatTimeAgo(product.createdAt)}</span>
@@ -197,25 +199,23 @@ export default function ProductCard({
         </div>
 
         {/* Origin Metadata Footer */}
-        {(communityName || product.location?.city) && (
-          <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between text-[8px] sm:text-[11px] font-semibold transition-colors">
-            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-              {isInternal ? (
-                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg ring-1 ring-inset ring-emerald-500/10">
-                  <span className="uppercase tracking-tight">Campus</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-lg ring-1 ring-inset ring-gray-400/10">
-                  <span className="uppercase tracking-tight">Public</span>
-                </div>
-              )}
-            </div>
-            
-            <span className="text-gray-400 dark:text-gray-500 truncate max-w-[60px] sm:max-w-[120px]">
-              {isInternal ? communityName : (product.location?.city ? product.location.city : (communityName || 'Campus'))}
-            </span>
+        <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between text-[8px] sm:text-[11px] font-semibold transition-colors">
+          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+            {isCampusOwned ? (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg ring-1 ring-inset ring-emerald-500/10">
+                <span className="uppercase tracking-tight">Campus</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-lg ring-1 ring-inset ring-gray-400/10">
+                <span className="uppercase tracking-tight">Public</span>
+              </div>
+            )}
           </div>
-        )}
+          
+          <span className="text-gray-400 dark:text-gray-500 truncate max-w-[60px] sm:max-w-[120px]">
+            {isCampusOwned ? (communityName || 'Campus') : (product.location?.city || 'Public')}
+          </span>
+        </div>
         {/* Owner action bar */}
         {isOwner && (
           <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex gap-2 relative z-20 pointer-events-auto">
@@ -223,30 +223,15 @@ export default function ProductCard({
               onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  const currentStatus = product.status || 'Available';
-                  const nextStatus = currentStatus === 'Available' ? 'Inactive' : 'Available';
-                  onToggleStatus?.(product._id, nextStatus, 'products');
-              }}
-              className={`text-xs font-bold px-3 py-1.5 flex-1 rounded-lg transition-colors ${
-                product.status === 'Available'
-                  ? 'bg-gray-50 dark:bg-gray-700 text-gray-500 hover:text-orange-500' 
-                  : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 hover:text-emerald-700'
-              }`}
-            >
-              {product.status === 'Available' ? 'Mark Inactive' : 'Mark Active'}
-            </button>
-            <button
-              onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
                   onDelete?.(product._id, 'products');
               }}
-              className="text-xs font-bold text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
+              className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 flex-1 rounded-lg transition-colors border border-red-100 dark:border-red-900/40"
             >
-              Delete
+              Delete Listing
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

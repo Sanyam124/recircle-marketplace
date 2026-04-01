@@ -22,6 +22,14 @@ interface Service {
   images: string[];
   category: string;
   availability: string;
+  location?: {
+    city?: string;
+    state?: string;
+  };
+  community?: {
+    _id: string;
+    name: string;
+  };
   provider: {
     _id: string;
     name: string;
@@ -186,9 +194,9 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
 
         {/* Service Info */}
         <div className="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl break-words flex-1 min-w-0">{service.title}</h1>
-            <div className="flex items-center gap-2 flex-shrink-0 mt-1">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl break-words">{service.title}</h1>
+            <div className="flex items-center gap-2 flex-shrink-0">
               <ShareButton
                 title={service.title}
                 text={`Check out "${service.title}" on ReCircle — ₹${service.price} ${service.priceUnit}`}
@@ -210,14 +218,25 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
             <p className="text-3xl text-gray-900 dark:text-white">₹{service.price} <span className="text-lg text-gray-500 dark:text-gray-400 font-normal">/ {service.priceUnit}</span></p>
           </div>
 
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap gap-3 items-center">
             <div className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300">
               {service.category}
             </div>
             {service.availability && (
-               <div className="ml-4 inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
+               <div className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
                  {service.availability}
                </div>
+            )}
+            {service.community && typeof service.community === 'object' && (
+              <div className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400">
+                🏫 {service.community.name}
+              </div>
+            )}
+            {(service.location?.city || service.location?.state) && (
+              <div className="inline-flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
+                <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                {service.location.city}{service.location.city && service.location.state ? ', ' : ''}{service.location.state}
+              </div>
             )}
           </div>
 

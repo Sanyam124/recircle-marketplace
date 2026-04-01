@@ -21,6 +21,14 @@ interface Product {
   category: string;
   condition: string;
   status: string;
+  location?: {
+    city?: string;
+    state?: string;
+  };
+  community?: {
+    _id: string;
+    name: string;
+  };
   seller: {
     _id: string;
     name: string;
@@ -186,9 +194,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
         {/* Product Info */}
         <div className="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl break-words flex-1 min-w-0">{product.title}</h1>
-            <div className="flex items-center gap-2 flex-shrink-0 mt-1">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl break-words">{product.title}</h1>
+            <div className="flex items-center gap-2 flex-shrink-0">
               <ShareButton
                 title={product.title}
                 text={`Check out "${product.title}" on ReCircle — ₹${product.price}`}
@@ -210,13 +218,24 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <p className="text-3xl text-gray-900 dark:text-white">₹{product.price}</p>
           </div>
 
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap gap-3 items-center">
             <div className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300">
               {product.category}
             </div>
-            <div className="ml-4 inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
+            <div className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
               {product.condition}
             </div>
+            {product.community && typeof product.community === 'object' && (
+              <div className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400">
+                🏫 {product.community.name}
+              </div>
+            )}
+            {(product.location?.city || product.location?.state) && (
+              <div className="inline-flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
+                <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                {product.location.city}{product.location.city && product.location.state ? ', ' : ''}{product.location.state}
+              </div>
+            )}
           </div>
 
           <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">

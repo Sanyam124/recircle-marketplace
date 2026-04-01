@@ -151,7 +151,8 @@ export async function GET(req: NextRequest) {
             .populate('buyer', 'name username gender')
             .sort({ createdAt: -1, _id: -1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         return NextResponse.json({
             orders,

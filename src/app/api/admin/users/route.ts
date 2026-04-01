@@ -49,10 +49,36 @@ export async function GET(req: NextRequest) {
             .select('-password -otp -otpExpiry')
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
+
+        // Batch-count listings per user
+        const userIds = users.map((u: any) => u._id);
+        const Product = (await import('@/models/Product')).default;
+        const Service = (await import('@/models/Service')).default;
+
+        const [productCounts, serviceCounts] = await Promise.all([
+            Product.aggregate([
+                { $match: { seller: { $in: userIds } } },
+                { $group: { _id: '$seller', count: { $sum: 1 } } }
+            ]),
+            Service.aggregate([
+                { $match: { provider: { $in: userIds } } },
+                { $group: { _id: '$provider', count: { $sum: 1 } } }
+            ])
+        ]);
+
+        const pMap = Object.fromEntries(productCounts.map((p: any) => [p._id.toString(), p.count]));
+        const sMap = Object.fromEntries(serviceCounts.map((s: any) => [s._id.toString(), s.count]));
+
+        const usersWithCounts = users.map((u: any) => ({
+            ...u,
+            productCount: pMap[u._id.toString()] || 0,
+            serviceCount: sMap[u._id.toString()] || 0,
+        }));
 
         return NextResponse.json({
-            users,
+            users: usersWithCounts,
             pagination: { currentPage: page, totalPages, totalUsers, hasMore: page < totalPages }
         }, { status: 200 });
 
@@ -104,6 +130,115 @@ export async function PUT(req: NextRequest) {
 
     } catch (error) {
         console.error('Admin User Update Error:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+// Ban a user directly from the user list
+export async function PATCH(req: NextRequest) {
+    try {
+        if (!(await isAdmin(req))) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { userId, banDays, sendEmail } = await req.json();
+        if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+
+        await connectToDatabase();
+        const user = await User.findById(userId);
+        if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+        const days = parseInt(banDays) || 7;
+        const bannedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+        user.status = 'Banned';
+        user.bannedUntil = bannedUntil;
+        await user.save();
+
+        // Optionally send email
+        if (sendEmail && user.email) {
+            try {
+                const { sendBanNotification } = await import('@/lib/mailer');
+                await sendBanNotification({
+                    to: user.email,
+                    userName: user.name,
+                    reason: 'Violation of community guidelines',
+                    banDays: days,
+                    banExpiry: bannedUntil
+                });
+            } catch (emailErr) {
+                console.error('Ban email failed (non-blocking):', emailErr);
+            }
+        }
+
+        return NextResponse.json({ success: true }, { status: 200 });
+
+    } catch (error) {
+        console.error('Admin Ban User Error:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+// Delete a user and all their content
+export async function DELETE(req: NextRequest) {
+    try {
+        if (!(await isAdmin(req))) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(req.url);
+        const userId = searchParams.get('userId');
+        if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+
+        await connectToDatabase();
+        const user = await User.findById(userId);
+        if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+        // Delete user's products
+        try {
+            const Product = (await import('@/models/Product')).default;
+            const products = await Product.find({ seller: userId });
+            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+            for (const p of products) {
+                if (p.images?.length) {
+                    for (const img of p.images) {
+                        try { await deleteFromCloudinary(img); } catch {}
+                    }
+                }
+            }
+            await Product.deleteMany({ seller: userId });
+        } catch {}
+
+        // Delete user's services
+        try {
+            const Service = (await import('@/models/Service')).default;
+            const services = await Service.find({ provider: userId });
+            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+            for (const s of services) {
+                if (s.images?.length) {
+                    for (const img of s.images) {
+                        try { await deleteFromCloudinary(img); } catch {}
+                    }
+                }
+            }
+            await Service.deleteMany({ provider: userId });
+        } catch {}
+
+        // Delete user's profile picture from cloudinary
+        if (user.profilePicture) {
+            try {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await deleteFromCloudinary(user.profilePicture);
+            } catch {}
+        }
+
+        // Finally delete the user
+        await User.findByIdAndDelete(userId);
+
+        return NextResponse.json({ success: true }, { status: 200 });
+
+    } catch (error) {
+        console.error('Admin Delete User Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

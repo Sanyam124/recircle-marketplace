@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         await connectToDatabase();
         const { id } = await params; // Await params in Next.js 15+
 
-        const product = await Product.findById(id).populate('seller', 'name username profilePicture email gender');
+        const product = await Product.findById(id).populate('seller', 'name username profilePicture email gender').populate('community', 'name');
 
         if (!product) {
             return NextResponse.json({ error: 'Product not found' }, { status: 404 });

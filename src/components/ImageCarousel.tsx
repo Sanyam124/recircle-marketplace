@@ -79,7 +79,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
           <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center backdrop-blur-sm animate-in fade-in duration-200">
             <button 
                 onClick={() => setIsLightboxOpen(false)}
-                className="absolute top-4 right-4 sm:top-6 sm:right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-[105]"
                 aria-label="Close fullscreen"
             >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -177,7 +177,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
           {/* Close button */}
           <button 
               onClick={() => setIsLightboxOpen(false)}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-[105]"
               aria-label="Close fullscreen"
           >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -196,7 +196,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
              {/* Navigation Overlay Buttons */}
              <button
                 onClick={(e) => { e.stopPropagation(); prev(); }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-colors"
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-colors z-[105]"
                 aria-label="Previous image"
               >
                 <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
@@ -204,7 +204,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
 
               <button
                 onClick={(e) => { e.stopPropagation(); next(); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-colors z-[105]"
                 aria-label="Next image"
               >
                 <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>

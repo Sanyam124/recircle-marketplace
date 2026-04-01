@@ -62,6 +62,7 @@ export default function ServiceCard({
     }
   }
   const isInternal = communityId ? userCommunityIds.includes(communityId) : false;
+  const isCampusOwned = !!communityId || service.visibility === 'Community';
 
   useEffect(() => {
     if (user && user.wishlistedServices && service._id) {
@@ -140,8 +141,8 @@ export default function ServiceCard({
             </button>
         </div>
       </div>
-      <div className="p-2 sm:p-4 relative z-10 pointer-events-none">
-        <div className="flex justify-between items-start">
+      <div className="p-2 sm:p-4 relative z-10 pointer-events-none flex flex-col flex-1">
+        <div className="flex justify-between items-start flex-1 mb-auto">
           <div className="w-full min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-3 mb-1 sm:mb-2">
                 <Link href={`/profile/${service.provider._id || ''}`} className="shrink-0 pointer-events-auto">
@@ -164,13 +165,13 @@ export default function ServiceCard({
                     {service.provider?.name}
                 </Link>
             </div>
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1 min-h-[1.4em]">{service.title}</h3>
+            <h3 className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2 min-h-[2.8em]">{service.title}</h3>
             <div className="mt-0.5 sm:mt-1 flex items-start justify-between text-sm text-gray-500 dark:text-gray-400 gap-2">
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 min-h-[3.6em] sm:min-h-[4.5em]">
                 <ExpandableText 
                   text={service.description || ''} 
-                  maxLines={1} 
-                  className="text-[10px] sm:text-[11px] leading-tight sm:leading-normal min-h-[1.2em] sm:min-h-[3em]" 
+                  maxLines={3} 
+                  className="text-[10px] sm:text-[12px] leading-tight sm:leading-relaxed text-gray-500 dark:text-gray-400" 
                   showReadMore={false} 
                 />
               </div>
@@ -186,7 +187,8 @@ export default function ServiceCard({
           </div>
         </div>
 
-        <div className="mt-2 sm:mt-3 flex items-center justify-between">
+        <div className="flex flex-col mt-auto shrink-0">
+          <div className="pt-2 sm:pt-3 flex items-center justify-between">
           <div className="flex flex-col">
             <div className="flex items-baseline gap-1">
               <span className="text-base sm:text-lg font-bold text-indigo-600 dark:text-indigo-400">₹{service.price}</span>
@@ -202,25 +204,23 @@ export default function ServiceCard({
         </div>
 
         {/* Origin Metadata Footer */}
-        {(communityName || service.location?.city) && (
-          <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between text-[8px] sm:text-[11px] font-semibold transition-colors">
-            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-              {isInternal ? (
-                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg ring-1 ring-inset ring-emerald-500/10">
-                  <span className="uppercase tracking-tight">Campus</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-lg ring-1 ring-inset ring-gray-400/10">
-                  <span className="uppercase tracking-tight">Public</span>
-                </div>
-              )}
-            </div>
-            
-            <span className="text-gray-400 dark:text-gray-500 truncate max-w-[60px] sm:max-w-[120px]">
-              {isInternal ? communityName : (service.location?.city ? service.location.city : (communityName || 'Campus'))}
-            </span>
+        <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between text-[8px] sm:text-[11px] font-semibold transition-colors">
+          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+            {isCampusOwned ? (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg ring-1 ring-inset ring-emerald-500/10">
+                <span className="uppercase tracking-tight">Campus</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-lg ring-1 ring-inset ring-gray-400/10">
+                <span className="uppercase tracking-tight">Public</span>
+              </div>
+            )}
           </div>
-        )}
+          
+          <span className="text-gray-400 dark:text-gray-500 truncate max-w-[60px] sm:max-w-[120px]">
+            {isCampusOwned ? (communityName || 'Campus') : (service.location?.city || 'Public')}
+          </span>
+        </div>
         {/* Owner action bar */}
         {isOwner && (
           <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex gap-2 relative z-20 pointer-events-auto">
@@ -252,6 +252,7 @@ export default function ServiceCard({
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

@@ -23,12 +23,6 @@ const STATUS_COLORS: Record<string, string> = {
   Dismissed: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700',
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  product: 'bg-blue-50 text-blue-700',
-  service: 'bg-purple-50 text-purple-700',
-  user: 'bg-orange-50 text-orange-700',
-};
-
 export default function AdminReportsPage() {
   const { user, loading: authLoading } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
@@ -38,6 +32,13 @@ export default function AdminReportsPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [statusFilter, setStatusFilter] = useState('Pending');
   const [updating, setUpdating] = useState<string | null>(null);
+
+  // Ban Modal State
+  const [banModalOpen, setBanModalOpen] = useState(false);
+  const [banReportId, setBanReportId] = useState<string | null>(null);
+  const [banTargetName, setBanTargetName] = useState('');
+  const [banDays, setBanDays] = useState(7);
+  const [banSendEmail, setBanSendEmail] = useState(true);
 
   useEffect(() => {
     if (!authLoading && user?.role === 'admin') fetchReports();
@@ -67,6 +68,29 @@ export default function AdminReportsPage() {
       });
       if (res.ok) fetchReports();
     } catch { console.error('Update failed'); }
+    finally { setUpdating(null); }
+  };
+
+  const openBanModal = (reportId: string, targetName: string) => {
+    setBanReportId(reportId);
+    setBanTargetName(targetName);
+    setBanDays(7);
+    setBanSendEmail(true);
+    setBanModalOpen(true);
+  };
+
+  const executeBan = async () => {
+    if (!banReportId) return;
+    setUpdating(banReportId);
+    setBanModalOpen(false);
+    try {
+      const res = await fetch(`/api/admin/reports/${banReportId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionType: 'ban_user', banDays, sendEmail: banSendEmail }),
+      });
+      if (res.ok) fetchReports();
+    } catch { console.error('Ban failed'); }
     finally { setUpdating(null); }
   };
 
@@ -106,7 +130,7 @@ export default function AdminReportsPage() {
                     <span className={`px-2 py-0.5 text-xs font-bold rounded-full border transition-colors ${STATUS_COLORS[report.status]}`}>
                       {report.status}
                     </span>
-                    <span className={`px-2 py-0.5 text-xs font-bold rounded-full bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 transition-colors`}>
+                    <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 transition-colors">
                       User
                     </span>
                     {report.itemType !== 'none' && (
@@ -169,24 +193,13 @@ export default function AdminReportsPage() {
                       Dismiss
                     </button>
                     
-                    {/* High-Stakes Actions */}
+                    {/* Ban User Button */}
                     <button
-                      onClick={async () => {
-                         if (confirm(`Ban user ${report.targetUser?.name}? They will no longer be able to log in.`)) {
-                             setUpdating(report._id);
-                             const res = await fetch(`/api/admin/reports/${report._id}`, {
-                                 method: 'PATCH',
-                                 headers: { 'Content-Type': 'application/json' },
-                                 body: JSON.stringify({ actionType: 'ban_user' })
-                             });
-                             if (res.ok) fetchReports();
-                             setUpdating(null);
-                         }
-                      }}
+                      onClick={() => openBanModal(report._id, report.targetUser?.name || 'User')}
                       disabled={updating === report._id}
                       className="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-all shadow-sm"
                     >
-                      Take Down User
+                      Ban User
                     </button>
 
                     {report.itemType !== 'none' && report.itemId && (
@@ -218,6 +231,75 @@ export default function AdminReportsPage() {
       )}
 
       <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} scrollTargetId="reports-top" />
+
+      {/* ── Ban User Modal ────────────────────────────────────────── */}
+      {banModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-md p-8 shadow-2xl border border-gray-100 dark:border-gray-700 animate-in zoom-in slide-in-from-bottom-4 duration-300">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 dark:text-white">Ban {banTargetName}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-medium">Choose the ban duration and whether to notify the user via email.</p>
+            </div>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1">Ban Duration (Days)</label>
+                <div className="flex gap-2 mb-3">
+                  {[1, 3, 7, 14, 30].map(d => (
+                    <button key={d} type="button" onClick={() => setBanDays(d)}
+                      className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all border-2 ${banDays === d ? 'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'}`}>
+                      {d}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={banDays}
+                  onChange={e => setBanDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 1)))}
+                  className="w-full rounded-2xl border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3.5 text-sm font-bold text-gray-900 dark:text-white focus:border-red-500 focus:ring-0 transition-all outline-none"
+                  placeholder="Custom days..."
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">Send Email Notification</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Notify the user about this ban with full details.</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={banSendEmail}
+                    onChange={e => setBanSendEmail(e.target.checked)}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 dark:peer-focus:ring-red-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600 dark:peer-checked:bg-red-500"></div>
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button 
+                  onClick={() => setBanModalOpen(false)}
+                  className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={executeBan}
+                  className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-black uppercase tracking-widest text-white bg-red-600 dark:bg-red-500 hover:bg-red-700 dark:hover:bg-red-400 shadow-lg shadow-red-100 dark:shadow-none disabled:opacity-50 transition-all active:scale-95"
+                >
+                  Ban for {banDays} Day{banDays > 1 ? 's' : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

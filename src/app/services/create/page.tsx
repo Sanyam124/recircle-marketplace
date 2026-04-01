@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
 import imageCompression from 'browser-image-compression';
+import { siteConfig } from '@/lib/config';
 
 export default function CreateServicePage() {
   const router = useRouter();
@@ -259,7 +260,7 @@ export default function CreateServicePage() {
                 <option>Other</option>
               </select>
               <p className="mt-1 text-xs text-gray-500">
-                Don't see your category? <a href="mailto:sanyam.sharma.work@gmail.com?subject=New%20Service%20Category%20Request" className="text-indigo-600 hover:text-indigo-500">Request to add it here.</a>
+                Don't see your category? <a href={`mailto:${siteConfig.supportEmail}?subject=New%20Service%20Category%20Request`} className="text-indigo-600 hover:text-indigo-500">Request to add it here.</a>
               </p>
             </div>
 

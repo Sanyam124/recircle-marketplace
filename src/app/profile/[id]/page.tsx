@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, use, useMemo, useRef } from 'react';
+import useSWR from 'swr';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -148,10 +149,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const sPageParam = parseInt(searchParams.get('sPage') || '1');
   const aPageParam = parseInt(searchParams.get('aPage') || '1');
 
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [sectionLoading, setSectionLoading] = useState(false);
+
   const [activeTab, setActiveTab] = useState<TabKey>(tabParam || 'all');
   const [productPage, setProductPage] = useState(pPageParam);
   const [servicePage, setServicePage] = useState(sPageParam);
@@ -159,6 +157,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [reportOpen, setReportOpen] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [cols, setCols] = useState<3 | 4 | 5>(4);
 
   // Sync URL -> State (Back button)
   useEffect(() => {
@@ -195,57 +194,47 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     router.push(url, { scroll: false });
   }, [activeTab, productPage, servicePage, allPage, id]); // Only sync when internal state changes
 
+  const getQueryUrl = () => {
+    const params = new URLSearchParams();
+    params.append('productPage', productPage.toString());
+    params.append('servicePage', servicePage.toString());
+    params.append('allPage', allPage.toString());
+    params.append('limit', '20');
+    return `/api/profile/${id}?${params.toString()}`;
+  };
+
+  const fetcher = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) {
+       const errData = await res.json().catch(() => ({}));
+       const error: any = new Error(errData.error || 'Failed to load profile');
+       error.status = res.status;
+       throw error;
+    }
+    return res.json();
+  };
+
+  const { data, error, isLoading, isValidating, mutate } = useSWR(id ? getQueryUrl() : null, fetcher, {
+    keepPreviousData: true,
+    revalidateOnFocus: false
+  });
+
+  const loading = isLoading && !data;
+  const sectionLoading = isValidating && data;
+  const errorMsg = error?.message || null;
+
   useEffect(() => {
-    fetchProfile(1, 1, 1, false);
-    
     // Check if the auth user has already blocked this profile
-    if (authUser?.blockedUsers?.some(b => b.toString() === id)) {
+    if (authUser?.blockedUsers?.some((b: any) => b.toString() === id)) {
         setIsBlocked(true);
     }
   }, [id, authUser]);
-
-  useEffect(() => {
-    if (data) fetchProfile(productPage, servicePage, allPage, true);
-  }, [productPage, servicePage, allPage]);
-
-  const fetchProfile = async (pPage: number, sPage: number, aPage: number, isPageChange: boolean) => {
-    try {
-      if (isPageChange) setSectionLoading(true);
-      else setLoading(true);
-      const url = new URL(`/api/profile/${id}`, window.location.origin);
-      url.searchParams.append('productPage', pPage.toString());
-      url.searchParams.append('servicePage', sPage.toString());
-      url.searchParams.append('allPage', aPage.toString());
-      url.searchParams.append('limit', '20');
-      
-      const res = await fetch(url.toString(), { cache: 'no-store' });
-      
-      if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          if (res.status === 403) {
-             setErrorMsg(errData.error || 'You are blocked from viewing this profile.');
-             setLoading(false);
-             return;
-          }
-      }
-
-      if (res.ok) {
-        const d = await res.json();
-        setData(d);
-      }
-    } catch (error) {
-      console.error('Failed to load profile', error);
-    } finally {
-      setLoading(false);
-      setSectionLoading(false);
-    }
-  };
 
   const handleDelete = async (itemId: string, type: 'products' | 'services') => {
     if (!confirm(`Delete this ${type === 'products' ? 'listing' : 'service'}?`)) return;
     try {
       const res = await fetch(`/api/${type}/${itemId}`, { method: 'DELETE' });
-      if (res.ok) fetchProfile(productPage, servicePage, allPage, true);
+      if (res.ok) mutate();
       else alert('Failed to delete');
     } catch { console.error('Delete failed'); }
   };
@@ -257,7 +246,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: newStatus })
       });
-      if (res.ok) fetchProfile(productPage, servicePage, allPage, true);
+      if (res.ok) mutate();
       else alert('Failed to update status');
     } catch { console.error('Update failed'); }
   };
@@ -316,7 +305,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const allPagination = pagination?.all;
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors duration-300">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors duration-300">
 
       {/* ── Profile Header ─────────────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8 overflow-hidden transition-colors duration-300">
@@ -508,12 +497,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   </svg>
                   Edit Profile
                 </Link>
-                <Link
-                  href="/settings"
-                  className="inline-flex items-center justify-center px-5 py-2 border border-gray-200 dark:border-gray-600 text-sm font-bold rounded-xl text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 shadow-sm transition-all active:scale-95 gap-2"
-                >
-                  Settings
-                </Link>
+
               </>
             ) : (
               <>
@@ -665,6 +649,15 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
         </div>
 
+        {/* View Density Controls */}
+        <div className="flex justify-end mb-4">
+           <div className="hidden sm:flex items-center gap-1 bg-gray-50 dark:bg-gray-900 overflow-hidden p-1 rounded-lg border border-gray-200 dark:border-gray-700">
+              <button onClick={() => setCols(3)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 3 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>3 Wide</button>
+              <button onClick={() => setCols(4)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 4 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>4 Wide</button>
+              <button onClick={() => setCols(5)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 5 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>5 Wide</button>
+           </div>
+        </div>
+
         {/* All Panel */}
         {activeTab === 'all' && (
           <div className="mb-10">
@@ -673,9 +666,9 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 <p className="text-gray-500 dark:text-gray-400 text-sm italic">No items found.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 transition-all duration-300">
+              <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6 transition-all duration-300' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6 transition-all duration-300' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 transition-all duration-300'}>
                 {sectionLoading ? (
-                  [...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)
+                  [...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)
                 ) : (
                   allItems.map((item: any) => (
                     item.type === 'product' ? (
@@ -709,9 +702,9 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6 transition-all duration-300">
+                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6 transition-all duration-300' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6 transition-all duration-300' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 transition-all duration-300'}>
                   {sectionLoading ? (
-                    [...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)
+                    [...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)
                   ) : (
                     products.map((product: any) => (
                       <ProductCard
@@ -738,9 +731,9 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 transition-all duration-300">
+                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6 transition-all duration-300' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6 transition-all duration-300' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 transition-all duration-300'}>
                   {sectionLoading ? (
-                    [...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)
+                    [...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)
                   ) : (
                     services.map((service: any) => (
                       <ServiceCard

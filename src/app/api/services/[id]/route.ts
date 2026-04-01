@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         await connectToDatabase();
         const { id } = await params;
 
-        const service = await Service.findById(id).populate('provider', 'name username profilePicture email');
+        const service = await Service.findById(id).populate('provider', 'name username profilePicture email').populate('community', 'name');
 
         if (!service) {
             return NextResponse.json({ error: 'Service not found' }, { status: 404 });

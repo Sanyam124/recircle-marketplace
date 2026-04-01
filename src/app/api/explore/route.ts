@@ -43,20 +43,25 @@ export async function GET(req: NextRequest) {
             let hiddenIds: any[] = [];
 
             // 1. Vacation Mode
-            const vacationUsers = await User.find({ isOnVacation: true }).select('_id');
-            hiddenIds = vacationUsers.map(u => u._id);
+            const vacationUsers = await User.find({ isOnVacation: true }).select('_id').lean();
+            hiddenIds = vacationUsers.map((u: any) => u._id);
+
+            // 1.5 Banned Users (Hide their listings)
+            const bannedUsers = await User.find({ status: 'Banned' }).select('_id').lean();
+            const bannedUsersIds = bannedUsers.map((u: any) => u._id);
+            hiddenIds = [...hiddenIds, ...bannedUsersIds];
 
             // 2. Blocked Users (Two-Way)
             if (decoded?.userId) {
                 // Users I blocked
-                const currentUser = await User.findById(decoded.userId).select('blockedUsers');
-                if (currentUser?.blockedUsers) {
-                    hiddenIds = [...hiddenIds, ...currentUser.blockedUsers];
+                const currentUser = await User.findById(decoded.userId).select('blockedUsers').lean();
+                if (currentUser && (currentUser as any).blockedUsers) {
+                    hiddenIds = [...hiddenIds, ...(currentUser as any).blockedUsers];
                 }
 
                 // Users who blocked me
-                const usersWhoBlockedMe = await User.find({ blockedUsers: decoded.userId }).select('_id');
-                const usersWhoBlockedMeIds = usersWhoBlockedMe.map(u => u._id);
+                const usersWhoBlockedMe = await User.find({ blockedUsers: decoded.userId }).select('_id').lean();
+                const usersWhoBlockedMeIds = usersWhoBlockedMe.map((u: any) => u._id);
                 hiddenIds = [...hiddenIds, ...usersWhoBlockedMeIds];
             }
 
@@ -71,7 +76,7 @@ export async function GET(req: NextRequest) {
         const decoded = token ? verifyToken(token) : null;
         let user: any = null;
         if (decoded?.userId) {
-            user = await User.findById(decoded.userId).select('verifiedCommunities');
+            user = await User.findById(decoded.userId).select('verifiedCommunities').lean();
         }
 
         const visibilityFilter: any = { $or: [] };

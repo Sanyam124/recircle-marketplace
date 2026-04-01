@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (decoded.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
         const { id } = await params;
-        const { status, actionType } = await req.json();
+        const { status, actionType, banDays, sendEmail } = await req.json();
 
         const report = await Report.findById(id).populate('targetUser');
         if (!report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
@@ -25,8 +25,39 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         // --- Execute Specific Admin Actions ---
         if (actionType === 'ban_user') {
             const User = (await import('@/models/User')).default;
-            await User.findByIdAndUpdate(report.targetUser._id, { status: 'Banned' });
+            const days = parseInt(banDays) || 7;
+            const bannedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+            
+            await User.findByIdAndUpdate(report.targetUser._id, { 
+                status: 'Banned',
+                bannedUntil
+            });
             report.status = 'Reviewed';
+
+            // Optionally send ban notification email
+            if (sendEmail && report.targetUser?.email) {
+                try {
+                    const { sendBanNotification } = await import('@/lib/mailer');
+                    let itemContext: string | undefined;
+                    if (report.itemType !== 'none' && report.itemId) {
+                        const Model = report.itemType === 'product' 
+                            ? (await import('@/models/Product')).default 
+                            : (await import('@/models/Service')).default;
+                        const item = await Model.findById(report.itemId).select('title').lean();
+                        if (item) itemContext = `${report.itemType === 'product' ? 'Product' : 'Service'}: ${(item as any).title}`;
+                    }
+                    await sendBanNotification({
+                        to: report.targetUser.email,
+                        userName: report.targetUser.name,
+                        reason: report.reason,
+                        itemContext,
+                        banDays: days,
+                        banExpiry: bannedUntil
+                    });
+                } catch (emailErr) {
+                    console.error('Ban email failed (non-blocking):', emailErr);
+                }
+            }
         } 
         else if (actionType === 'delete_content' && report.itemType !== 'none' && report.itemId) {
             let item: any = null;

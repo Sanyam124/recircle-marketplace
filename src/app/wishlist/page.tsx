@@ -14,6 +14,7 @@ export default function WishlistPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [type, setType] = useState<'product' | 'service' | 'all'>('all');
+  const [cols, setCols] = useState<3 | 4 | 5>(4);
 
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -58,16 +59,16 @@ export default function WishlistPage() {
 
   if (authLoading || (loading && wishlist.length === 0)) {
       return (
-          <div className="max-w-[1600px] mx-auto px-4 py-10">
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
-                  {[...Array(8)].map((_, i) => <ItemCardSkeleton key={i} />)}
+          <div className="max-w-7xl mx-auto px-4 py-10">
+              <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
+                  {[...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)}
               </div>
           </div>
       );
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
           <h1 id="wishlist-top" className="text-2xl font-bold text-gray-900 dark:text-white">My Wishlist ({totalItems})</h1>
           
@@ -93,14 +94,26 @@ export default function WishlistPage() {
              </button>
           </div>
       </div>
+      {/* Controls Bar */}
+      <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6 flex justify-between items-center transition-colors">
+        <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">
+          {loading ? 'Searching...' : `Showing ${totalItems} ${type === 'all' ? 'items' : type + 's'}`}
+        </p>
+        
+        <div className="hidden sm:flex items-center gap-1 bg-gray-50 dark:bg-gray-900 overflow-hidden p-1 rounded-lg border border-gray-200 dark:border-gray-700">
+           <button onClick={() => setCols(3)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 3 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>3 Wide</button>
+           <button onClick={() => setCols(4)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 4 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>4 Wide</button>
+           <button onClick={() => setCols(5)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 5 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>5 Wide</button>
+        </div>
+      </div>
       
       {loading && wishlist.length === 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
-            {[...Array(4)].map((_, i) => <ItemCardSkeleton key={i} />)}
+        <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
+            {[...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)}
         </div>
       ) : wishlist.length > 0 ? (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
+          <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
             {wishlist.map((item) => {
                const itemType = item.itemType || (type === 'all' ? 'product' : type);
                return itemType === 'product' ? (
