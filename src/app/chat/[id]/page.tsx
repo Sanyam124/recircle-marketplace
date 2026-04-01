@@ -6,6 +6,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { MessageBubbleSkeleton } from '@/components/Skeletons';
+import { pusherClient } from '@/lib/pusherClient';
+import { confirmAction } from '@/lib/confirm';
 
 export default function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
@@ -106,14 +108,38 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         fetchHistory(null);
         fetchOtherUser();
         
+        // Keep a slow 30-second polling heartbeat as a fallback sync
         const interval = setInterval(() => {
             fetchHistory(null, true);
-            // Polling item data ensures banner/buttons stay in sync (e.g. buyer sees seller's acceptance)
             const currentItem = referencingItemRef.current;
             if (currentItem?.id) {
                 fetchItemData(currentItem.type, currentItem.id);
             }
-        }, 3000); 
+        }, 30000); 
+
+        // WebSockets Real-time Updates
+        let channelName = '';
+        if (user) {
+            const currentUserId = user.id || (user as any)._id;
+            channelName = `user-${currentUserId}`;
+            const channel = pusherClient.subscribe(channelName);
+            
+            channel.bind('new-message', (newMsg: any) => {
+                // Only act on messages that belong to THIS opened conversation
+                if (newMsg.sender === userId || newMsg.recipient === userId) {
+                    setMessages((prev) => {
+                        // Avoid duplicates if polling beat us to it
+                        if (prev.find(m => m._id === newMsg._id)) return prev;
+                        
+                        // Ensure chronological order
+                        return [...prev, newMsg].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                    });
+                    
+                    // Fire a silent background fetch to sync Read receipts immediately over HTTP
+                    fetchHistory(null, true);
+                }
+            });
+        }
 
         // Heartbeat: update our own lastSeen every 30 seconds
         const heartbeat = () => fetch('/api/user/online', { method: 'PATCH' });
@@ -123,8 +149,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         return () => { 
             clearInterval(interval); 
             clearInterval(heartbeatInterval); 
+            if (channelName) pusherClient.unsubscribe(channelName);
         };
-    }, [userId, productId, serviceId]);
+    }, [userId, productId, serviceId, user]);
     
     // Dedicated effect for automated intro message on redirection
     useEffect(() => {
@@ -393,7 +420,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             const data = await res.json();
 
             if (res.status === 409 && data.promptOverride) {
-                if (window.confirm("An active order already exists for this item.\n\nOverride the previous order with the current one? (This will cancel the old order)")) {
+                const confirmed = await confirmAction({
+                    title: 'Active Order Exists',
+                    text: "An active order already exists for this item.\n\nOverride the previous order with the current one? (This will cancel the old order)",
+                    dangerMode: true,
+                    confirmButtonText: 'Override & Accept'
+                });
+                
+                if (confirmed) {
                     handleAcceptOffer(offerId, offerPrice, true);
                 }
                 return;

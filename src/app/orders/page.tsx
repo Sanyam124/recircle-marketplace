@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { OrderRowSkeleton } from '@/components/Skeletons';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
+import { confirmAction } from '@/lib/confirm';
 
 function PaginationControls({
   page, totalPages, onPageChange, scrollTargetId,
@@ -217,8 +218,14 @@ export default function OrdersPage() {
     }
   };
 
-  const handleCancelOrder = async (orderId: string, role: 'buyer' | 'seller', otherPartyId: string, itemId: string, isProduct: boolean) => {
-    if (!confirm('Are you sure you want to cancel this order?')) return;
+  const handleCancelOrder = async (orderId: string, role: 'buyer' | 'seller') => {
+    const confirmed = await confirmAction({
+        title: 'Cancel Transaction?',
+        text: 'Are you sure you want to cancel this order? This action cannot be undone and will revert the item to available.',
+        dangerMode: true,
+        confirmButtonText: 'Yes, Cancel'
+    });
+    if (!confirmed) return;
     
     try {
       // Optimistic Update
@@ -235,14 +242,11 @@ export default function OrdersPage() {
         body: JSON.stringify({ action: 'cancel' }),
       });
       if (res.ok) {
-        // Redirection with validation
-        if (otherPartyId && itemId) {
-          router.push(`/chat/${otherPartyId}?${isProduct ? 'productId' : 'serviceId'}=${itemId}`);
+        // Successfully cancelled. Let's refresh the current list so pagination and data is 100% in sync
+        if (role === 'buyer') {
+           fetchBuyerOrders(buyerPagination.page);
         } else {
-          console.warn('Missing IDs for redirection:', { otherPartyId, itemId });
-          // Fallback to refresh if redirection fails
-          if (role === 'buyer') fetchBuyerOrders(buyerPagination.page);
-          else fetchSellerOrders(sellerPagination.page);
+           fetchSellerOrders(sellerPagination.page);
         }
       } else {
         const data = await res.json();
@@ -251,8 +255,12 @@ export default function OrdersPage() {
         setSellerOrders(oldSellerOrders);
         alert(data.error || 'Failed to cancel order.');
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Cancel order error:', err);
+      alert('Network or server error occurred while cancelling: ' + err.message);
+      // Rollback on hard crash
+      if (role === 'buyer') fetchBuyerOrders(buyerPagination.page);
+      else fetchSellerOrders(sellerPagination.page);
     }
   };
 
@@ -317,7 +325,7 @@ export default function OrdersPage() {
                         key={order._id} 
                         order={order} 
                         role="buyer" 
-                        onCancel={() => handleCancelOrder(order._id, 'buyer', otherPartyId, itemId, order.orderType === 'Product')} 
+                        onCancel={() => handleCancelOrder(order._id, 'buyer')} 
                         onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'buyer', order })} 
                       />
                     );
@@ -345,7 +353,7 @@ export default function OrdersPage() {
                         key={order._id} 
                         order={order} 
                         role="seller" 
-                        onCancel={() => handleCancelOrder(order._id, 'seller', otherPartyId, itemId, order.orderType === 'Product')} 
+                        onCancel={() => handleCancelOrder(order._id, 'seller')} 
                         onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'seller', order })} 
                       />
                     );

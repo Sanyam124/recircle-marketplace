@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Loader from '@/components/Loader';
 import ImageUpload from '@/components/ImageUpload';
 import NextImage from 'next/image';
+import { confirmAction } from '@/lib/confirm';
 
 export default function AdminCommunitiesPage() {
     const [communities, setCommunities] = useState<any[]>([]);
@@ -56,7 +57,13 @@ export default function AdminCommunitiesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this community?')) return;
+        const confirmed = await confirmAction({
+            title: 'Delete Circle?',
+            text: 'Are you sure you want to delete this community? All associated verification rules will be lost.',
+            dangerMode: true,
+            confirmButtonText: 'Delete Circle'
+        });
+        if (!confirmed) return;
         try {
             const res = await fetch(`/api/admin/communities?id=${id}`, { method: 'DELETE' });
             if (res.ok) {

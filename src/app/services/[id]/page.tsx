@@ -12,6 +12,7 @@ import ReportModal from '@/components/ReportModal';
 import ReviewSection from '@/components/ReviewSection';
 import ExpandableText from '@/components/ExpandableText';
 import Image from 'next/image';
+import { confirmAction } from '@/lib/confirm';
 
 interface Service {
   _id: string;
@@ -138,7 +139,13 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this service?')) return;
+    const confirmed = await confirmAction({
+      title: 'Delete Service?',
+      text: 'Are you sure you want to delete this service? This action cannot be undone.',
+      dangerMode: true,
+      confirmButtonText: 'Delete Service'
+    });
+    if (!confirmed) return;
 
     setIsDeleting(true);
     try {

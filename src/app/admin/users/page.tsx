@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Loader from '@/components/Loader';
 import { optimizeCloudinaryUrl } from '@/lib/cloudinary-client';
+import { confirmAction } from '@/lib/confirm';
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<any[]>([]);
@@ -77,7 +78,12 @@ export default function AdminUsersPage() {
             return;
         }
 
-        if (!confirm(`Change this user's role to "${newRole}"?`)) return;
+        const confirmed = await confirmAction({
+            title: 'Change User Role?',
+            text: `Are you sure you want to change this user's role to "${newRole}"?`,
+            confirmButtonText: 'Change Role'
+        });
+        if (!confirmed) return;
         setUpdatingRole(userId);
         try {
             const res = await fetch('/api/admin/users', {
@@ -128,8 +134,21 @@ export default function AdminUsersPage() {
     };
 
     const handleDeleteUser = async (userId: string, name: string) => {
-        if (!confirm(`⚠️ DELETE "${name}"?\n\nThis will permanently remove:\n• Their account\n• All their products\n• All their services\n• Their profile picture\n\nThis cannot be undone!`)) return;
-        if (!confirm(`FINAL WARNING: Permanently delete "${name}" and all their data?`)) return;
+        const confirmed1 = await confirmAction({
+            title: `Delete ${name}?`,
+            text: `This will permanently remove their account, all products, and all services. This cannot be undone!`,
+            dangerMode: true,
+            confirmButtonText: 'Delete User'
+        });
+        if (!confirmed1) return;
+
+        const confirmed2 = await confirmAction({
+            title: 'Final Warning',
+            text: `Permanently delete "${name}" and all their data?`,
+            dangerMode: true,
+            confirmButtonText: 'Yes, DELETE EVERYTHING'
+        });
+        if (!confirmed2) return;
 
         setActionLoading(userId);
         try {

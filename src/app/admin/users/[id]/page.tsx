@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Loader from '@/components/Loader';
 import Link from 'next/link';
 import ReviewSection from '@/components/ReviewSection';
+import { confirmAction } from '@/lib/confirm';
 
 function PaginationControls({ page, totalPages, onPageChange, scrollTargetId }: { page: number; totalPages: number; onPageChange: (p: number) => void; scrollTargetId?: string }) {
     if (totalPages <= 1) return null;
@@ -117,7 +118,12 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
     };
 
     const handleRoleUpdate = async (newRole: string) => {
-        if (!confirm(`Are you sure you want to change role to ${newRole}?`)) return;
+        const confirmed = await confirmAction({
+            title: 'Change User Role?',
+            text: `Are you sure you want to change role to ${newRole}?`,
+            confirmButtonText: 'Change Role'
+        });
+        if (!confirmed) return;
 
         try {
             const res = await fetch('/api/admin/users', {

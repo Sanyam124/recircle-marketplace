@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import NotificationBell from './NotificationBell';
 import Community from '@/models/Community'; // Register for populate
 import { Skeleton } from './Skeletons';
+import { pusherClient } from '@/lib/pusherClient';
 
 
 export default function Navbar() {
@@ -51,8 +52,23 @@ export default function Navbar() {
   useEffect(() => {
     if (user) {
       fetchUnreadCount();
-      const interval = setInterval(fetchUnreadCount, 10000); // 10s poll
-      return () => clearInterval(interval);
+      // Keep slow polling as a 1-minute fallback sync
+      const interval = setInterval(fetchUnreadCount, 60000);
+
+      // Pusher real-time subscription
+      const userId = user.id || (user as any)._id;
+      const channelName = `user-${userId}`;
+      const channel = pusherClient.subscribe(channelName);
+      
+      channel.bind('new-message', () => {
+        // Re-fetch exact count immediately or just increment
+        fetchUnreadCount();
+      });
+
+      return () => {
+        clearInterval(interval);
+        pusherClient.unsubscribe(channelName);
+      };
     }
   }, [user]);
 

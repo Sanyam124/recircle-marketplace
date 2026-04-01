@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
 import Link from 'next/link';
+import { confirmAction } from '@/lib/confirm';
 
 interface Report {
   _id: string;
@@ -205,7 +206,14 @@ export default function AdminReportsPage() {
                     {report.itemType !== 'none' && report.itemId && (
                       <button
                         onClick={async () => {
-                           if (confirm(`Remove this ${report.itemType}? Data will be permanently deleted.`)) {
+                           const confirmed = await confirmAction({
+                               title: `Remove ${report.itemType}?`,
+                               text: `Data will be permanently deleted. This action cannot be undone.`,
+                               dangerMode: true,
+                               confirmButtonText: 'Delete Content'
+                           });
+
+                           if (confirmed) {
                                setUpdating(report._id);
                                const res = await fetch(`/api/admin/reports/${report._id}`, {
                                    method: 'PATCH',

@@ -30,6 +30,9 @@ const NotificationSchema: Schema<INotification> = new Schema(
 // Optimization: Optimize fetching activity feed for a user
 NotificationSchema.index({ recipient: 1, createdAt: -1 });
 
+// TTL Index: Auto-delete notifications after 30 days
+NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
+
 const Notification: Model<INotification> =
     mongoose.models.Notification || mongoose.model<INotification>('Notification', NotificationSchema);
 

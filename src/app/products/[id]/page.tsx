@@ -11,6 +11,7 @@ import ReportModal from '@/components/ReportModal';
 import ReviewSection from '@/components/ReviewSection';
 import ExpandableText from '@/components/ExpandableText';
 import Image from 'next/image';
+import { confirmAction } from '@/lib/confirm';
 
 interface Product {
   _id: string;
@@ -138,7 +139,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    const confirmed = await confirmAction({
+      title: 'Delete Product?',
+      text: 'Are you sure you want to delete this product? This action cannot be undone.',
+      dangerMode: true,
+      confirmButtonText: 'Delete Product'
+    });
+    if (!confirmed) return;
 
     setIsDeleting(true);
     try {

@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
 import Link from 'next/link';
 import PaginationControls from '@/components/PaginationControls';
+import { confirmAction } from '@/lib/confirm';
 
 interface Order {
     _id: string;
@@ -63,7 +64,13 @@ export default function AdminDisputesPage() {
     };
 
     const handleResolve = async (id: string, resolution: 'refund_buyer' | 'dismiss_dispute') => {
-        if (!confirm(`Are you sure you want to ${resolution === 'refund_buyer' ? 'cancel this reservation' : 'mark this as completed'}?`)) return;
+        const confirmed = await confirmAction({
+            title: 'Resolve Dispute?',
+            text: `Are you sure you want to ${resolution === 'refund_buyer' ? 'cancel this reservation' : 'mark this as completed'}?`,
+            icon: 'question',
+            confirmButtonText: 'Confirm Resolution'
+        });
+        if (!confirmed) return;
 
         try {
             const res = await fetch(`/api/orders/${id}`, {

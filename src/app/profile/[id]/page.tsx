@@ -13,6 +13,7 @@ import ReportModal from '@/components/ReportModal';
 import { useAuth } from '@/context/AuthContext';
 import ProductCard from '@/components/ProductCard';
 import ServiceCard from '@/components/ServiceCard';
+import { confirmAction } from '@/lib/confirm';
 
 // ── Pagination Controls ───────────────────────────────────────────────────────
 
@@ -231,7 +232,13 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   }, [id, authUser]);
 
   const handleDelete = async (itemId: string, type: 'products' | 'services') => {
-    if (!confirm(`Delete this ${type === 'products' ? 'listing' : 'service'}?`)) return;
+    const confirmed = await confirmAction({
+      title: `Delete ${type === 'products' ? 'Listing' : 'Service'}?`,
+      text: `Are you sure you want to delete this ${type === 'products' ? 'listing' : 'service'}? This action cannot be undone.`,
+      dangerMode: true,
+      confirmButtonText: 'Delete'
+    });
+    if (!confirmed) return;
     try {
       const res = await fetch(`/api/${type}/${itemId}`, { method: 'DELETE' });
       if (res.ok) mutate();
@@ -522,13 +529,18 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   </button>
                   {authUser && (
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         const action = isBlocked ? 'unblock' : 'block';
-                        const confirmMsg = isBlocked 
-                           ? `Are you sure you want to unblock ${user.name}?`
-                           : `Are you sure you want to block ${user.name}? You will no longer see their listings.`;
+                        const confirmed = await confirmAction({
+                            title: isBlocked ? `Unblock ${user.name}?` : `Block ${user.name}?`,
+                            text: isBlocked 
+                               ? `Are you sure you want to unblock ${user.name}?`
+                               : `They will no longer see your listings and cannot message you.`,
+                            dangerMode: !isBlocked,
+                            confirmButtonText: isBlocked ? 'Unblock' : 'Block User'
+                        });
                            
-                        if (confirm(confirmMsg)) {
+                        if (confirmed) {
                           handleBlockUser();
                         }
                       }}

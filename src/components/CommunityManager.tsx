@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { getIcon } from '@/components/Icons';
+import { confirmAction } from '@/lib/confirm';
 
 export default function CommunityManager() {
     const { user, refreshUser } = useAuth();
@@ -156,7 +157,12 @@ export default function CommunityManager() {
     };
 
     const handleRemove = async (communityId: string, name: string) => {
-        if (!confirm(`Are you sure you want to remove your verification for ${name}? You will lose access to its exclusive content.`)) return;
+        const confirmed = await confirmAction({
+            title: 'Confirm Removal',
+            text: `Are you sure you want to remove your verification for ${name}? You will lose access to its exclusive content.`,
+            dangerMode: true
+        });
+        if (!confirmed) return;
 
         try {
             const res = await fetch(`/api/profile/communities?communityId=${communityId}`, { method: 'DELETE' });

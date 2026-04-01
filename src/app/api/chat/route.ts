@@ -169,6 +169,16 @@ export async function POST(req: NextRequest) {
             offer: offer || undefined
         });
 
+        // Trigger Pusher event for real-time delivery
+        try {
+            const { pusherServer } = await import('@/lib/pusherServer');
+            await pusherServer.trigger(`user-${recipientId}`, 'new-message', message);
+            // Notify sender too for multi-device sync
+            await pusherServer.trigger(`user-${decoded.userId}`, 'new-message', message);
+        } catch (pusherErr) {
+            console.error('Pusher trigger error:', pusherErr);
+        }
+
         return NextResponse.json({ success: true, message }, { status: 201 });
 
     } catch (error) {

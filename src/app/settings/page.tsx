@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
 import CommunityManager from '@/components/CommunityManager';
 import { siteConfig } from '@/lib/config';
+import { confirmAction } from '@/lib/confirm';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -60,8 +61,21 @@ export default function SettingsPage() {
 
 
   const handleDeleteAccount = async () => {
-    if (!confirm('WARNING: Delete your account? This is permanent.')) return;
-    if (!confirm('Last warning. Everything will be gone. Proceed?')) return;
+    const confirmed1 = await confirmAction({
+      title: 'Delete Account?',
+      text: 'WARNING: This is permanent. All your data, listings, and messages will be lost forever.',
+      dangerMode: true,
+      confirmButtonText: 'Delete Everything'
+    });
+    if (!confirmed1) return;
+
+    const confirmed2 = await confirmAction({
+      title: 'Final Warning',
+      text: 'Are you absolutely sure? There is no going back after this.',
+      dangerMode: true,
+      confirmButtonText: 'Yes, DELETE MY ACCOUNT'
+    });
+    if (!confirmed2) return;
     try {
       setSaving(true);
       const res = await fetch('/api/profile/data', { method: 'DELETE' });

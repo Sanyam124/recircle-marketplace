@@ -9,6 +9,7 @@ import ReportModal from './ReportModal';
 import { formatChatMessageDate } from '@/lib/utils';
 import { ChatSidebarSkeleton } from './Skeletons';
 import { ChatItem } from './ChatItem';
+import { confirmAction } from '@/lib/confirm';
 
 export default function ChatSidebar() {
     const { user, refreshUser } = useAuth();
@@ -94,7 +95,13 @@ export default function ChatSidebar() {
         e.preventDefault();
         e.stopPropagation();
         
-        if (!window.confirm("Are you sure you want to delete this chat? This action only hides it for you.")) return;
+        const confirmed = await confirmAction({
+            title: 'Delete Chat?',
+            text: "Are you sure you want to delete this chat? This action only hides it for you.",
+            dangerMode: true,
+            confirmButtonText: 'Delete'
+        });
+        if (!confirmed) return;
 
         try {
             const res = await fetch(`/api/chat/conversations?otherUserId=${conv.user._id}${conv.product ? `&productId=${conv.product._id}` : `&serviceId=${conv.service._id}`}`, {
@@ -148,7 +155,13 @@ export default function ChatSidebar() {
         e.stopPropagation();
         setActiveMenu(null);
         
-        if (!window.confirm(`Are you sure you want to block ${conv.user.name}? They will no longer be able to message you and their listings will be hidden.`)) return;
+        const confirmed = await confirmAction({
+            title: `Block ${conv.user.name}?`,
+            text: `They will no longer be able to message you and their listings will be hidden.`,
+            dangerMode: true,
+            confirmButtonText: 'Block User'
+        });
+        if (!confirmed) return;
 
         try {
             const res = await fetch('/api/user/block', {
