@@ -9,6 +9,7 @@ import NotificationBell from './NotificationBell';
 import Community from '@/models/Community'; // Register for populate
 import { Skeleton } from './Skeletons';
 
+
 export default function Navbar() {
   const { user, loading, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -16,6 +17,11 @@ export default function Navbar() {
   const [messageUnreadCount, setMessageUnreadCount] = useState(0);
   const [newVerification, setNewVerification] = useState<string | null>(null);
   const pathname = usePathname();
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setIsCreateMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     // Re-check for verification notification on every path change
@@ -67,7 +73,7 @@ export default function Navbar() {
         </div>
     </div>
 
-    <nav className="bg-white dark:bg-gray-900 shadow-md dark:shadow-gray-900/50 sticky top-0 z-50 transition-colors duration-300 border-b border-transparent dark:border-gray-800">
+    <nav className="bg-white/90 dark:bg-gray-950/90 backdrop-blur-md shadow-sm dark:shadow-gray-900/50 sticky top-0 z-50 transition-colors duration-300 border-b border-gray-200/50 dark:border-gray-800/50 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
@@ -180,9 +186,16 @@ export default function Navbar() {
                         </div>
                         <span className="hidden xl:inline break-words max-w-[150px]">{user.name?.split(' ')[0]}</span>
                     </Link>
+                    <Link
+                        href="/settings"
+                        className="p-2 rounded-md text-gray-400 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                        title="Settings"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    </Link>
                     <button
                         onClick={logout}
-                        className="p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                        className="p-2 rounded-md text-gray-400 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                         title="Logout"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
@@ -226,19 +239,19 @@ export default function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shadow-xl animate-in slide-in-from-top-4 duration-200">
           <div className="pt-2 pb-3 space-y-1 px-4">
-            <Link onClick={() => setIsMobileMenuOpen(false)} href="/explore" className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+            <Link href="/explore" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               <span className="text-xl">🔍</span> Explore
             </Link>
-            <Link onClick={() => setIsMobileMenuOpen(false)} href="/board" className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
+            <Link href="/board" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
               <span className="text-xl">🏛️</span> Board
             </Link>
           </div>
           
           <div className="pt-2 pb-2 border-t border-gray-100 dark:border-gray-800 space-y-1 px-4">
-             <Link onClick={() => setIsMobileMenuOpen(false)} href="/products/create" className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+             <Link href="/products/create" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               <span className="text-xl">📦</span> Post a Product
             </Link>
-             <Link onClick={() => setIsMobileMenuOpen(false)} href="/services/create" className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+             <Link href="/services/create" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               <span className="text-xl">🛠️</span> Offer a Service
             </Link>
           </div>
@@ -254,7 +267,7 @@ export default function Navbar() {
               </div>
             ) : user ? (
               <div className="space-y-1">
-                <Link onClick={() => setIsMobileMenuOpen(false)} href="/profile" className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm font-bold border border-indigo-200 dark:border-indigo-800">
                         {user.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
@@ -265,7 +278,7 @@ export default function Navbar() {
                 </Link>
 
                 <div className="grid grid-cols-3 gap-2 mt-4">
-                    <Link onClick={() => setIsMobileMenuOpen(false)} href="/chat" className="flex flex-col items-center justify-center p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+                    <Link href="/chat" onClick={() => setIsMobileMenuOpen(false)} className="flex flex-col items-center justify-center p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
                         <div className="relative mb-1">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
                           {messageUnreadCount > 0 && (
@@ -276,11 +289,11 @@ export default function Navbar() {
                         </div>
                         <span className="text-[10px] uppercase font-bold tracking-wider">Messages</span>
                     </Link>
-                    <Link onClick={() => setIsMobileMenuOpen(false)} href="/wishlist" className="flex flex-col items-center justify-center p-3 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
+                    <Link href="/wishlist" onClick={() => setIsMobileMenuOpen(false)} className="flex flex-col items-center justify-center p-3 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                         <span className="text-[10px] uppercase font-bold tracking-wider">Wishlist</span>
                     </Link>
-                    <Link onClick={() => setIsMobileMenuOpen(false)} href="/orders" className="flex flex-col items-center justify-center p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                    <Link href="/orders" onClick={() => setIsMobileMenuOpen(false)} className="flex flex-col items-center justify-center p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                         <span className="text-[10px] uppercase font-bold tracking-wider">Orders</span>
                     </Link>
@@ -288,13 +301,13 @@ export default function Navbar() {
 
                 {user.role === 'admin' && (
                     <div className="grid grid-cols-3 gap-2 mt-2">
-                        <Link onClick={() => setIsMobileMenuOpen(false)} href="/admin" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-blue-600 dark:bg-blue-700 text-white font-bold text-[10px] uppercase">
+                        <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-blue-600 dark:bg-blue-700 text-white font-bold text-[10px] uppercase">
                             📊 Dashboard
                         </Link>
-                        <Link onClick={() => setIsMobileMenuOpen(false)} href="/admin/reports" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-red-600 dark:bg-red-700 text-white font-bold text-[10px] uppercase">
+                        <Link href="/admin/reports" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-red-600 dark:bg-red-700 text-white font-bold text-[10px] uppercase">
                             🚩 Reports
                         </Link>
-                        <Link onClick={() => setIsMobileMenuOpen(false)} href="/admin/users" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-purple-600 dark:bg-purple-700 text-white font-bold text-xs">
+                        <Link href="/admin/users" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-purple-600 dark:bg-purple-700 text-white font-bold text-xs">
                             👥 Users
                         </Link>
                     </div>
@@ -302,16 +315,24 @@ export default function Navbar() {
 
                 {user.role === 'verifier' && (
                   <div className="mt-2 text-center">
-                    <Link onClick={() => setIsMobileMenuOpen(false)} href="/verifier-dashboard" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-indigo-600 dark:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wide">
+                    <Link href="/verifier-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-indigo-600 dark:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wide">
                         🛡️ Campus Dashboard
                     </Link>
                   </div>
                 )}
 
 
+                <Link
+                    href="/settings"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="mt-6 flex items-center justify-center gap-2 w-full px-4 py-4 rounded-2xl text-base font-bold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    Settings
+                </Link>
                 <button
                     onClick={() => { setIsMobileMenuOpen(false); logout(); }}
-                    className="mt-6 flex items-center justify-center gap-2 w-full px-4 py-4 rounded-2xl text-base font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                    className="mt-3 flex items-center justify-center gap-2 w-full px-4 py-4 rounded-2xl text-base font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                     Logout Account
@@ -319,7 +340,7 @@ export default function Navbar() {
               </div>
             ) : (
               <div className="mt-3 px-2">
-                <Link onClick={() => setIsMobileMenuOpen(false)} href="/auth" className="flex items-center justify-center w-full px-4 py-3.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white text-base font-bold hover:bg-indigo-700 dark:hover:bg-indigo-600 shadow-md transition-all active:scale-[0.98]">
+                <Link href="/auth" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center w-full px-4 py-3.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white text-base font-bold hover:bg-indigo-700 dark:hover:bg-indigo-600 shadow-md transition-all active:scale-[0.98]">
                   Sign In / Register
                 </Link>
               </div>

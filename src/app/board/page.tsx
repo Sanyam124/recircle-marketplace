@@ -227,11 +227,11 @@ export default function BoardPage() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors">
             {/* Board Header & Switcher */}
-            <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 sticky top-[64px] z-30 transition-colors">
+            <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 sticky top-[65px] z-30 transition-colors">
                 <div className="max-w-3xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
                          <span className="text-lg sm:text-xl shrink-0">🏛️</span>
-                         <h1 className="font-black text-gray-900 dark:text-white uppercase tracking-tighter italic text-sm sm:text-base truncate">Circle Board</h1>
+                         <h1 className="font-black text-gray-900 dark:text-white uppercase tracking-tighter italic text-sm sm:text-base truncate pr-1">Circle Board</h1>
                     </div>
                     
                     <select
@@ -248,7 +248,7 @@ export default function BoardPage() {
                 </div>
             </div>
 
-            <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+            <div className="max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
                 {/* Create Post Card */}
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-3 sm:p-4 mb-6 transition-all hover:shadow-md">
                     <form onSubmit={handleCreatePost}>
@@ -269,7 +269,7 @@ export default function BoardPage() {
                             </div>
                             <div className="flex-1">
                                 <textarea
-                                    className="w-full bg-transparent border-none text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-0 text-sm py-2 resize-none min-h-[40px] max-h-[160px]"
+                                    className="w-full bg-transparent border-none text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-0 text-sm py-2 pl-1 resize-none min-h-[40px] max-h-[160px]"
                                     placeholder={`What's happening at ${selectedCommunity?.name || 'campus'}?`}
                                     value={newPostContent}
                                     onChange={(e) => setNewPostContent(e.target.value)}
