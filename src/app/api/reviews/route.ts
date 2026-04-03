@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
         await connectToDatabase();
 
-        const { targetId, rating, comment: rawComment } = await req.json();
+        const { targetId, rating, comment: rawComment, orderId, productId, serviceId } = await req.json();
         const comment = rawComment?.trim();
 
         if (!targetId || !rating) {
@@ -25,36 +25,60 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Cannot review yourself' }, { status: 400 });
         }
 
-        // 1. Verified Buyer Check
-        // User must have bought something from 'targetId' (Seller) OR been served by 'targetId' (Partner)
-        // AND the order must be 'Delivered' (Products) or 'Completed' (Services)
-        const hasVerifiedTransaction = await Order.findOne({
-            buyer: user.userId,
-            status: 'Completed',
+        // 1. Verified Transaction Check — either party can review the other
+        let query: any = {
             $or: [
-                { seller: targetId },
-                { deliveryPartner: targetId }
-            ]
-        });
+                { buyer: user.userId },
+                { seller: user.userId }
+            ],
+            status: 'Completed'
+        };
 
-        if (!hasVerifiedTransaction) {
+        if (orderId) {
+            query._id = orderId;
+        } else if (productId) {
+            query.product = productId;
+        } else if (serviceId) {
+            query.service = serviceId;
+        } else {
+            // General review: require at least one completed order involving both users
+            query.$and = [
+                { $or: [{ buyer: user.userId }, { seller: user.userId }] },
+                { $or: [{ buyer: targetId }, { seller: targetId }] }
+            ];
+            delete query.$or;
+        }
+
+        const order = await Order.findOne(query);
+
+        if (!order) {
             return NextResponse.json({
-                error: 'Permission Denied. You can only review users after a completed verified transaction (Order Delivered or Service Completed).'
+                error: 'Permission Denied. You can only review after a completed transaction for this item.'
             }, { status: 403 });
         }
 
-        // 2. Check if already reviewed
-        const existingReview = await Review.findOne({ reviewer: user.userId, target: targetId });
+        // 2. Prevent duplicate reviews for the same order/item combo
+        const duplicateQuery: any = { reviewer: user.userId, target: targetId };
+        if (orderId) duplicateQuery.order = orderId;
+        else if (productId) duplicateQuery.product = productId;
+        else if (serviceId) duplicateQuery.service = serviceId;
+
+        const existingReview = await Review.findOne(duplicateQuery);
         if (existingReview) {
-            return NextResponse.json({ error: 'You have already reviewed this user' }, { status: 400 });
+            return NextResponse.json({ error: 'You have already reviewed this purchase' }, { status: 400 });
         }
 
-        const review = await Review.create({
+        const reviewData: any = {
             reviewer: user.userId,
             target: targetId,
             rating: Number(rating),
-            comment
-        });
+            comment,
+            order: order._id,
+            product: order.product,
+            service: order.service
+        };
+
+        const review = await Review.create(reviewData);
 
         return NextResponse.json({ review }, { status: 201 });
 
@@ -68,41 +92,28 @@ export async function GET(req: NextRequest) {
     try {
         await connectToDatabase();
         const { searchParams } = new URL(req.url);
-        const targetId = searchParams.get('targetId');
+        const targetId = searchParams.get('targetId'); // Seller ID
+        const productId = searchParams.get('productId');
+        const serviceId = searchParams.get('serviceId');
         const ratingFilter = searchParams.get('rating');
 
-        if (!targetId || targetId === 'undefined') {
-            return NextResponse.json({ error: 'Missing targetId' }, { status: 400 });
+        // TargetId is the shared key for seller profiles, but individual products can have their own reviews
+        const query: any = {};
+        if (targetId) query.target = targetId;
+        if (productId) query.product = productId;
+        if (serviceId) query.service = serviceId;
+
+        if (Object.keys(query).length === 0) {
+            return NextResponse.json({ error: 'Missing targetId, productId or serviceId' }, { status: 400 });
         }
 
-        let canReview = false;
-        const token = req.cookies.get('token')?.value;
-        if (token) {
-            const user = verifyToken(token);
-            if (user && user.userId !== targetId) {
-                const hasVerifiedTransaction = await Order.findOne({
-                    buyer: user.userId,
-                    status: 'Completed',
-                    $or: [
-                        { seller: targetId },
-                        { deliveryPartner: targetId }
-                    ]
-                });
-                if (hasVerifiedTransaction) {
-                    canReview = true;
-                }
-            }
+        if (ratingFilter) {
+            query.rating = parseInt(ratingFilter);
         }
 
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '5');
         const skip = (page - 1) * limit;
-
-        // Build the query and add rating filter if present
-        const query: any = { target: targetId };
-        if (ratingFilter) {
-            query.rating = parseInt(ratingFilter);
-        }
 
         const totalReviews = await Review.countDocuments(query);
         const totalPages = Math.ceil(totalReviews / limit);
@@ -113,13 +124,17 @@ export async function GET(req: NextRequest) {
             .skip(skip)
             .limit(limit);
 
-        // Calculate distribution and average (from ALL reviews, regardless of active filter)
+        // Aggregate stats for the current scope (Seller, Product, or Service)
+        const matchQuery: any = {};
+        if (targetId) matchQuery.target = new mongoose.Types.ObjectId(targetId);
+        if (productId) matchQuery.product = new mongoose.Types.ObjectId(productId);
+        if (serviceId) matchQuery.service = new mongoose.Types.ObjectId(serviceId);
+
         const distributionPipeline = await Review.aggregate([
-            { $match: { target: new mongoose.Types.ObjectId(targetId) } }, // Match all target reviews
+            { $match: matchQuery },
             { $group: { _id: '$rating', count: { $sum: 1 } } }
         ]);
 
-        // Transform [ { _id: 5, count: 2 } ] -> { "5": 2, "4": 0, ... }
         const ratingCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
         let totalSum = 0;
         let totalCount = 0;
@@ -139,9 +154,8 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
             reviews,
             average,
-            count: totalCount, // Total across all ratings (for stats UI)
-            ratingCounts,      // {1: x, 2: y, 3: z, 4: a, 5: b} for Progress Bars
-            canReview,
+            count: totalCount,
+            ratingCounts,
             pagination: {
                 currentPage: page,
                 totalPages,
@@ -151,6 +165,7 @@ export async function GET(req: NextRequest) {
         }, { status: 200 });
 
     } catch (error: any) {
+        console.error('Fetch Reviews Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

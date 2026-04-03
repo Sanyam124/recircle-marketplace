@@ -34,12 +34,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             }
         }
 
-        // Check for buyerId if sold or reserved
+        // Check for buyerId if sold, rented, or reserved
         let buyerId = null;
-        if (product.status === 'Sold' || product.status === 'Reserved') {
+        if (product.status === 'Sold' || product.status === 'Reserved' || product.status === 'Rented') {
             const lastOrder = await Order.findOne({
                 product: id,
-                status: { $in: ['Paid', 'Scheduled', 'Completed', 'Dispute_Pending'] }
+                status: { $in: ['Scheduled', 'Completed'] }
             }).select('buyer').sort({ createdAt: -1 });
             buyerId = lastOrder?.buyer;
         }
@@ -88,16 +88,26 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         }
 
         // --- DELETION GUARD ---
-        // Check for active orders (Paid, Assigned, Out_for_Delivery, Dispute_Pending)
+        // Check for active orders (Paid, Scheduled, Dispute_Pending)
         const activeOrder = await Order.findOne({
             product: id,
-            status: { $in: ['Paid', 'Assigned', 'Out_for_Delivery', 'Dispute_Pending'] }
+            status: 'Scheduled'
         });
 
         if (activeOrder) {
             return NextResponse.json({
                 error: 'Cannot delete product with active orders. Please complete or resolve existing transactions first.'
             }, { status: 400 });
+        }
+
+        // Cascade: Decline all pending offers and update their message bubbles
+        const Offer = (await import('@/models/Offer')).default;
+        const Message = (await import('@/models/Message')).default;
+        const pendingOffers = await Offer.find({ product: id, status: 'Pending' }).select('_id');
+        if (pendingOffers.length > 0) {
+            const offerIds = pendingOffers.map(o => o._id);
+            await Offer.updateMany({ _id: { $in: offerIds } }, { $set: { status: 'Declined' } });
+            await Message.updateMany({ 'offer.offerId': { $in: offerIds } }, { $set: { 'offer.status': 'Declined' } });
         }
 
         // Cleanup Cloudinary Storage
@@ -137,9 +147,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        // Apply permitted status updates
-        if (body.status && ['Available', 'Inactive', 'Reserved', 'Sold'].includes(body.status)) {
-            // For simple toggle from profile, we usually switch between Available/Inactive
+        // Apply permitted status updates (only Available ↔ Inactive toggle, or Rented → Available reset)
+        if (body.status && ['Available', 'Inactive'].includes(body.status)) {
+            // Cannot deactivate if Sold or Reserved
+            if (['Reserved', 'Sold'].includes(product.status)) {
+                return NextResponse.json({ error: `Cannot hide an item while it is ${product.status}` }, { status: 400 });
+            }
+            
+            // Allow transition from Rented back to Available
             product.status = body.status;
         }
 

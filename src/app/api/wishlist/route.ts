@@ -16,71 +16,82 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '12');
-        const type = searchParams.get('type') || 'product'; // 'product' or 'service'
+        const type = searchParams.get('type') || 'all'; // Default to 'all' to show both on wishlist page
         const skip = (page - 1) * limit;
 
         await connectToDatabase();
         
-        // Use a single user fetch for efficiency
+        // Fetch user with raw ID arrays (NO populate)
         const user = await User.findById(userData.userId)
-            .populate({
-                path: 'wishlist',
-                select: 'title price images category description condition seller createdAt status community visibility location',
-                populate: [
-                    { path: 'seller', select: 'name profilePicture' },
-                    { path: 'community', select: 'name' }
-                ],
-                model: Product
-            })
-            .populate({
-                path: 'wishlistedServices',
-                select: 'title price priceUnit images category description provider createdAt status community visibility location availability',
-                populate: [
-                    { path: 'provider', select: 'name profilePicture' },
-                    { path: 'community', select: 'name' }
-                ],
-                model: Service
-            })
+            .select('wishlist wishlistedServices')
             .lean();
 
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        let allItems: any[] = [];
+        let itemIdsWithTypes: { id: string; type: 'product' | 'service' }[] = [];
 
+        // Collect all related IDs
         if (type === 'product' || type === 'all') {
-            const products = (user.wishlist || [])
-                .filter((p: any) => p != null && typeof p === 'object')
-                .map((p: any) => ({ ...p, itemType: 'product' }));
-            allItems = [...allItems, ...products];
+            const list = Array.isArray(user.wishlist) ? user.wishlist : [];
+            list.forEach((id: any) => {
+                if (id) itemIdsWithTypes.push({ id: id.toString(), type: 'product' });
+            });
         }
-
         if (type === 'service' || type === 'all') {
-            const services = (user.wishlistedServices || [])
-                .filter((s: any) => s != null && typeof s === 'object')
-                .map((s: any) => ({ ...s, itemType: 'service' }));
-            allItems = [...allItems, ...services];
+            const list = Array.isArray(user.wishlistedServices) ? user.wishlistedServices : [];
+            list.forEach((id: any) => {
+                if (id) itemIdsWithTypes.push({ id: id.toString(), type: 'service' });
+            });
         }
 
-        // Sort by createdAt descending
-        allItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-        const totalItems = allItems.length;
+        const totalItems = itemIdsWithTypes.length;
         const totalPages = Math.ceil(totalItems / limit);
-        const paginated = allItems.slice(skip, skip + limit);
+
+        // Standard Reverse Chronological behavior: Newest added first
+        // Since we insert at end of array, we reverse manually here
+        itemIdsWithTypes.reverse();
+
+        // Slice IDs for pagination BEFORE populating
+        const paginatedIdsWithTypes = itemIdsWithTypes.slice(skip, skip + limit);
+
+        const productIds = paginatedIdsWithTypes.filter(i => i.type === 'product').map(i => i.id);
+        const serviceIds = paginatedIdsWithTypes.filter(i => i.type === 'service').map(i => i.id);
+
+        const [products, services] = await Promise.all([
+            Product.find({ _id: { $in: productIds } })
+                .populate('seller', 'name profilePicture')
+                .populate('community', 'name')
+                .lean(),
+            Service.find({ _id: { $in: serviceIds } })
+                .populate('provider', 'name profilePicture')
+                .populate('community', 'name')
+                .lean()
+        ]);
+
+        // Map back to maintain the reversed order
+        const paginatedItems = paginatedIdsWithTypes.map(ref => {
+            if (ref.type === 'product') {
+                const p = products.find(p => p._id.toString() === ref.id);
+                return p ? { ...p, itemType: 'product' } : null;
+            } else {
+                const s = services.find(s => s._id.toString() === ref.id);
+                return s ? { ...s, itemType: 'service' } : null;
+            }
+        }).filter(item => item !== null);
 
         // Fetch ratings for paginated items
-        const ownerIds = paginated.map(item => 
+        const ownerIds = paginatedItems.map((item: any) => 
             item.itemType === 'product' ? item.seller?._id : item.provider?._id
-        ).filter(id => id != null);
+        ).filter((id: any) => id != null);
 
         const reviews = await Review.aggregate([
             { $match: { target: { $in: ownerIds } } },
             { $group: { _id: '$target', average: { $avg: '$rating' }, count: { $sum: 1 } } }
         ]);
 
-        const reviewMap = new Map(reviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
+        const reviewMap = new Map(reviews.map((r: any) => [r._id.toString(), { average: r.average, count: r.count } ]));
 
-        const wishlistWithRatings = paginated.map(item => {
+        const wishlistWithRatings = paginatedItems.map((item: any) => {
             const ownerId = item.itemType === 'product' ? item.seller?._id?.toString() : item.provider?._id?.toString();
             const stats = reviewMap.get(ownerId) || { average: 0, count: 0 };
             return {

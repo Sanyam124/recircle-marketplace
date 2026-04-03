@@ -15,10 +15,28 @@ export async function POST(req: NextRequest) {
     try {
         await connectToDatabase();
 
+        // Security Shield: Check the Permanent Blacklist
+        const Blacklist = (await import('@/models/Blacklist')).default;
+        
         let body = await req.json();
         body = sanitize(body);
+        let { username, email } = body;
 
-        let { name, username, email, password, emailToken, googleToken } = body;
+        const isBlacklisted = await Blacklist.findOne({
+            $or: [
+                { email: email?.toLowerCase() },
+                { username: username?.toLowerCase() }
+            ]
+        });
+
+        if (isBlacklisted) {
+            return NextResponse.json(
+                { error: 'This account has been permanently restricted due to safety violations.' },
+                { status: 403 }
+            );
+        }
+
+        let { name, password, emailToken, googleToken } = body;
         
         name = safeString(name);
         username = safeString(username);

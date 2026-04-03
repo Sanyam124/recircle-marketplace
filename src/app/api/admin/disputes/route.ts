@@ -4,12 +4,23 @@ import Order from '@/models/Order';
 import { verifyToken } from '@/lib/auth';
 import User from '@/models/User';
 
+// Helper to check if user is admin
+async function isAdmin(req: NextRequest) {
+    const token = req.cookies.get('token')?.value;
+    if (!token) return false;
+    const decoded = verifyToken(token) as { userId: string };
+    if (!decoded) return false;
+
+    await connectToDatabase();
+    const user = await User.findById(decoded.userId);
+    return user?.role === 'admin';
+}
+
 export async function GET(req: NextRequest) {
     try {
-        const token = req.cookies.get('token')?.value;
-        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        const decoded = verifyToken(token);
-        if (!decoded || decoded.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        if (!(await isAdmin(req))) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         await connectToDatabase();
 

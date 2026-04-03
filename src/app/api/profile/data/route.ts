@@ -139,7 +139,19 @@ export async function PUT(req: NextRequest) {
         if (allowEmailContact !== undefined) updateData.allowEmailContact = allowEmailContact;
         if (allowPhoneContact !== undefined) updateData.allowPhoneContact = allowPhoneContact;
         if (isOnVacation !== undefined) updateData.isOnVacation = isOnVacation;
-        if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
+
+        // 6. Profile Picture with Garbage Collection
+        if (profilePicture !== undefined && profilePicture !== user.profilePicture) {
+            if (user.profilePicture) {
+                try {
+                    const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                    await deleteFromCloudinary(user.profilePicture);
+                } catch (e) {
+                    console.error('Failed to garbage collect old profile pic:', e);
+                }
+            }
+            updateData.profilePicture = profilePicture;
+        }
 
         const updatedUser = await User.findByIdAndUpdate(
             decoded.userId,

@@ -23,11 +23,18 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Valid Community ID required' }, { status: 400 });
         }
 
+        const page = parseInt(searchParams.get('page') || '1');
+        const limit = parseInt(searchParams.get('limit') || '20');
+        const skip = (page - 1) * limit;
+
         const query = {
             community: new mongoose.Types.ObjectId(communityId),
         };
         
-        console.log('Fetching Board for Community:', communityId);
+        console.log('Fetching Board for Community:', communityId, 'Page:', page);
+
+        const totalPosts = await BoardPost.countDocuments(query);
+        const totalPages = Math.ceil(totalPosts / limit);
 
         // Fetch posts for this community, sorted by newest
         const posts = await BoardPost.find(query)
@@ -37,9 +44,20 @@ export async function GET(req: NextRequest) {
             select: 'name profilePicture username',
             strictPopulate: false
         })
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
 
-        return NextResponse.json({ posts }, { status: 200 });
+        return NextResponse.json({ 
+            posts,
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalPosts,
+                hasMore: page < totalPages
+            }
+        }, { status: 200 });
 
     } catch (error: any) {
         console.error('Board GET error:', error);

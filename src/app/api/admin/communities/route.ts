@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Community from '@/models/Community';
+import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
 
-// Helper to check admin status
+// Helper to check admin status (Database-verified)
 async function isAdmin(req: NextRequest) {
     const token = req.cookies.get('token')?.value;
     if (!token) return false;
-    const decoded = verifyToken(token);
-    return decoded && decoded.role === 'admin';
+    const decoded = verifyToken(token) as { userId: string };
+    if (!decoded) return false;
+
+    await connectToDatabase();
+    const user = await User.findById(decoded.userId);
+    return user?.role === 'admin';
 }
 
 export async function GET(req: NextRequest) {

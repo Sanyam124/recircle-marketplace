@@ -4,7 +4,7 @@ import Order from '@/models/Order';
 import Product from '@/models/Product';
 import Service from '@/models/Service';
 import User from '@/models/User';
-import Notification from '@/models/Notification';
+import { createNotification } from '@/lib/notifications';
 import { verifyToken } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
@@ -34,18 +34,18 @@ export async function POST(req: NextRequest) {
                 orderType: 'Service_Appointment',
                 itemPrice: 0,
                 totalAmount: 0,
-                status: 'Paid',
+                status: 'Scheduled',
                 appointmentDate: appointmentDate || new Date(),
                 deliveryAddress: 'Service Appointment',
             });
 
             // Notify Provider
-            await Notification.create({
-                recipient: service.provider._id,
-                sender: user._id,
+            await createNotification({
+                recipient: (service.provider as any)._id,
+                sender: (user._id as any).toString(),
                 type: 'SERVICE_REQUEST',
                 message: `New service booking for "${service.title}" from ${user.username || user.name}`,
-                link: '/profile'
+                link: `/orders?tab=seller&orderId=${newOrder._id}`
             });
 
             return NextResponse.json({ success: true, orderId: newOrder._id, paymentMethod: 'free' }, { status: 201 });
@@ -80,15 +80,15 @@ export async function POST(req: NextRequest) {
             itemPrice: product.price,
             totalAmount: TOTAL_AMOUNT,
             deliveryAddress: deliveryAddress,
-            status: 'Paid', // Assuming direct coordination now
+            status: 'Scheduled', // Active deal, ready for verification
         });
         // Notify Seller
-        await Notification.create({
-            recipient: product.seller._id,
-            sender: user._id,
+        await createNotification({
+            recipient: (product.seller as any)._id,
+            sender: (user._id as any).toString(),
             type: 'ORDER_PLACED',
             message: `Your product "${product.title}" has been reserved by ${user.username || user.name}!`,
-            link: '/profile'
+            link: `/orders?tab=seller&orderId=${order._id}`
         });
 
         return NextResponse.json({
@@ -121,9 +121,7 @@ export async function GET(req: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '15');
         const skip = (page - 1) * limit;
 
-        let query: any = {
-            status: { $ne: 'Pending_Payment' }
-        };
+        let query: any = {};
 
         // If specific item is requested, add to query
         if (productId) query.product = productId;
@@ -147,8 +145,8 @@ export async function GET(req: NextRequest) {
         const orders = await Order.find(query)
             .populate('product')
             .populate('service', 'title category price duration')
-            .populate('seller', 'name username gender')
-            .populate('buyer', 'name username gender')
+            .populate('seller', 'name username gender profilePicture')
+            .populate('buyer', 'name username gender profilePicture')
             .sort({ createdAt: -1, _id: -1 })
             .skip(skip)
             .limit(limit)
@@ -171,3 +169,4 @@ export async function GET(req: NextRequest) {
 }
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;

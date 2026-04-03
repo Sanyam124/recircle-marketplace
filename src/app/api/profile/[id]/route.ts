@@ -65,14 +65,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const objectId = new mongoose.Types.ObjectId(id);
 
         // Products: public shows only Available; owner sees all
-        const [totalProductsAvailable, totalProductsSold] = await Promise.all([
+        const [totalProductsAvailable, totalProductsSold, totalProductsRented] = await Promise.all([
             Product.countDocuments({ seller: objectId, status: 'Available' }),
-            Product.countDocuments({ seller: objectId, status: { $ne: 'Available' } }),
+            Product.countDocuments({ seller: objectId, status: 'Sold' }),
+            Product.countDocuments({ seller: objectId, status: 'Rented' }),
         ]);
-        const totalProducts = totalProductsAvailable + totalProductsSold;
+        const totalProducts = totalProductsAvailable + totalProductsSold + totalProductsRented;
+        
+        // [UX FIX]: Don't hide Sold/Rented items from public view, let ProductCard handle overlays
         const productQuery = isOwner
             ? { seller: objectId }
-            : (user.isOnVacation ? { _id: null } : { seller: objectId, status: 'Available' });
+            : (user.isOnVacation ? { _id: null } : { seller: objectId });
 
         const products = await Product.find(productQuery)
             .populate('seller', 'name profilePicture')
@@ -91,7 +94,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const totalServices = totalServicesActive + totalServicesInactive;
         const serviceQuery = isOwner
             ? { provider: objectId }
-            : (user.isOnVacation ? { _id: null } : { provider: objectId, status: 'Active' });
+            : (user.isOnVacation ? { _id: null } : { provider: objectId });
 
         const services = await Service.find(serviceQuery)
             .populate('provider', 'name profilePicture')
@@ -197,13 +200,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                     .populate('seller', 'name username')
                     .sort({ createdAt: -1 })
                     .skip(boughtProductSkip)
-                    .limit(boughtLimit),
+                    .limit(boughtLimit)
+                    .lean(),
                 Order.find({ buyer: id, service: { $exists: true, $ne: null } })
                     .populate('service', 'title images price priceUnit')
                     .populate('seller', 'name username')
                     .sort({ createdAt: -1 })
                     .skip(boughtServiceSkip)
-                    .limit(boughtLimit),
+                    .limit(boughtLimit)
+                    .lean(),
             ]);
         }
 

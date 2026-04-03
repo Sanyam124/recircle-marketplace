@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest) {
         const token = req.cookies.get('token')?.value;
         if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const decoded = verifyToken(token) as { userId: string };
-        await User.findByIdAndUpdate(decoded.userId, { lastSeen: new Date() });
+        await User.updateOne({ _id: decoded.userId }, { $set: { lastSeen: new Date() } });
         return NextResponse.json({ ok: true });
     } catch (err) {
         return NextResponse.json({ error: 'Server error' }, { status: 500 });

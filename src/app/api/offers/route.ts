@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Offer from '@/models/Offer';
-import Notification from '@/models/Notification';
 import Product from '@/models/Product';
 import Service from '@/models/Service';
-import Message from '@/models/Message';
+import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
+import { createNotification } from '@/lib/notifications';
 
 // POST /api/offers — buyer makes an offer
 export async function POST(req: NextRequest) {
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
         if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const decoded = verifyToken(token) as { userId: string };
 
-        const { productId, serviceId, offeredPrice: rawPrice, message: rawMessage } = await req.json();
+        const { productId, serviceId, offeredPrice: rawPrice, message: rawMessage, offerType = 'Buy', rentDuration, rentUnit } = await req.json();
         const offeredPrice = Math.round(rawPrice);
         const message = rawMessage?.trim();
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
             item = await Product.findById(productId);
             if (!item) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
             if (item.status !== 'Available') {
-                return NextResponse.json({ error: 'This product is already sold or reserved.' }, { status: 400 });
+                return NextResponse.json({ error: 'This product is no longer available.' }, { status: 400 });
             }
             if (item.seller.toString() === decoded.userId) {
                 return NextResponse.json({ error: 'You cannot offer on your own listing' }, { status: 400 });
@@ -39,6 +39,12 @@ export async function POST(req: NextRequest) {
         } else {
             item = await Service.findById(serviceId);
             if (!item) return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+            if (item.status !== 'Active') {
+                return NextResponse.json({ error: 'This service is no longer active.' }, { status: 400 });
+            }
+            if (item.provider.toString() === decoded.userId) {
+                return NextResponse.json({ error: 'You cannot offer on your own listing' }, { status: 400 });
+            }
             sellerId = item.provider.toString();
         }
 
@@ -46,11 +52,23 @@ export async function POST(req: NextRequest) {
         if (offeredPrice <= 0) {
             return NextResponse.json({ error: 'Offer must be greater than 0' }, { status: 400 });
         }
-        if (offeredPrice < item.price * 0.5) {
-            return NextResponse.json({ error: `Offer must be at least 50% of listed price (₹${Math.floor(item.price * 0.5)})` }, { status: 400 });
+
+        let basePrice = item.price;
+        if (productId) {
+            if (offerType === 'Rent') {
+                if (!item.forRent) return NextResponse.json({ error: 'This item is not available for rent' }, { status: 400 });
+                if (!rentDuration || !rentUnit) return NextResponse.json({ error: 'Rent duration and unit are required' }, { status: 400 });
+                basePrice = item.rentPrice;
+            } else {
+                if (!item.forSell) return NextResponse.json({ error: 'This item is not available for sale' }, { status: 400 });
+            }
         }
-        if (offeredPrice > item.price * 2) {
-            return NextResponse.json({ error: `Offer cannot exceed 200% of listed price (₹${item.price * 2})` }, { status: 400 });
+
+        if (offeredPrice < basePrice * 0.5) {
+            return NextResponse.json({ error: `Offer must be at least 50% of listed price (₹${Math.floor(basePrice * 0.5)})` }, { status: 400 });
+        }
+        if (offeredPrice > basePrice * 2) {
+            return NextResponse.json({ error: `Offer cannot exceed 200% of listed price (₹${basePrice * 2})` }, { status: 400 });
         }
 
         // Atomically decline existing pending offer from same buyer to prevent race conditions
@@ -67,19 +85,12 @@ export async function POST(req: NextRequest) {
             buyer: decoded.userId,
             seller: sellerId,
             ...(productId ? { product: productId } : { service: serviceId }),
+            offerType,
+            rentDuration: offerType === 'Rent' ? rentDuration : undefined,
+            rentUnit: offerType === 'Rent' ? rentUnit : undefined,
             offeredPrice,
-            originalPrice: item.price,
+            originalPrice: productId ? (offerType === 'Rent' ? item.rentPrice : item.price) : item.price,
             message,
-        });
-
-        // Notify the seller
-        const discount = Math.round(((item.price - offeredPrice) / item.price) * 100);
-        await Notification.create({
-            recipient: sellerId,
-            sender: decoded.userId,
-            type: 'OFFER_RECEIVED',
-            message: `You received an offer of ₹${offeredPrice} (${discount}% off) on "${item.title}"`,
-            link: `/chat/${decoded.userId}?${productId ? `productId=${productId}` : `serviceId=${serviceId}`}`,
         });
 
         return NextResponse.json({ offer }, { status: 201 });

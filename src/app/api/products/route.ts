@@ -16,14 +16,30 @@ export async function POST(req: NextRequest) {
         await connectToDatabase();
 
         const body = await req.json();
-        const { title: rawTitle, description: rawDescription, price: rawPrice, category: rawCategory, condition, images, visibility, communityId, location } = body;
+        const { title: rawTitle, description: rawDescription, price: rawPrice, category: rawCategory, condition, images, visibility, communityId, location, forSell = true, forRent = false, rentPrice: rawRentPrice, rentUnit } = body;
         const title = rawTitle?.trim();
         const description = rawDescription?.trim();
         const category = rawCategory?.trim();
-        const price = Math.round(rawPrice);
-
-        if (!title || !description || !price || !category || !condition) {
+        
+        if (!title || !description || !category || !condition) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
+        if (!forSell && !forRent) {
+            return NextResponse.json({ error: 'Product must be listed for sale or rent' }, { status: 400 });
+        }
+
+        let price = undefined;
+        let rentPrice = undefined;
+
+        if (forSell) {
+            if (rawPrice === undefined || rawPrice === null || rawPrice === '') return NextResponse.json({ error: 'Sell price is required when For Sell is checked' }, { status: 400 });
+            price = Math.round(rawPrice);
+        }
+
+        if (forRent) {
+             if (rawRentPrice === undefined || rawRentPrice === null || rawRentPrice === '' || !rentUnit) return NextResponse.json({ error: 'Rent price and unit are required when For Rent is checked' }, { status: 400 });
+             rentPrice = Math.round(rawRentPrice);
         }
 
         if (title.length > 80) return NextResponse.json({ error: 'Title must be 80 characters or less' }, { status: 400 });
@@ -50,7 +66,11 @@ export async function POST(req: NextRequest) {
             seller: user.userId,
             title,
             description,
+            forSell,
+            forRent,
             price,
+            rentPrice,
+            rentUnit,
             category,
             condition,
             images: imageUrls,
@@ -80,7 +100,7 @@ export async function GET(req: NextRequest) {
         const minPrice = searchParams.get('minPrice');
         const maxPrice = searchParams.get('maxPrice');
         const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '12');
+        const limit = parseInt(searchParams.get('limit') || '24');
         const communityFilter = searchParams.get('communityFilter') || 'All';
         const cityFilter = searchParams.get('city');
         const skip = (page - 1) * limit;
@@ -89,10 +109,10 @@ export async function GET(req: NextRequest) {
         const decoded = token ? verifyToken(token) : null;
         let blockedUserIds: string[] = [];
 
-        const query: any = { status: 'Available' };
+        const query: any = { status: { $in: ['Available', 'Rented'] } };
 
         if (decoded && !seller) {
-             const currentUser = await User.findById(decoded.userId).select('blockedUsers verifiedCommunities');
+             const currentUser = await User.findById(decoded.userId).select('blockedUsers verifiedCommunities').lean();
              if (currentUser && currentUser.blockedUsers) {
                   blockedUserIds = currentUser.blockedUsers.map((id: any) => id.toString());
              }
@@ -102,7 +122,7 @@ export async function GET(req: NextRequest) {
              } else if (communityFilter !== 'All' && communityFilter !== 'Public') {
                  query.community = communityFilter;
              } else {
-                 const verifiedCommunityIds = currentUser?.verifiedCommunities || [];
+                 const verifiedCommunityIds = (currentUser as any)?.verifiedCommunities || [];
                   query.$or = [
                       { visibility: 'Public' },
                       { visibility: { $exists: false } },
@@ -117,13 +137,13 @@ export async function GET(req: NextRequest) {
         }
 
         if (!seller) {
-            const vacationUsers = await User.find({ isOnVacation: true }).select('_id');
+            const vacationUsers = await User.find({ isOnVacation: true }).select('_id').lean();
             const vacationUserIds = vacationUsers.map(u => u._id.toString());
             
             let hiddenIds = [...vacationUserIds, ...blockedUserIds];
             
             if (decoded?.userId) {
-                const usersWhoBlockedMe = await User.find({ blockedUsers: decoded.userId }).select('_id');
+                const usersWhoBlockedMe = await User.find({ blockedUsers: decoded.userId }).select('_id').lean();
                 const usersWhoBlockedMeIds = usersWhoBlockedMe.map(u => u._id.toString());
                 hiddenIds = [...hiddenIds, ...usersWhoBlockedMeIds];
             }
@@ -177,7 +197,8 @@ export async function GET(req: NextRequest) {
             .populate('community', 'name')
             .sort(sortOptions)
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         const sellerIds = products.map((p: any) => p.seller._id);
         const reviews = await Review.aggregate([
@@ -190,7 +211,7 @@ export async function GET(req: NextRequest) {
         const productsWithRatings = products.map((product: any) => {
             const stats = reviewMap.get(product.seller._id.toString()) || { average: 0, count: 0 };
             return {
-                ...product.toObject(),
+                ...product,
                 ownerRating: stats.average,
                 reviewCount: stats.count
             };

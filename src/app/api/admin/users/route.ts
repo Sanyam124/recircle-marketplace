@@ -194,11 +194,24 @@ export async function DELETE(req: NextRequest) {
         const user = await User.findById(userId);
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        // Delete user's products
+        // 0. Permanent Blacklist: Prevent them from ever re-registering
+        try {
+            const Blacklist = (await import('@/models/Blacklist')).default;
+            await Blacklist.create({
+                email: user.email,
+                username: user.username,
+                reason: 'Account deleted by administrator due to guideline violations'
+            });
+        } catch (e) { 
+            // In case they are already blacklisted, we just continue
+            console.log('User already blacklisted or duplicate found during erasure.');
+        }
+
+        // 1. Delete user's products and their Cloudinary images
         try {
             const Product = (await import('@/models/Product')).default;
-            const products = await Product.find({ seller: userId });
             const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+            const products = await Product.find({ seller: userId });
             for (const p of products) {
                 if (p.images?.length) {
                     for (const img of p.images) {
@@ -207,13 +220,13 @@ export async function DELETE(req: NextRequest) {
                 }
             }
             await Product.deleteMany({ seller: userId });
-        } catch {}
+        } catch (e) { console.error('Product cleanup failed:', e); }
 
-        // Delete user's services
+        // 2. Delete user's services and their Cloudinary images
         try {
             const Service = (await import('@/models/Service')).default;
-            const services = await Service.find({ provider: userId });
             const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+            const services = await Service.find({ provider: userId });
             for (const s of services) {
                 if (s.images?.length) {
                     for (const img of s.images) {
@@ -222,9 +235,84 @@ export async function DELETE(req: NextRequest) {
                 }
             }
             await Service.deleteMany({ provider: userId });
-        } catch {}
+        } catch (e) { console.error('Service cleanup failed:', e); }
 
-        // Delete user's profile picture from cloudinary
+        // 3. Delete user's Board Posts
+        try {
+            const BoardPost = (await import('@/models/BoardPost')).default;
+            // First, delete posts written by the user
+            await BoardPost.deleteMany({ author: userId });
+            
+            // Second, remove their replies from other people's posts
+            await BoardPost.updateMany(
+                { 'replies.author': userId },
+                { $pull: { replies: { author: userId } } }
+            );
+            
+            // Third, remove their upvotes from other people's posts
+            await BoardPost.updateMany(
+                { upvotes: userId },
+                { $pull: { upvotes: userId } }
+            );
+        } catch (e) { console.error('BoardPost cleanup failed:', e); }
+
+        // 4. Handle Active Orders Cleanup 
+        try {
+            const Order = (await import('@/models/Order')).default;
+            const Product = (await import('@/models/Product')).default;
+            const activeOrders = await Order.find({
+                $or: [{ buyer: userId }, { seller: userId }],
+                status: 'Scheduled'
+            });
+            for (const order of activeOrders) {
+                // Return someone else's product if THIS user was the buyer
+                if (order.buyer.toString() === userId.toString() && order.product) {
+                    await Product.updateOne(
+                        { _id: order.product, status: 'Reserved' },
+                        { $set: { status: 'Available' } }
+                    );
+                }
+            }
+            await Order.deleteMany({ $or: [{ buyer: userId }, { seller: userId }] });
+        } catch (e) { console.error('Order cleanup failed:', e); }
+
+        // 5. Cleanup Offers (Sent and Received)
+        try {
+            const Offer = (await import('@/models/Offer')).default;
+            await Offer.deleteMany({ $or: [{ buyer: userId }, { seller: userId }] });
+        } catch (e) { console.error('Offer cleanup failed:', e); }
+
+        // 6. Cleanup Reviews (Written and Received)
+        try {
+            const Review = (await import('@/models/Review')).default;
+            await Review.deleteMany({ $or: [{ reviewer: userId }, { target: userId }] });
+        } catch (e) { console.error('Review cleanup failed:', e); }
+
+        // 7. Cleanup Messages
+        try {
+            const Message = (await import('@/models/Message')).default;
+            await Message.deleteMany({ $or: [{ sender: userId }, { receiver: userId }] });
+        } catch (e) { console.error('Message cleanup failed:', e); }
+
+        // 8. Cleanup Notifications
+        try {
+            const Notification = (await import('@/models/Notification')).default;
+            await Notification.deleteMany({ $or: [{ userId: userId }, { senderId: userId }] });
+        } catch (e) { console.error('Notification cleanup failed:', e); }
+
+        // 9. Cleanup Reports (Filed by the user or against them)
+        try {
+            const Report = (await import('@/models/Report')).default;
+            await Report.deleteMany({ $or: [{ reporter: userId }, { targetUser: userId }] });
+        } catch (e) { console.error('Report cleanup failed:', e); }
+
+        // 10. Cleanup Verification Requests
+        try {
+            const VerificationRequest = (await import('@/models/VerificationRequest')).default;
+            await VerificationRequest.deleteMany({ user: userId });
+        } catch (e) { console.error('VerificationRequest cleanup failed:', e); }
+
+        // 11. Delete user's profile picture from cloudinary
         if (user.profilePicture) {
             try {
                 const { deleteFromCloudinary } = await import('@/lib/cloudinary');
@@ -232,7 +320,7 @@ export async function DELETE(req: NextRequest) {
             } catch {}
         }
 
-        // Finally delete the user
+        // 12. Finally delete the user account
         await User.findByIdAndDelete(userId);
 
         return NextResponse.json({ success: true }, { status: 200 });

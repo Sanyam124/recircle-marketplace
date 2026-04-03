@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
 
         response.cookies.set('token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: false, // [TEMP] Allow testing on local WiFi (HTTP) from mobile
             sameSite: 'strict',
             maxAge: 60 * 60 * 24 * 7,
             path: '/',

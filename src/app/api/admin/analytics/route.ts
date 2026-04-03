@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
         const cancelledProductOrders = await Order.countDocuments({ status: 'Cancelled', orderType: 'Product' });
         const cancelledServiceOrders = await Order.countDocuments({ status: 'Cancelled', orderType: 'Service_Appointment' });
 
-        const pendingStatuses = ['Pending_Payment', 'Paid', 'Scheduled', 'Dispute_Pending'];
+        const pendingStatuses = ['Scheduled'];
         const pendingOrdersCount = await Order.countDocuments({ status: { $in: pendingStatuses } });
         const pendingProductOrders = await Order.countDocuments({ status: { $in: pendingStatuses }, orderType: 'Product' });
         const pendingServiceOrders = await Order.countDocuments({ status: { $in: pendingStatuses }, orderType: 'Service_Appointment' });

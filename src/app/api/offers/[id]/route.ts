@@ -6,6 +6,7 @@ import Message from '@/models/Message';
 import Order from '@/models/Order';
 import Product from '@/models/Product';
 import { verifyToken } from '@/lib/auth';
+import { createNotification } from '@/lib/notifications';
 
 // PATCH /api/offers/[id] — seller accepts or declines an offer
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -44,8 +45,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         // If accepted, check for product status first
         if (action === 'accept' && offer.product) {
             const product = await Product.findById(offer.product);
-            if (product && product.status === 'Sold') {
-                return NextResponse.json({ error: 'This product is already sold.' }, { status: 400 });
+            if (product && (product.status === 'Sold' || product.status === 'Rented')) {
+                return NextResponse.json({ 
+                    error: `This product is already ${product.status === 'Rented' ? 'rented out' : 'sold'}.` 
+                }, { status: 400 });
             }
         }
 
@@ -74,6 +77,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 } else {
                     // Override approved: cancel the old conflicting order(s)
                     await Order.updateMany(queryQuery, { $set: { status: 'Cancelled' } });
+
+                    // Revert product status to Available since the old order is cancelled
+                    if (offer.product) {
+                        await Product.updateOne(
+                            { _id: offer.product._id, status: 'Reserved' },
+                            { $set: { status: 'Available' } }
+                        );
+                    }
 
                     // Count how many orders have already been COMPLETED for this item between these users
                     const completedOrderCount = await Order.countDocuments({
@@ -124,13 +135,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         let verificationCode = undefined;
         // Proceed with creating the new order
         if (action === 'accept') {
-            verificationCode = Math.floor(1000 + Math.random() * 9000).toString();
+            verificationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
             await Order.create({
                 buyer: offer.buyer,
                 seller: decoded.userId,
                 product: offer.product?._id,
                 service: offer.service?._id,
+                transactionType: offer.offerType || 'Buy',
+                rentDuration: offer.rentDuration,
+                rentUnit: offer.rentUnit,
                 orderType: offer.product ? 'Product' : 'Service_Appointment',
                 itemPrice: offer.offeredPrice,
                 totalAmount: offer.offeredPrice,
@@ -152,8 +166,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const itemName = (offer.product as any)?.title || (offer.service as any)?.title || 'your listing';
 
         // 1. Notify buyer via notification system
-        await Notification.create({
-            recipient: offer.buyer,
+        await createNotification({
+            recipient: offer.buyer.toString(),
             sender: decoded.userId,
             type: action === 'accept' ? 'OFFER_ACCEPTED' : 'OFFER_DECLINED',
             message: action === 'accept'
@@ -162,24 +176,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             link: action === 'accept' ? `/chat/${decoded.userId}?${offer.product ? `productId=${offer.product._id}` : `serviceId=${offer.service?._id}`}` : undefined,
         });
 
-        // 2. Automatically update the Offer Bubble visual status in the chat log
+        // 2. Automatically update the Offer Bubble visual status and include verification code
+        const updateData: any = { "offer.status": newStatus };
+        if (verificationCode) updateData["offer.verificationCode"] = verificationCode;
+        
         await Message.updateMany(
             { "offer.offerId": id },
-            { $set: { "offer.status": newStatus } }
+            { $set: updateData }
         );
 
-        // 3. Automatically send a final confirmation chat message
-        const messageContent = action === 'accept'
-            ? `I've accepted your ${offer.product ? `offer of ₹${offer.offeredPrice}` : 'appointment request'}. The order is locked in.`
-            : `I've declined your ${offer.product ? `offer of ₹${offer.offeredPrice}` : 'appointment request'}.`;
-
-        await Message.create({
-            sender: decoded.userId,
-            recipient: offer.buyer,
-            product: offer.product?._id,
-            service: offer.service?._id,
-            content: messageContent,
-        });
+        // 3. Trigger Pusher events for all related messages to sync UI in real-time (Deduplicated)
+        try {
+            const { pusherServer } = await import('@/lib/pusherServer');
+            const updatedMessages = await Message.find({ "offer.offerId": id });
+            
+            for (const msg of updatedMessages) {
+                const recipients = new Set([msg.recipient.toString(), msg.sender.toString()]);
+                for (const rId of recipients) {
+                    await pusherServer.trigger(`user-${rId}`, 'new-message', msg);
+                }
+            }
+        } catch (pusherErr) {
+            console.error('Pusher sync error in offer action:', pusherErr);
+        }
 
         return NextResponse.json({ ok: true, status: newStatus });
     } catch (err) {

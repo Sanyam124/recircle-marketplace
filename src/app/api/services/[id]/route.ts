@@ -66,7 +66,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
     try {
         const token = req.cookies.get('token')?.value;
         if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -97,6 +96,16 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             return NextResponse.json({
                 error: 'Cannot delete service with active appointments. Please complete or refund existing bookings first.'
             }, { status: 400 });
+        }
+        
+        // Cascade: Decline all pending offers and update their message bubbles
+        const Offer = (await import('@/models/Offer')).default;
+        const Message = (await import('@/models/Message')).default;
+        const pendingOffers = await Offer.find({ service: id, status: 'Pending' }).select('_id');
+        if (pendingOffers.length > 0) {
+            const offerIds = pendingOffers.map(o => o._id);
+            await Offer.updateMany({ _id: { $in: offerIds } }, { $set: { status: 'Declined' } });
+            await Message.updateMany({ 'offer.offerId': { $in: offerIds } }, { $set: { 'offer.status': 'Declined' } });
         }
 
         // Cleanup Cloudinary Storage
@@ -137,8 +146,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        // Apply only permitted updates (e.g. status)
+        // Hardening: Prevents hiding a service that has active bookings/disputes
         if (body.status && ['Active', 'Inactive'].includes(body.status)) {
+            const Order = (await import('@/models/Order')).default;
+            const activeOrder = await Order.findOne({
+                service: id,
+                status: { $in: ['Paid', 'Scheduled', 'Dispute_Pending'] }
+            });
+
+            if (activeOrder) {
+                return NextResponse.json({ error: 'Cannot hide a service with active appointments or disputes.' }, { status: 400 });
+            }
             service.status = body.status;
         }
 

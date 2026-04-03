@@ -4,6 +4,8 @@ import Message from '@/models/Message';
 import Notification from '@/models/Notification';
 import User from '@/models/User';
 import Order from '@/models/Order';
+import Product from '@/models/Product';
+import Service from '@/models/Service';
 import { verifyToken } from '@/lib/auth';
 import mongoose from 'mongoose';
 
@@ -64,7 +66,8 @@ export async function GET(req: NextRequest) {
             .populate('product', 'title price images seller provider')
             .populate('service', 'title price images priceUnit seller provider')
             .sort({ createdAt: -1 }) // Get newest first for limit
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         // Reverse to maintain chronological order in UI
         messages.reverse();
@@ -88,18 +91,18 @@ export async function GET(req: NextRequest) {
                         { buyer: decoded.userId, seller: recipientId },
                         { buyer: recipientId, seller: decoded.userId }
                     ]
-                }).select('buyer');
+                }).select('buyer').lean();
 
                 lastContext = {
                     type: itemType,
-                    data: { ...((lastWithRef.product || lastWithRef.service) as any).toObject(), buyerId: order ? order.buyer : null },
+                    data: { ...(lastWithRef.product || lastWithRef.service), buyerId: order ? order.buyer : null },
                     messageId: lastWithRef._id
                 };
             }
         }
 
         // Fetch other user's lastSeen for online status
-        const otherUser = await User.findById(recipientId).select('lastSeen name username profilePicture');
+        const otherUser = await User.findById(recipientId).select('lastSeen name username profilePicture').lean();
 
         return NextResponse.json({
             messages,
@@ -142,7 +145,7 @@ export async function POST(req: NextRequest) {
 
         // Check if either user has blocked the other
         const [sender, receiver] = await Promise.all([
-            User.findById(decoded.userId).select('blockedUsers'),
+            User.findById(decoded.userId).select('name profilePicture blockedUsers'),
             User.findById(recipientId).select('blockedUsers')
         ]);
 
@@ -169,14 +172,61 @@ export async function POST(req: NextRequest) {
             offer: offer || undefined
         });
 
-        // Trigger Pusher event for real-time delivery
+        // 6. [UX FIX]: Trigger Pusher Sync for the deal closed message (Deduplicated)
         try {
             const { pusherServer } = await import('@/lib/pusherServer');
-            await pusherServer.trigger(`user-${recipientId}`, 'new-message', message);
-            // Notify sender too for multi-device sync
-            await pusherServer.trigger(`user-${decoded.userId}`, 'new-message', message);
+            const recipients = new Set([recipientId.toString(), decoded.userId]);
+            for (const rId of recipients) {
+                await pusherServer.trigger(`user-${rId}`, 'new-message', message);
+            }
         } catch (pusherErr) {
-            console.error('Pusher trigger error:', pusherErr);
+            console.error('Pusher sync error in deal closure:', pusherErr);
+        }
+
+        // Trigger Push Notification for offline/background users
+        try {
+            const { sendPushNotification } = await import('../../../lib/pushNotifications');
+            const senderName = (sender as any).name || 'Someone';
+            
+            let notificationTitle = `New message from ${senderName}`;
+            let notificationBody = content;
+
+            // If it's an offer, provide context in the notification itself
+            if (offer) {
+                let itemName = 'your listing';
+                if (productId) {
+                    const item = await Product.findById(productId).select('title');
+                    if (item) itemName = item.title;
+                } else if (serviceId) {
+                    const item = await Service.findById(serviceId).select('title');
+                    if (item) itemName = item.title;
+                }
+                
+                const isRental = offer.offerType === 'Rent';
+                
+                if (isRental) {
+                    notificationTitle = `Rental Offer: ₹${offer.price}/${offer.rentUnit} from ${senderName}`;
+                    notificationBody = `Wants to rent "${itemName}" for ${offer.rentDuration} ${offer.rentUnit}(s)`;
+                    if (content && !content.startsWith('Sent an')) {
+                        notificationBody += `. Message: "${content}"`;
+                    }
+                } else {
+                    notificationTitle = `${productId ? 'Buy Offer' : 'Service Offer'}: ₹${offer.price} from ${senderName}`;
+                    const isPlaceholder = content === 'Sent an Offer' || content === 'Sent an Appointment Request' || content?.startsWith('Sent an');
+                    notificationBody = `On "${itemName}"${content && !isPlaceholder ? `: ${content}` : ''}`;
+                }
+            }
+
+            await sendPushNotification(recipientId, {
+                title: notificationTitle,
+                body: notificationBody,
+                icon: (sender as any).profilePicture || '/icon-192x192.png',
+                data: {
+                    url: `/chat/${decoded.userId}${productId ? `?productId=${productId}` : (serviceId ? `?serviceId=${serviceId}` : '')}`
+                }
+            }, (offer && typeof offer === 'object') ? 'offer' : 'message');
+        } catch (pushErr) {
+            console.error('Push notification error:', pushErr);
         }
 
         return NextResponse.json({ success: true, message }, { status: 201 });

@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
         const userIds = paginatedData.map((d: any) => d._id.otherUserId);
 
         const usersList = await User.find({ _id: { $in: userIds } })
-            .select('name username profilePicture gender');
+            .select('name username profilePicture gender').lean();
 
         // Need to grab basic product and service info for the sidebar
         const productIds = paginatedData.map((d: any) => d._id.productId).filter(Boolean);
@@ -161,7 +161,7 @@ export async function GET(req: NextRequest) {
                         { buyer: objectIdUserId, seller: d._id.otherUserId },
                         { buyer: d._id.otherUserId, seller: objectIdUserId }
                     ]
-                }).select('offeredPrice status updatedAt').sort({ updatedAt: -1 });
+                }).select('offeredPrice status updatedAt').sort({ updatedAt: -1 }).lean();
             } else if (service) {
                 latestOffer = await Offer.findOne({
                     service: service._id,
@@ -169,7 +169,7 @@ export async function GET(req: NextRequest) {
                         { buyer: objectIdUserId, seller: d._id.otherUserId },
                         { buyer: d._id.otherUserId, seller: objectIdUserId }
                     ]
-                }).select('offeredPrice status updatedAt').sort({ updatedAt: -1 });
+                }).select('offeredPrice status updatedAt').sort({ updatedAt: -1 }).lean();
             }
 
             return {
@@ -247,3 +247,6 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;

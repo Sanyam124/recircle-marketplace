@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '12');
         const communityFilter = searchParams.get('communityFilter'); // 'All', 'Public', or specific ID
         const cityFilter = searchParams.get('city');
+        const listingType = searchParams.get('listingType') || 'All'; // 'Buy', 'Rent', 'All'
 
         const skip = (page - 1) * limit;
 
@@ -170,6 +171,13 @@ export async function GET(req: NextRequest) {
             serviceQuery['location.city'] = cityFilter;
         }
 
+        // Listing Type Logic (Products only)
+        if (listingType === 'Buy') {
+            productQuery.$or = [{ forSell: true }, { forSell: { $exists: false } }];
+        } else if (listingType === 'Rent') {
+            productQuery.forRent = true;
+        }
+
         // Fetch Results using Aggregation for unified sorting/pagination
         const pipeline: any[] = [];
 
@@ -201,6 +209,10 @@ export async function GET(req: NextRequest) {
             $project: {
                 title: 1,
                 price: 1,
+                forSell: 1,
+                forRent: 1,
+                rentPrice: 1,
+                rentUnit: 1,
                 images: 1,
                 category: 1,
                 description: 1,
@@ -338,3 +350,6 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
