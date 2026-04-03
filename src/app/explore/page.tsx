@@ -1,134 +1,124 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useState, Suspense, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import ExploreSidebar, { ExploreFilters } from '@/components/ExploreSidebar';
 import ProductCard from '@/components/ProductCard';
 import ServiceCard from '@/components/ServiceCard';
-import { ItemCardSkeleton } from '@/components/Skeletons';
+import { ExplorePageSkeleton, ItemsGridSkeleton } from '@/components/Skeletons';
 
-export default function ExplorePage() {
+function ExploreFiltersAndGrid() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const getInitialFilters = () => {
-    // Collect all category/categories[] values
-    const cats = [
-      ...searchParams.getAll('categories[]'),
-      ...searchParams.getAll('category')
-    ];
-    
-    return {
-      search: searchParams.get('search') || '',
-      type: (searchParams.get('type') as 'all' | 'products' | 'services') || 'all',
-      sort: searchParams.get('sort') || 'newest',
-      minPrice: searchParams.get('minPrice') || '',
-      maxPrice: searchParams.get('maxPrice') || '',
-      categories: Array.from(new Set(cats)), // Remove duplicates
-      conditions: searchParams.getAll('conditions[]') || [],
-      communityFilter: searchParams.get('communityFilter') || 'All',
-      city: searchParams.get('city') || ''
-    };
+  const catsFromUrl = [
+    ...searchParams.getAll('categories[]'),
+    ...searchParams.getAll('category')
+  ];
+  
+  const currentFilters: ExploreFilters = {
+    search: searchParams.get('search') || '',
+    type: (searchParams.get('type') as 'all' | 'products' | 'services') || 'all',
+    listingType: searchParams.get('listingType') || 'All',
+    sort: searchParams.get('sort') || 'newest',
+    minPrice: searchParams.get('minPrice') || '',
+    maxPrice: searchParams.get('maxPrice') || '',
+    categories: Array.from(new Set(catsFromUrl)),
+    conditions: searchParams.getAll('conditions[]') || [],
+    communityFilter: searchParams.get('communityFilter') || 'All',
+    city: searchParams.get('city') || ''
   };
 
-  const initialFilters = useMemo(() => getInitialFilters(), [searchParams]);
-  const initialPage = useMemo(() => parseInt(searchParams.get('page') || '1'), [searchParams]);
-
+  const currentPage = parseInt(searchParams.get('page') || '1');
   const [cols, setCols] = useState<3 | 4 | 5>(3);
-  const [page, setPage] = useState(initialPage);
-
-  const [filters, setFilters] = useState<ExploreFilters>(initialFilters);
+  const [mobileCols, setMobileCols] = useState<1 | 2>(2);
+  const [searchTerm, setSearchTerm] = useState(currentFilters.search);
   const isFirstRender = useRef(true);
-  const isInitializing = useRef(true);
 
-  // Sync state to URL 
+  // Debounce search
   useEffect(() => {
-    // Collect all category/categories[] values
-    const cats = [
-      ...searchParams.getAll('categories[]'),
-      ...searchParams.getAll('category')
-    ];
-    const urlFilters = {
-      search: searchParams.get('search') || '',
-      type: (searchParams.get('type') as 'all' | 'products' | 'services') || 'all',
-      sort: searchParams.get('sort') || 'newest',
-      minPrice: searchParams.get('minPrice') || '',
-      maxPrice: searchParams.get('maxPrice') || '',
-      categories: Array.from(new Set(cats)),
-      conditions: searchParams.getAll('conditions[]') || [],
-      communityFilter: searchParams.get('communityFilter') || 'All',
-      city: searchParams.get('city') || ''
-    };
-    
-    setFilters(prev => {
-      const isDifferent = JSON.stringify(prev) !== JSON.stringify(urlFilters);
-      return isDifferent ? urlFilters : prev;
-    });
-    
-    const urlPage = parseInt(searchParams.get('page') || '1');
-    if (page !== urlPage) setPage(urlPage);
-  }, [searchParams]);
-
-  // Mark initialization as complete after a short delay
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      isInitializing.current = false;
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Sync state to URL 
-  useEffect(() => {
-    // Skip if it's the very first render to preserve the URL that loaded the page
     if (isFirstRender.current) {
+        setSearchTerm(currentFilters.search);
         isFirstRender.current = false;
         return;
     }
 
+    const timer = setTimeout(() => {
+      if (searchTerm !== currentFilters.search) {
+        handleFilterChange({...currentFilters, search: searchTerm});
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Sync back if URL changes (e.g. browser back button)
+  useEffect(() => {
+    if (currentFilters.search !== searchTerm) {
+        setSearchTerm(currentFilters.search);
+    }
+  }, [currentFilters.search]);
+
+  // Function to update the URL with new filters
+  const pushUpdatedUrl = (newFilters: ExploreFilters, newPage: number) => {
     const params = new URLSearchParams();
-    if (filters.search) params.set('search', filters.search);
-    if (filters.type !== 'all') params.set('type', filters.type);
-    if (filters.sort !== 'newest') params.set('sort', filters.sort);
-    if (filters.minPrice) params.set('minPrice', filters.minPrice);
-    if (filters.maxPrice) params.set('maxPrice', filters.maxPrice);
-    if (filters.communityFilter !== 'All') params.set('communityFilter', filters.communityFilter);
-    if (filters.city) params.set('city', filters.city);
+    if (newFilters.search) params.set('search', newFilters.search);
+    if (newFilters.type !== 'all') params.set('type', newFilters.type);
+    if (newFilters.listingType !== 'All') params.set('listingType', newFilters.listingType);
+    if (newFilters.sort !== 'newest') params.set('sort', newFilters.sort);
+    if (newFilters.minPrice) params.set('minPrice', newFilters.minPrice);
+    if (newFilters.maxPrice) params.set('maxPrice', newFilters.maxPrice);
+    if (newFilters.communityFilter !== 'All') params.set('communityFilter', newFilters.communityFilter);
+    if (newFilters.city) params.set('city', newFilters.city);
     
-    filters.categories.forEach(c => params.append('categories[]', c));
-    filters.conditions.forEach(c => params.append('conditions[]', c));
+    newFilters.categories.forEach(c => params.append('categories[]', c));
+    newFilters.conditions.forEach(c => params.append('conditions[]', c));
     
-    if (page > 1) params.set('page', page.toString());
+    if (newPage > 1) params.set('page', newPage.toString());
 
     const queryString = params.toString();
     const url = `/explore${queryString ? `?${queryString}` : ''}`;
-    
     router.push(url, { scroll: false });
-  }, [filters, page]); // Only sync when internal filters or page change
-
-  const fetcher = (url: string) => fetch(url).then(res => res.json());
-
-  const getQueryUrl = () => {
-      const params = new URLSearchParams();
-      if (filters.search) params.append('search', filters.search);
-      if (filters.type !== 'all') params.append('type', filters.type);
-      if (filters.sort) params.append('sort', filters.sort);
-      if (filters.minPrice) params.append('minPrice', filters.minPrice);
-      if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
-      if (filters.communityFilter !== 'All') params.append('communityFilter', filters.communityFilter);
-      if (filters.city) params.append('city', filters.city);
-      
-      filters.categories.forEach(c => params.append('categories[]', c));
-      filters.conditions.forEach(c => params.append('conditions[]', c));
-      
-      params.append('page', page.toString());
-      params.append('limit', '20');
-      return `/api/explore?${params.toString()}`;
   };
 
-  const { data, isLoading, isValidating } = useSWR(getQueryUrl(), fetcher, { 
+  const fetcher = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const error = new Error('An error occurred while fetching the data.');
+      (error as any).status = res.status;
+      (error as any).info = await res.json().catch(() => ({}));
+      throw error;
+    }
+    return res.json();
+  };
+
+  const getQueryUrl = () => {
+    const params = new URLSearchParams();
+    if (currentFilters.search) params.set('search', currentFilters.search);
+    if (currentFilters.type !== 'all') params.set('type', currentFilters.type);
+    if (currentFilters.listingType !== 'All') params.set('listingType', currentFilters.listingType);
+    if (currentFilters.sort !== 'newest') params.set('sort', currentFilters.sort);
+    if (currentFilters.minPrice) params.set('minPrice', currentFilters.minPrice);
+    if (currentFilters.maxPrice) params.set('maxPrice', currentFilters.maxPrice);
+    if (currentFilters.communityFilter !== 'All') params.set('communityFilter', currentFilters.communityFilter);
+    if (currentFilters.city) params.set('city', currentFilters.city);
+    
+    currentFilters.categories.forEach(c => params.append('categories[]', c));
+    currentFilters.conditions.forEach(c => params.append('conditions[]', c));
+    
+    params.append('page', currentPage.toString());
+    params.append('limit', '20');
+    return `/api/explore?${params.toString()}`;
+  };
+
+  const { data, error, isLoading, isValidating } = useSWR(getQueryUrl(), fetcher, { 
     keepPreviousData: true,
-    revalidateOnFocus: false
+    revalidateOnFocus: false,
+    shouldRetryOnError: (err) => err.status !== 429 // Stop retrying on rate limits
   });
 
   const loading = !data && isLoading; 
@@ -137,135 +127,203 @@ export default function ExplorePage() {
   const totalPages = data?.pagination?.totalPages || 1;
   const totalItems = data?.pagination?.totalItems || 0;
 
+  if (error && error.status === 429) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-900 transition-colors">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-10 max-w-md w-full text-center shadow-xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-300">
+           <div className="w-20 h-20 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+           </div>
+           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Slow Down</h3>
+           <p className="text-gray-500 dark:text-gray-400 mb-6">You've made too many requests in a short time. Please wait a minute before refreshing again.</p>
+           <button onClick={() => window.location.reload()} className="w-full py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md">Try Again</button>
+        </div>
+      </div>
+    );
+  }
+
   const handlePageChange = (newPage: number) => {
-    setPage(newPage);
+    pushUpdatedUrl(currentFilters, newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleFilterChange = useCallback((newFilters: ExploreFilters) => {
-    if (isInitializing.current) return;
-
-    setFilters(prev => {
-      const filtersChanged = JSON.stringify(prev) !== JSON.stringify(newFilters);
-      
-      if (filtersChanged) {
-        // We defer setPage(1) to avoid side-effects in state updaters
-        setTimeout(() => setPage(1), 0);
-        return newFilters;
-      }
-      return prev;
-    });
-  }, []);
+  const handleFilterChange = (newFilters: ExploreFilters) => {
+    pushUpdatedUrl(newFilters, 1);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Header */}
-        <div className="mb-6 flex flex-col md:flex-row justify-between md:items-end gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2 tracking-tight">Explore</h1>
-            <p className="text-gray-500 dark:text-gray-400 text-sm max-w-xl">
-              Discover products and services offered by students across campus. Use the filters to find exactly what you're looking for.
-            </p>
-          </div>
-        </div>
-
         <div className="flex flex-col md:flex-row gap-8">
-          
           {/* Sidebar */}
           <div className="w-full md:w-64 shrink-0">
             <ExploreSidebar 
-              currentFilters={filters}
+              currentFilters={currentFilters}
               onFilterChange={handleFilterChange} 
             />
           </div>
 
           {/* Main Content */}
-          <div className="flex-1">
-            
+          <div className="flex-1 min-w-0">
             {/* Results Info and Controls */}
-            <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6 flex justify-between items-center transition-colors">
-              <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">
-                {isFetchingFiltered ? 'Updating...' : loading ? 'Searching...' : `Found ${totalItems} ${filters.type === 'all' ? 'items' : filters.type}`}
-              </p>
+            <div className="bg-white/70 dark:bg-gray-800/40 backdrop-blur-md p-4 sm:p-5 rounded-3xl border border-gray-200 dark:border-gray-700/50 mb-8 flex flex-col-reverse sm:flex-row justify-between items-center transition-all shadow-sm gap-4">
               
-              <div className="hidden sm:flex items-center gap-1 bg-gray-50 dark:bg-gray-900 overflow-hidden p-1 rounded-lg border border-gray-200 dark:border-gray-700">
-                 <button onClick={() => setCols(3)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 3 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>3 Wide</button>
-                 <button onClick={() => setCols(4)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 4 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>4 Wide</button>
-                 <button onClick={() => setCols(5)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 5 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>5 Wide</button>
+              <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start shrink-0">
+                 <div className="flex flex-col text-left sm:text-right">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">
+                      Items
+                    </p>
+                    <h2 className="text-sm font-bold text-gray-900 dark:text-white">
+                      {isFetchingFiltered ? 'Updating...' : loading ? 'Loading...' : `${totalItems} ${currentFilters.type === 'all' ? 'Found' : currentFilters.type}`}
+                    </h2>
+                 </div>
+
+                 {/* Mobile Grid Controls - visible only on mobile */}
+                 <div className="flex sm:hidden items-center gap-1 bg-gray-100/50 dark:bg-gray-900/50 p-1 rounded-xl border border-gray-100 dark:border-gray-800 shadow-inner shrink-0">
+                    <button onClick={() => setMobileCols(1)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${mobileCols === 1 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}>1x</button>
+                    <button onClick={() => setMobileCols(2)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${mobileCols === 2 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}>2x</button>
+                 </div>
+
+                 {/* Desktop Grid Controls - hidden on mobile */}
+                 <div className="hidden sm:flex items-center gap-1 bg-gray-100/50 dark:bg-gray-900/50 p-1 rounded-xl border border-gray-100 dark:border-gray-800 shadow-inner shrink-0">
+                    <button onClick={() => setCols(3)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${cols === 3 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}>3x</button>
+                    <button onClick={() => setCols(4)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${cols === 4 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}>4x</button>
+                    <button onClick={() => setCols(5)} className={`hidden lg:block px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${cols === 5 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}>5x</button>
+                 </div>
+              </div>
+
+              <div className="w-full sm:w-1/2 xl:w-1/3 relative group text-left">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors text-gray-400 group-focus-within:text-indigo-500">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  name="search"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search products or services..."
+                  className="w-full pl-11 pr-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-900/20 transition-all outline-none font-medium text-left"
+                />
               </div>
             </div>
 
             {loading ? (
-              <div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 py-12 transition-colors">
-                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
-                    {[...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)}
+              <ItemsGridSkeleton count={12} cols={cols} />
+            ) : error ? (
+                <div className="bg-white/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-[3rem] p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                    <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                        <svg className="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">Something went wrong</h3>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2 font-bold text-sm">We couldn't load the items. Please check your internet.</p>
                 </div>
-              </div>
             ) : items.length === 0 ? (
-              <div className="bg-white dark:bg-gray-800 rounded-3xl p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
-                <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <svg className="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <div className="bg-white/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-[3rem] p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                <div className="w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                   <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                   </svg>
                 </div>
-                <h3 className="text-xl font-extrabold text-gray-900 dark:text-white mb-2">No items found</h3>
-                <p className="text-gray-500 dark:text-gray-400 text-sm max-w-sm mx-auto">Try adjusting your filters, trying a different search term, or browsing a different category.</p>
-                <button 
-                  onClick={() => handleFilterChange({ search: '', type: 'all', sort: 'newest', minPrice: '', maxPrice: '', categories: [], conditions: [], communityFilter: 'All', city: '' })}
-                  className="mt-6 px-6 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
-                >
-                  Clear All Filters
-                </button>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">No Results Found</h3>
+                <p className="text-gray-500 dark:text-gray-400 mt-2 font-bold text-sm">Try using different filters or changing your search.</p>
               </div>
             ) : (
               <>
-                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
+                <div 
+                  className={`grid gap-4 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} sm:grid-cols-2 ${
+                    cols === 3 ? 'md:grid-cols-3' : 
+                    cols === 4 ? 'md:grid-cols-3 lg:grid-cols-4' : 
+                    'md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                  }`}
+                >
                   {items.map((item: any) => (
-                    item.itemType === 'product' 
-                      ? <ProductCard key={`prod-${item._id}`} product={item} />
-                      : <ServiceCard key={`serv-${item._id}`} service={item} />
+                    <div key={item._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      {item.itemType === 'product' ? (
+                        <ProductCard product={item} hideOwnerActions={true} />
+                      ) : (
+                        <ServiceCard service={item} hideOwnerActions={true} />
+                      )}
+                    </div>
                   ))}
                 </div>
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="mt-10 flex items-center justify-center gap-2">
+                  <div className="mt-20 flex justify-center items-center gap-3 pb-12">
                     <button
-                      onClick={() => handlePageChange(Math.max(1, page - 1))}
-                      disabled={page === 1}
-                      className="px-4 py-2 text-sm font-semibold rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 text-gray-400 disabled:opacity-20 hover:text-indigo-600 transition-all active:scale-90"
                     >
-                      Previous
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
                     </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter(p => Math.abs(p - page) <= 2)
-                      .map(p => (
-                        <button
-                          key={p}
-                          onClick={() => handlePageChange(p)}
-                          className={`w-10 h-10 text-sm font-bold rounded-xl transition-all ${
-                            p === page 
-                              ? 'bg-indigo-600 shadow-md text-white' 
-                              : 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
+                    
+                    <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 p-2 rounded-[2rem] border border-gray-100 dark:border-gray-700">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) pageNum = i + 1;
+                          else if (currentPage <= 3) pageNum = i + 1;
+                          else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                          else pageNum = currentPage - 2 + i;
+
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => handlePageChange(pageNum)}
+                              className={`w-12 h-12 rounded-xl text-xs font-black transition-all active:scale-90 ${
+                                currentPage === pageNum
+                                  ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 dark:shadow-none'
+                                  : 'text-gray-400 hover:text-indigo-600'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                    </div>
+
                     <button
-                      onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                      disabled={page === totalPages}
-                      className="px-4 py-2 text-sm font-semibold rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 text-gray-400 disabled:opacity-20 hover:text-indigo-600 transition-all active:scale-90"
                     >
-                      Next
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
                     </button>
                   </div>
                 )}
               </>
             )}
-
           </div>
         </div>
+  );
+}
+
+const FilterSidebarSkeleton = () => (
+  <div className="hidden md:block w-64 h-[600px] bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 shrink-0 shadow-sm animate-pulse" />
+);
+
+const MainAreaSkeleton = () => (
+  <div className="flex-1 space-y-6 animate-pulse">
+      <div className="h-14 w-full bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm" />
+      <ItemsGridSkeleton count={12} cols={3} />
+  </div>
+);
+
+export default function ExplorePage() {
+  return (
+    <div className="min-h-screen bg-[#f5f6f9] dark:bg-gray-900 transition-all duration-500 overflow-x-hidden w-full max-w-[100vw]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Suspense fallback={
+            <div className="flex flex-col md:flex-row gap-8">
+              <FilterSidebarSkeleton />
+              <MainAreaSkeleton />
+            </div>
+        }>
+            <ExploreFiltersAndGrid />
+        </Suspense>
       </div>
     </div>
   );
