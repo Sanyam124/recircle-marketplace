@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface User {
@@ -41,15 +41,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load from cache or API on mount
   useEffect(() => {
-    // 1. Check LocalStorage for an "optimistic" UI update
-    const cachedUser = typeof window !== 'undefined' ? localStorage.getItem('recircle_user') : null;
-    if (cachedUser) {
-      try {
-        setUser(JSON.parse(cachedUser));
-      } catch (e) {
-        console.error('Failed to parse cached user');
-      }
-    }
+    // Safety timeout to prevent infinite loading screen (e.g. if fetch hangs)
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+    }, 8000); 
 
     async function loadUser() {
       try {
@@ -57,27 +52,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
-          // Sync with LocalStorage for next time
           localStorage.setItem('recircle_user', JSON.stringify(data.user));
-        } else {
+        } else if (res.status === 401) {
           setUser(null);
           localStorage.removeItem('recircle_user');
         }
       } catch (error) {
-        console.error('Failed to load user', error);
-        setUser(null);
+        console.warn('Network issue during auth check:', error);
       } finally {
         setLoading(false);
+        clearTimeout(timeoutId);
       }
     }
 
     loadUser();
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const login = (userData: User) => {
     setUser(userData);
     localStorage.setItem('recircle_user', JSON.stringify(userData));
-    router.push('/');
+    window.location.href = '/explore'; 
   };
 
   const logout = async () => {
@@ -88,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setUser(null);
       localStorage.removeItem('recircle_user');
-      router.push('/auth');
+      window.location.href = '/auth';
     }
   };
 
@@ -99,18 +94,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
         setUser(data.user);
         localStorage.setItem('recircle_user', JSON.stringify(data.user));
-      } else {
+      } else if (res.status === 401) {
         setUser(null);
         localStorage.removeItem('recircle_user');
       }
     } catch (error) {
-      console.error('Failed to refresh user', error);
-      setUser(null);
+      console.warn('User refresh failed due to network:', error);
     }
   };
 
+  const authContextValue = useMemo(() => ({ 
+    user, 
+    loading, 
+    login, 
+    logout, 
+    setUser, 
+    refreshUser 
+  }), [user, loading]);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, setUser, refreshUser }}>
+    <AuthContext.Provider value={authContextValue}>
       {children}
     </AuthContext.Provider>
   );

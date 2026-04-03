@@ -21,6 +21,11 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
   const method = request.method;
 
+  // Log API requests for visibility
+  if (pathname.startsWith('/api')) {
+    console.log(`\x1b[36m[API Request]\x1b[0m ${method} ${pathname}${request.nextUrl.search}`);
+  }
+
   // 1. Initial Response Object
   let response = NextResponse.next();
 

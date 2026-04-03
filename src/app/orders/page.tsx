@@ -1,80 +1,41 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { OrderRowSkeleton } from '@/components/Skeletons';
 import { useAuth } from '@/context/AuthContext';
-import Image from 'next/image';
+import NextImage from 'next/image';
 import { confirmAction } from '@/lib/confirm';
+import ReviewModal from '@/components/ReviewModal';
+import useSWR from 'swr';
 
-function PaginationControls({
-  page, totalPages, onPageChange, scrollTargetId,
-}: { page: number; totalPages: number; onPageChange: (p: number) => void; scrollTargetId?: string }) {
-  if (totalPages <= 1) return null;
-
-  const go = (p: number) => {
-    if (scrollTargetId) {
-      document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    onPageChange(p);
-  };
-
-  return (
-    <div className="mt-5 flex items-center justify-center gap-2">
-      <button
-        onClick={() => go(Math.max(1, page - 1))}
-        disabled={page === 1}
-        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-      >
-        Previous
-      </button>
-      {Array.from({ length: totalPages }, (_, i) => i + 1)
-        .filter(p => Math.abs(p - page) <= 2)
-        .map(p => (
-          <button
-            key={p}
-            onClick={() => go(p)}
-            className={`w-8 h-8 text-sm font-bold rounded-lg transition-colors ${
-              p === page ? 'bg-indigo-600 text-white' : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-            }`}
-          >
-            {p}
-          </button>
-        ))}
-      <button
-        onClick={() => go(Math.min(totalPages, page + 1))}
-        disabled={page === totalPages}
-        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-      >
-        Next
-      </button>
-    </div>
-  );
-}
-
-export default function OrdersPage() {
+function OrdersPageContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isFirstRender = useRef(true);
   const [activeTab, setActiveTab] = useState<'buyer' | 'seller'>((searchParams.get('tab') as 'buyer' | 'seller') || 'buyer');
   
+  const bPage = parseInt(searchParams.get('bPage') || '1');
+  const sPage = parseInt(searchParams.get('sPage') || '1');
+
+  // SWR Fetching
+  const { data: buyerData, error: buyerError, isLoading: buyerLoading, mutate: mutateBuyer } = useSWR(
+    user && activeTab === 'buyer' ? `/api/orders?role=buyer&page=${bPage}&limit=10` : null
+  );
+
+  const { data: sellerData, error: sellerError, isLoading: sellerLoading, mutate: mutateSeller } = useSWR(
+    user && activeTab === 'seller' ? `/api/orders?role=seller&page=${sPage}&limit=10` : null
+  );
+
+  const isRateLimited = buyerError?.status === 429 || sellerError?.status === 429;
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push(`/auth?redirect=${encodeURIComponent('/orders')}`);
     }
   }, [user, authLoading, router]);
-
-  const [buyerOrders, setBuyerOrders] = useState<any[]>([]);
-  const initialBuyerPage = parseInt(searchParams.get('bPage') || '1');
-  const [buyerPagination, setBuyerPagination] = useState({ page: initialBuyerPage, totalPages: 1 });
-  const [buyerLoading, setBuyerLoading] = useState(true);
-
-  const [sellerOrders, setSellerOrders] = useState<any[]>([]);
-  const initialSellerPage = parseInt(searchParams.get('sPage') || '1');
-  const [sellerPagination, setSellerPagination] = useState({ page: initialSellerPage, totalPages: 1 });
-  const [sellerLoading, setSellerLoading] = useState(true);
 
   // Sync state to URL 
   useEffect(() => {
@@ -85,8 +46,8 @@ export default function OrdersPage() {
 
     const params = new URLSearchParams();
     params.set('tab', activeTab);
-    if (buyerPagination.page > 1) params.set('bPage', buyerPagination.page.toString());
-    if (sellerPagination.page > 1) params.set('sPage', sellerPagination.page.toString());
+    if (bPage > 1) params.set('bPage', bPage.toString());
+    if (sPage > 1) params.set('sPage', sPage.toString());
     
     // Check if we already have an orderId to preserve
     const orderId = searchParams.get('orderId');
@@ -95,30 +56,11 @@ export default function OrdersPage() {
     const queryString = params.toString();
     const url = `/orders${queryString ? `?${queryString}` : ''}`;
     router.push(url, { scroll: false });
-  }, [activeTab, buyerPagination.page, sellerPagination.page]);
-
-  // Sync URL -> State (Back button)
-  useEffect(() => {
-    const tabFromUrl = searchParams.get('tab') as 'buyer' | 'seller';
-    if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-    }
-
-    const bPFromUrl = parseInt(searchParams.get('bPage') || '1');
-    if (bPFromUrl !== buyerPagination.page) {
-      setBuyerPagination(prev => ({ ...prev, page: bPFromUrl }));
-    }
-
-    const sPFromUrl = parseInt(searchParams.get('sPage') || '1');
-    if (sPFromUrl !== sellerPagination.page) {
-      setSellerPagination(prev => ({ ...prev, page: sPFromUrl }));
-    }
-  }, [searchParams]);
+  }, [activeTab, bPage, sPage, router, searchParams]);
 
   useEffect(() => {
     const orderId = searchParams.get('orderId');
     if (orderId) {
-      // Small delay to ensure items are rendered
       setTimeout(() => {
         const el = document.getElementById(`order-${orderId}`);
         if (el) {
@@ -133,86 +75,37 @@ export default function OrdersPage() {
   const [otpModalData, setOtpModalData] = useState<{ id: string, type: 'Product' | 'Service_Appointment', role: 'buyer' | 'seller', order: any } | null>(null);
   const [otpCode, setOtpCode] = useState('');
   const [submittingOTP, setSubmittingOTP] = useState(false);
+  const [reviewOrder, setReviewOrder] = useState<any | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      if (activeTab === 'buyer') {
-        fetchBuyerOrders(buyerPagination.page);
-      } else if (activeTab === 'seller') {
-        fetchSellerOrders(sellerPagination.page);
-      }
-    }
-  }, [user, activeTab, buyerPagination.page, sellerPagination.page]);
+  const buyerOrders = buyerData?.orders || [];
+  const buyerTotalPages = buyerData?.pagination?.totalPages || 1;
 
-  const fetchBuyerOrders = async (page: number) => {
-    setBuyerLoading(true);
-    try {
-      const res = await fetch(`/api/orders?role=buyer&page=${page}&limit=10`);
-      if (res.ok) {
-        const data = await res.json();
-        setBuyerOrders(data.orders || []);
-        setBuyerPagination(data.pagination || { page: 1, totalPages: 1 });
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setBuyerLoading(false);
-    }
-  };
-
-  const fetchSellerOrders = async (page: number) => {
-    setSellerLoading(true);
-    try {
-      const res = await fetch(`/api/orders?role=seller&page=${page}&limit=10`);
-      if (res.ok) {
-        const data = await res.json();
-        setSellerOrders(data.orders || []);
-        setSellerPagination(data.pagination || { page: 1, totalPages: 1 });
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSellerLoading(false);
-    }
-  };
+  const sellerOrders = sellerData?.orders || [];
+  const sellerTotalPages = sellerData?.pagination?.totalPages || 1;
 
   const submitOTP = async () => {
-    if (!otpModalData || otpCode.length < 4) return;
+    if (!otpModalData || otpCode.length < 6) return;
     setSubmittingOTP(true);
-    
     const action = otpModalData.type === 'Product' ? 'complete_delivery' : 'complete_appointment';
-    
     try {
-      // Optimistic Update
-      const oldBuyerOrders = [...buyerOrders];
-      const oldSellerOrders = [...sellerOrders];
-      const targetList = activeTab === 'buyer' ? buyerOrders : sellerOrders;
-      const setList = activeTab === 'buyer' ? setBuyerOrders : setSellerOrders;
-      
-      setList(targetList.map(o => o._id === otpModalData.id ? { ...o, status: 'Completed' } : o));
-      setOtpModalData(null);
-      setOtpCode('');
-
       const res = await fetch(`/api/orders/${otpModalData.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, otp: otpCode }),
       });
-      const data = await res.json();
-      
       if (res.ok) {
-        // Refresh silently in background to ensure sync
-        if (activeTab === 'buyer') fetchBuyerOrders(buyerPagination.page);
-        else fetchSellerOrders(sellerPagination.page);
+        mutateBuyer();
+        mutateSeller();
+        setOtpModalData(null);
+        setOtpCode('');
+      } else if (res.status === 429) {
+          alert('Too many attempts. Please wait a minute.');
       } else {
-        // Rollback
-        setBuyerOrders(oldBuyerOrders);
-        setSellerOrders(oldSellerOrders);
-        alert(data.error || 'Failed to verify code.');
+          const errData = await res.json();
+          alert(errData.error || 'Verification failed');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred while verifying the code.');
     } finally {
       setSubmittingOTP(false);
     }
@@ -228,324 +121,303 @@ export default function OrdersPage() {
     if (!confirmed) return;
     
     try {
-      // Optimistic Update
-      const oldBuyerOrders = [...buyerOrders];
-      const oldSellerOrders = [...sellerOrders];
-      const targetList = role === 'buyer' ? buyerOrders : sellerOrders;
-      const setList = role === 'buyer' ? setBuyerOrders : setSellerOrders;
-
-      setList(targetList.map(o => o._id === orderId ? { ...o, status: 'Cancelled' } : o));
-
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'cancel' }),
       });
       if (res.ok) {
-        // Successfully cancelled. Let's refresh the current list so pagination and data is 100% in sync
-        if (role === 'buyer') {
-           fetchBuyerOrders(buyerPagination.page);
-        } else {
-           fetchSellerOrders(sellerPagination.page);
-        }
-      } else {
-        const data = await res.json();
-        // Rollback
-        setBuyerOrders(oldBuyerOrders);
-        setSellerOrders(oldSellerOrders);
-        alert(data.error || 'Failed to cancel order.');
+        mutateBuyer();
+        mutateSeller();
       }
     } catch (err: any) {
       console.error('Cancel order error:', err);
-      alert('Network or server error occurred while cancelling: ' + err.message);
-      // Rollback on hard crash
-      if (role === 'buyer') fetchBuyerOrders(buyerPagination.page);
-      else fetchSellerOrders(sellerPagination.page);
     }
   };
+
+  if (isRateLimited) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4 text-center">
+        <div className="w-20 h-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mb-6 animate-bounce">
+          <svg className="w-10 h-10 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        </div>
+        <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2 uppercase italic tracking-tighter">Whoa, slow down!</h2>
+        <p className="text-gray-500 dark:text-gray-400 max-w-xs mb-8 font-medium">You're moving faster than we can keep up with. Please wait a minute before refreshing.</p>
+        <button onClick={() => { mutateBuyer(); mutateSeller(); }} className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95">Try Again</button>
+      </div>
+    );
+  }
 
   if (authLoading || !user) return <div className="max-w-5xl mx-auto px-4 py-12"><OrderRowSkeleton /><OrderRowSkeleton /><OrderRowSkeleton /></div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-8 pb-20">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#f5f6f9] dark:bg-gray-900 pt-8 pb-20 transition-all duration-300">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">My Orders</h1>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">Manage your purchases, sales, and appointments securely.</p>
-          </div>
+        <div className="mb-12 flex flex-col gap-2">
+            <h1 className="text-4xl sm:text-5xl font-black text-gray-950 dark:text-white tracking-tighter italic leading-none">
+              My Orders
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 font-bold tracking-tight">Track your purchases, sales, and service bookings here.</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 p-1.5 bg-gray-200/50 dark:bg-gray-800 rounded-2xl mb-8 overflow-x-auto scrollbar-hide">
+        <div className="inline-flex p-1.5 bg-gray-200/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-[1.5rem] mb-12 overflow-hidden border border-white/50 dark:border-gray-700/50 shadow-inner max-w-full overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab('buyer')}
-            className={`flex-1 flex justify-center py-2.5 px-4 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-8 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${
               activeTab === 'buyer' 
-                ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-700/50'
+                ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-md ring-1 ring-black/5 dark:ring-white/5 italic' 
+                : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
             }`}
           >
-            My Purchases & Bookings
+            🛒 Purchases
           </button>
           <button
             onClick={() => setActiveTab('seller')}
-            className={`flex-1 flex justify-center py-2.5 px-4 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-8 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${
               activeTab === 'seller' 
-                ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-700/50'
+                ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-md ring-1 ring-black/5 dark:ring-white/5 italic' 
+                : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
             }`}
           >
-            My Sales & Services
+            💼 My Business
           </button>
         </div>
 
-        {/* Tab Content */}
         <div id="orders-top">
           {(() => {
             if (activeTab === 'buyer') {
               if (buyerLoading) return <div>{[...Array(5)].map((_, i) => <OrderRowSkeleton key={i} />)}</div>;
               if (buyerOrders.length === 0) {
                 return (
-                  <div className="bg-white dark:bg-gray-800 rounded-3xl p-12 text-center border border-gray-100 dark:border-gray-700 shadow-sm">
-                    <p className="text-gray-500 dark:text-gray-400 text-lg">You haven't bought anything yet.</p>
-                    <Link href="/explore" className="mt-4 inline-block text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Explore Marketplace</Link>
+                  <div className="bg-white/70 dark:bg-gray-800/40 backdrop-blur-xl rounded-[3rem] p-16 text-center border border-white/40 dark:border-gray-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all">
+                    <p className="text-gray-500 dark:text-gray-400 text-xl font-bold tracking-tight italic mb-8">You haven't bought anything yet.</p>
+                    <Link href="/explore" className="inline-flex items-center gap-2 px-8 py-4 bg-gray-950 dark:bg-white text-white dark:text-gray-950 font-black uppercase text-[10px] tracking-[0.3em] rounded-2xl hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white transition-all shadow-xl active:scale-95 italic">
+                      <span>Explore Marketplace</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </Link>
                   </div>
                 );
               }
               return (
                 <div className="space-y-4">
-                  {buyerOrders.map(order => {
-                    const otherPartyId = order.seller?._id || order.seller;
-                    const itemId = (order.product?._id || order.product) || (order.service?._id || order.service);
-                    return (
-                      <OrderRow 
-                        key={order._id} 
-                        order={order} 
-                        role="buyer" 
-                        onCancel={() => handleCancelOrder(order._id, 'buyer')} 
-                        onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'buyer', order })} 
-                      />
-                    );
-                  })}
-                  <PaginationControls page={buyerPagination.page} totalPages={buyerPagination.totalPages} onPageChange={(p) => setBuyerPagination({ ...buyerPagination, page: p })} scrollTargetId="orders-top" />
+                  {buyerOrders.map((order: any) => (
+                    <OrderRow key={order._id} order={order} role="buyer" onCancel={() => handleCancelOrder(order._id, 'buyer')} onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'buyer', order })} onOpenReview={() => setReviewOrder(order)} />
+                  ))}
+                  <PaginationControls 
+                    page={bPage} 
+                    totalPages={buyerTotalPages} 
+                    onPageChange={(p) => {
+                       const params = new URLSearchParams(searchParams.toString());
+                       params.set('bPage', p.toString());
+                       router.push(`/orders?${params.toString()}`, { scroll: false });
+                    }} 
+                    scrollTargetId="orders-top" 
+                  />
                 </div>
               );
             } else {
               if (sellerLoading) return <div>{[...Array(5)].map((_, i) => <OrderRowSkeleton key={i} />)}</div>;
               if (sellerOrders.length === 0) {
                 return (
-                  <div className="bg-white dark:bg-gray-800 rounded-3xl p-12 text-center border border-gray-100 dark:border-gray-700 shadow-sm">
-                    <p className="text-gray-500 dark:text-gray-400 text-lg">You haven't made any sales yet.</p>
-                    <Link href="/profile" className="mt-4 inline-block text-indigo-600 dark:text-indigo-400 font-bold hover:underline">View My Profile</Link>
+                  <div className="bg-white/70 dark:bg-gray-800/40 backdrop-blur-xl rounded-[3rem] p-16 text-center border border-white/40 dark:border-gray-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all">
+                    <p className="text-gray-500 dark:text-gray-400 text-xl font-bold tracking-tight italic mb-8">You haven't made any sales yet.</p>
+                    <Link href="/profile" className="inline-flex items-center gap-2 px-8 py-4 bg-gray-950 dark:bg-white text-white dark:text-gray-950 font-black uppercase text-[10px] tracking-[0.3em] rounded-2xl hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white transition-all shadow-xl active:scale-95 italic">
+                      <span>View My Profile</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </Link>
                   </div>
                 );
               }
               return (
                 <div className="space-y-4">
-                  {sellerOrders.map(order => {
-                    const otherPartyId = order.buyer?._id || order.buyer;
-                    const itemId = (order.product?._id || order.product) || (order.service?._id || order.service);
-                    return (
-                      <OrderRow 
-                        key={order._id} 
-                        order={order} 
-                        role="seller" 
-                        onCancel={() => handleCancelOrder(order._id, 'seller')} 
-                        onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'seller', order })} 
-                      />
-                    );
-                  })}
-                  <PaginationControls page={sellerPagination.page} totalPages={sellerPagination.totalPages} onPageChange={(p) => setSellerPagination({ ...sellerPagination, page: p })} scrollTargetId="orders-top" />
+                  {sellerOrders.map((order: any) => (
+                    <OrderRow key={order._id} order={order} role="seller" onCancel={() => handleCancelOrder(order._id, 'seller')} onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'seller', order })} onOpenReview={() => {}} />
+                  ))}
+                  <PaginationControls 
+                    page={sPage} 
+                    totalPages={sellerTotalPages} 
+                    onPageChange={(p) => {
+                       const params = new URLSearchParams(searchParams.toString());
+                       params.set('sPage', p.toString());
+                       router.push(`/orders?${params.toString()}`, { scroll: false });
+                    }} 
+                    scrollTargetId="orders-top" 
+                  />
                 </div>
               );
             }
           })()}
         </div>
-
       </div>
 
-      {/* OTP Modal */}
-      {otpModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-sm overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Verify Handoff</h3>
-              <button onClick={() => { setOtpModalData(null); setOtpCode(''); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            
-            <div className="p-6 text-center space-y-4">
-              <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-6">
-                {otpModalData.type === 'Product' 
-                   ? 'Please enter the 4-digit code provided to the buyer to confirm physical delivery.'
-                   : 'Please enter the 4-digit code provided by the service provider to verify attendance.'}
-              </p>
-              
-              <input 
-                type="text"
-                maxLength={4}
-                autoFocus
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-                className="w-full text-center text-4xl font-mono tracking-[0.5em] font-bold text-indigo-700 dark:text-indigo-400 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl py-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none"
-                placeholder="0000"
-              />
-              
-              <button 
-                onClick={submitOTP}
-                disabled={otpCode.length !== 4 || submittingOTP}
-                className="w-full mt-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submittingOTP ? 'Verifying...' : 'Confirm'}
-              </button>
-            </div>
+      {otpModalData && <OTPModal data={otpModalData} code={otpCode} setCode={setOtpCode} onSubmit={submitOTP} onCancel={() => setOtpModalData(null)} submitting={submittingOTP} />}
+      {reviewOrder && <ReviewModal order={reviewOrder} onClose={() => setReviewOrder(null)} onSuccess={() => { mutateBuyer(); mutateSeller(); setReviewOrder(null); }} />}
+    </div>
+  );
+}
+
+function PaginationControls({ page, totalPages, onPageChange, scrollTargetId }: { page: number; totalPages: number; onPageChange: (p: number) => void; scrollTargetId?: string }) {
+  if (totalPages <= 1) return null;
+  const go = (p: number) => { if (scrollTargetId) document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); onPageChange(p); };
+  return (
+    <div className="mt-5 flex items-center justify-center gap-2">
+      <button onClick={() => go(Math.max(1, page - 1))} disabled={page === 1} className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Previous</button>
+      {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => Math.abs(p - page) <= 2).map(p => (
+        <button key={p} onClick={() => go(p)} className={`w-8 h-8 text-sm font-bold rounded-lg transition-colors ${ p === page ? 'bg-indigo-600 text-white' : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800' }`} >{p}</button>
+      ))}
+      <button onClick={() => go(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors" >Next</button>
+    </div>
+  );
+}
+
+function OTPModal({ data, code, setCode, onSubmit, onCancel, submitting }: any) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md transition-all duration-300">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.3)] dark:shadow-[0_30px_90px_rgba(0,0,0,0.7)] w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-100 dark:border-gray-700">
+        <div className="p-8 border-b border-gray-50 dark:border-gray-700/50 flex justify-between items-center bg-gray-50/10 dark:bg-gray-900/10">
+          <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight uppercase italic opacity-80">Verify Handoff</h3>
+          <button onClick={onCancel} className="p-2 -mr-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors bg-gray-50 dark:bg-gray-900/50 rounded-xl hover:rotate-90 transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>
+        <div className="p-10 text-center">
+          <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-950/40 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-indigo-100/50 dark:border-indigo-900/30 animate-pulse"><svg className="w-10 h-10 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg></div>
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-6 leading-relaxed px-4">{data.type === 'Product' ? 'Confirm physical delivery by entering the 6-digit code from the buyer.' : 'Verify service attendance with the 6-digit code from the provider.'}</p>
+          <input 
+            type="text" 
+            maxLength={6} 
+            autoFocus 
+            value={code} 
+            onChange={(e) => setCode(e.target.value.replace(/\s/g, '').toUpperCase())} 
+            className="w-full text-center text-4xl font-black italic tracking-[0.25em] text-indigo-700 dark:text-indigo-400 bg-gray-50/50 dark:bg-gray-950/50 border-2 border-gray-100 dark:border-gray-800 rounded-2xl py-6 focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-900/20 focus:border-indigo-500 transition-all outline-none shadow-inner" 
+            placeholder="••••••" 
+          />
+          <button 
+             onClick={onSubmit} 
+             disabled={code.length !== 6 || submitting} 
+             className="w-full mt-10 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all disabled:opacity-50 disabled:scale-[0.98] uppercase tracking-[0.15em] text-sm shadow-xl shadow-indigo-100 dark:shadow-none active:scale-95 group"
+          >
+            {submitting ? 'Verifying Identity...' : (
+                <span className="flex items-center justify-center gap-2">
+                    Confirm Completion
+                    <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                </span>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OrderRow({ order, role, onCancel, onOpenOtpModal, onOpenReview }: any) {
+  const item = order.product || order.service;
+  const isProduct = order.orderType === 'Product';
+  const otherParty = role === 'buyer' ? order.seller : order.buyer;
+  const otherPartyLabel = role === 'buyer' ? (isProduct ? 'Seller' : 'Provider') : 'Buyer';
+  if (!item) return null;
+  return (
+    <div id={`order-${order._id}`} className="group bg-white/70 dark:bg-gray-800/40 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/40 dark:border-gray-700/50 overflow-hidden flex flex-col md:flex-row transition-all hover:shadow-2xl hover:-translate-y-1 hover:border-indigo-200 dark:hover:border-indigo-900/50">
+      <div className="p-4 sm:p-6 flex-1 flex flex-col sm:flex-row gap-5 min-w-0">
+        <Link href={`/${isProduct ? 'products' : 'services'}/${item._id}`} className="block w-full sm:w-28 h-28 sm:h-28 bg-gray-50 dark:bg-gray-900 rounded-2xl overflow-hidden shrink-0 relative shadow-inner border border-gray-100 dark:border-gray-800">
+          {item?.images?.[0] ? <NextImage src={item.images[0]} alt={item.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500" /> : <div className="flex h-full w-full items-center justify-center text-gray-300"><svg className="w-8 h-8 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>}
+        </Link>
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
+            <Link href={`/${isProduct ? 'products' : 'services'}/${item._id}`} className="flex-1 font-black text-gray-900 dark:text-white text-lg sm:text-xl hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors line-clamp-1 tracking-tight min-w-0">{item.title}</Link>
+            <div className={`px-3 py-1 text-[10px] font-black rounded-full uppercase tracking-widest shrink-0 border mt-1 ${
+              order.status === 'Completed' ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50' : 
+              order.status === 'Cancelled' ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/50' : 
+              'bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/50 shadow-sm'
+            }`}>{order.status}</div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mb-4">
+            <span className="font-black text-gray-950 dark:text-gray-100 italic tracking-tighter text-base">₹{order.itemPrice.toLocaleString()}</span>
+            {order.transactionType === 'Rent' && (
+              <span className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-[9px] font-black rounded-lg border border-indigo-100 dark:border-indigo-800/50 uppercase italic tracking-tighter">
+                per {order.rentUnit}
+              </span>
+            )}
+            <span className="opacity-30">•</span>
+            <span className="font-bold">{new Date(order.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            {order.transactionType === 'Rent' && order.rentDuration && (
+              <>
+                <span className="opacity-30">•</span>
+                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest rounded-lg border border-gray-200 dark:border-gray-700">
+                  {order.rentDuration} {order.rentUnit}{order.rentDuration > 1 ? 's' : ''}
+                </span>
+              </>
+            )}
+          </div>
+          <div className="mt-auto flex items-center gap-3 bg-gray-50/50 dark:bg-gray-900/50 p-2.5 rounded-2xl border border-gray-100/50 dark:border-gray-700/50 w-fit max-w-full min-w-0">
+            <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest ml-1">{otherPartyLabel}</span>
+            {otherParty ? (
+              <Link href={`/profile/${otherParty._id}`} className="font-bold text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-2 truncate pr-2 group/user transition-colors min-w-0">
+                <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 border-2 border-white dark:border-gray-800 text-indigo-700 dark:text-indigo-400 flex items-center justify-center text-[10px] font-black shrink-0 overflow-hidden shadow-sm group-hover/user:scale-110 transition-transform">{otherParty.profilePicture ? <NextImage src={otherParty.profilePicture} alt={otherParty.name} width={24} height={24} className="w-full h-full object-cover" /> : otherParty.name?.charAt(0)}</div>
+                <span className="truncate">{otherParty.name}</span>
+              </Link>
+            ) : <span className="text-gray-400 font-bold italic">User Departed</span>}
           </div>
         </div>
+      </div>
+      
+      {order.status === 'Scheduled' && (
+        <div className="bg-gray-50/50 dark:bg-gray-900/40 border-t md:border-l border-gray-100 dark:border-gray-800 p-6 w-full md:w-64 shrink-0 flex flex-col justify-center gap-4 transition-colors">
+          {role === 'buyer' && (
+            <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-900/50 shadow-sm">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Secret Verification Code</p>
+                <p className="text-3xl font-black italic tracking-widest text-indigo-600 font-mono">{order.verificationCode}</p>
+            </div>
+          )}
+          {role === 'seller' && (
+            <button 
+                onClick={onOpenOtpModal} 
+                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm uppercase tracking-widest rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-indigo-100 dark:shadow-none transition-all active:scale-95 group"
+            >
+                Confirm Handoff
+                <svg className="w-4 h-4 transition-transform group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+            </button>
+          )}
+          
+          <Link 
+            href={`/chat/${otherParty?._id}?${isProduct ? `productId=${item._id}` : `serviceId=${item._id}`}`} 
+            className="w-full py-3.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-black text-xs uppercase tracking-widest rounded-2xl text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
+          >
+            Message {otherPartyLabel}
+          </Link>
+          
+          <button onClick={onCancel} className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-700 hover:underline transition-colors opacity-60 hover:opacity-100">Cancel Entire Deal</button>
+        </div>
+      )}
+
+      {order.status === 'Completed' && (
+         <div className="bg-gray-50/50 dark:bg-gray-900/40 border-t md:border-l border-gray-100 dark:border-gray-800 p-6 w-full md:w-64 shrink-0 flex flex-col justify-center gap-4">
+            {role === 'buyer' && !order.reviewSubmitted && (
+                <button 
+                  onClick={onOpenReview} 
+                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-emerald-100 dark:shadow-none active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                  Leave Review
+                </button>
+            )}
+            <Link 
+                href={`/chat/${otherParty?._id}?${isProduct ? `productId=${item._id}` : `serviceId=${item._id}`}`} 
+                className="w-full py-3.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-black text-xs uppercase tracking-widest rounded-2xl text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
+            >
+                Message Again
+            </Link>
+         </div>
       )}
     </div>
   );
 }
 
-// ── Components ───────────────────────────────────────────────────────────────
-
-function OrderRow({ order, role, onCancel, onOpenOtpModal }: { order: any; role: 'buyer' | 'seller'; onCancel: () => void; onOpenOtpModal: () => void }) {
-  const item = order.product || order.service;
-  const isProduct = order.orderType === 'Product';
-  const otherParty = role === 'buyer' ? order.seller : order.buyer;
-  const otherPartyLabel = role === 'buyer' ? (isProduct ? 'Seller' : 'Provider') : 'Buyer';
-  
-  if (!item) return null;
-
+export default function OrdersPage() {
   return (
-    <div id={`order-${order._id}`} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col md:flex-row shadow-indigo-100/50 dark:shadow-none transition-all">
-      <div className="p-5 flex-1 flex flex-col sm:flex-row gap-5">
-        
-        {/* Item Image */}
-        <Link href={`/${isProduct ? 'products' : 'services'}/${item._id}`} className="block w-full sm:w-28 h-28 sm:h-24 bg-gray-50 dark:bg-gray-700 rounded-xl overflow-hidden shrink-0 relative group">
-          {item?.images?.[0] ? (
-            <Image src={item.images[0]} alt={item.title} fill className="object-cover group-hover:scale-105 transition-transform" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-gray-300">
-              <svg className="w-8 h-8 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-            </div>
-          )}
-          <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors pointer-events-none" />
-        </Link>
-        
-        {/* Item Info */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex items-start justify-between gap-3 mb-1">
-            <Link href={`/${isProduct ? 'products' : 'services'}/${item._id}`} className="font-bold text-gray-900 dark:text-white text-lg hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors truncate">
-              {item.title}
-            </Link>
-            <div className={`px-2.5 py-1 text-xs font-bold rounded-lg uppercase tracking-wide shrink-0 ${
-              order.status === 'Completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800' :
-              order.status === 'Cancelled' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800' :
-              order.status === 'Scheduled' ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-500 border border-yellow-200 dark:border-yellow-700' :
-              'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-            }`}>
-              {order.status === 'Scheduled' ? (isProduct ? 'Handoff Pending' : 'Appt. Scheduled') : order.status}
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-            <span className="font-medium text-gray-700 dark:text-gray-300">₹{order.itemPrice.toLocaleString()}</span>
-            <span>•</span>
-            <span className="capitalize">{isProduct ? 'Product' : 'Service'}</span>
-            <span>•</span>
-            <span className="truncate">{new Date(order.createdAt).toLocaleDateString()}</span>
-          </div>
-          
-          <div className="mt-auto flex items-center gap-2 text-sm bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg border border-gray-100 dark:border-gray-700/50">
-            <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">{otherPartyLabel}:</span>
-            {otherParty ? (
-              <Link href={`/profile/${otherParty._id}`} className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5 truncate">
-                <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-[10px] shrink-0">
-                  {otherParty.name?.charAt(0) || 'U'}
-                </div>
-                {otherParty.name}
-              </Link>
-            ) : <span className="text-gray-400 font-medium">Deleted User</span>}
-          </div>
-        </div>
-      </div>
-      
-      {/* Active Actions Block */}
-      {order.status === 'Scheduled' && (
-        <div className="bg-gray-50/50 dark:bg-gray-800/50 border-t md:border-t-0 md:border-l border-gray-100 dark:border-gray-700 p-5 w-full md:w-64 flex flex-col justify-center gap-3 shrink-0">
-          
-          {/* BUYER VIEW for Products (Shows Code) */}
-          {role === 'buyer' && isProduct && (
-            <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-xl border border-indigo-100 dark:border-indigo-900 shadow-sm">
-               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Your Delivery Code</p>
-               <p className="text-2xl font-mono tracking-[0.2em] font-black text-indigo-600 dark:text-indigo-400">{order.verificationCode}</p>
-               <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight mt-1.5">Show this to the seller<br/>when receiving the item.</p>
-            </div>
-          )}
-
-          {/* PROVIDER VIEW for Services (Shows Code) */}
-          {role === 'seller' && !isProduct && (
-            <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-xl border border-indigo-100 dark:border-indigo-900 shadow-sm">
-               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Your Appointment Code</p>
-               <p className="text-2xl font-mono tracking-[0.2em] font-black text-indigo-600 dark:text-indigo-400">{order.verificationCode}</p>
-               <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight mt-1.5">Provide this to the student<br/>after completing the session.</p>
-            </div>
-          )}
-
-          {/* SELLER VIEW for Products (Inputs Code) */}
-          {role === 'seller' && isProduct && (
-            <button
-               onClick={onOpenOtpModal}
-               className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors shadow-sm text-center"
-            >
-               Confirm Delivery...
-            </button>
-          )}
-
-          {/* BUYER VIEW for Services (Inputs Code) */}
-          {role === 'buyer' && !isProduct && (
-            <button
-               onClick={onOpenOtpModal}
-               className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors shadow-sm text-center"
-            >
-               Complete Appointment...
-            </button>
-          )}
-
-          {/* Common Actions */}
-          <Link href={`/chat/${otherParty?._id}`} className="w-full py-2 px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-sm rounded-xl transition-colors text-center shadow-sm">
-             Message
-          </Link>
-
-          <button onClick={onCancel} className="text-xs font-bold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 mt-1 transition-colors underline underline-offset-2">
-             Cancel Transaction
-          </button>
-        </div>
-      )}
-
-      {/* Completed / Cancelled Actions */}
-      {order.status !== 'Scheduled' && (
-        <div className="bg-gray-50/50 dark:bg-gray-800/50 border-t md:border-t-0 md:border-l border-gray-100 dark:border-gray-700 p-5 w-full md:w-48 flex flex-col justify-center gap-3 shrink-0">
-           {order.status === 'Completed' && role === 'buyer' && (
-             <Link href={`/${isProduct ? 'products' : 'services'}/${item._id}#reviews`} className="w-full py-2.5 px-4 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 border border-indigo-200 dark:border-indigo-800 font-bold text-sm rounded-xl transition-colors text-center">
-                Leave Review
-             </Link>
-           )}
-           <Link href={`/${isProduct ? 'products' : 'services'}/${item._id}`} className="w-full py-2 px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-sm rounded-xl transition-colors text-center shadow-sm">
-             View Listing
-           </Link>
-        </div>
-      )}
-    </div>
+    <Suspense fallback={<div className="max-w-5xl mx-auto px-4 py-12"><OrderRowSkeleton /><OrderRowSkeleton /><OrderRowSkeleton /></div>}>
+      <OrdersPageContent />
+    </Suspense>
   );
 }

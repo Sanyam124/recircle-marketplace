@@ -30,6 +30,9 @@ export interface IUser extends Document {
     lastSeen?: Date;
     usernameChangeCount: number;
     usernameLastChanged?: Date;
+    pushSubscription?: string; // Store as JSON string 
+    notifyOffers: boolean;
+    notifyMessages: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -56,16 +59,16 @@ const UserSchema: Schema<IUser> = new Schema(
         phone: { type: String, trim: true },
         isPhoneVerified: { type: Boolean, default: false },
         allowPhoneContact: { type: Boolean, default: false },
-        status: { type: String, enum: ['Active', 'Banned', 'Deactivated'], default: 'Active' },
+        status: { type: String, enum: ['Active', 'Banned', 'Deactivated'], default: 'Active', index: true },
         bannedUntil: { type: Date },
         role: { type: String, enum: ['user', 'admin', 'verifier'], default: 'user' },
         address: { type: String, trim: true, maxlength: 150 },
         isVerified: { type: Boolean, default: false },
-        isOnVacation: { type: Boolean, default: false },
+        isOnVacation: { type: Boolean, default: false, index: true },
         wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
         wishlistedServices: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Service' }],
         blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-        verifiedCommunities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Community' }],
+        verifiedCommunities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Community', index: true }],
         authProvider: { type: String, enum: ['email', 'google', 'both'], default: 'email' },
         googleId: { type: String, unique: true, sparse: true },
         otp: { type: String, select: false },
@@ -73,6 +76,9 @@ const UserSchema: Schema<IUser> = new Schema(
         lastSeen: { type: Date },
         usernameChangeCount: { type: Number, default: 0 },
         usernameLastChanged: { type: Date },
+        pushSubscription: { type: String }, // Store the JSON stringified PushSubscription object
+        notifyOffers: { type: Boolean, default: true },
+        notifyMessages: { type: Boolean, default: true },
     },
     { timestamps: true }
 );
@@ -80,14 +86,7 @@ const UserSchema: Schema<IUser> = new Schema(
 // Workaround for Next.js HMR: Delete cached model if it lacks the new fields or has old constraints
 if (mongoose.models.User) {
     const currentSchema = mongoose.models.User.schema;
-    const bioPath = currentSchema.path('bio') as any;
-    const isOldBioLimit = bioPath?.options?.maxlength === 300;
-    const rolePath = currentSchema.path('role') as any;
-    const isOldRoleEnum = !rolePath?.options?.enum?.includes('verifier');
-    const authProviderPath = currentSchema.path('authProvider') as any;
-    const isOldAuthProviderEnum = !authProviderPath?.options?.enum?.includes('both');
-
-    if (isOldRoleEnum || isOldBioLimit || isOldAuthProviderEnum || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('verifiedCommunities') || !currentSchema.path('status') || !currentSchema.path('bannedUntil') || !currentSchema.path('authProvider') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || (currentSchema.path('address') as any)?.options?.maxlength !== 150 || !currentSchema.path('isOnVacation')) {
+    if (!currentSchema.path('pushSubscription') || !currentSchema.path('notifyOffers') || !currentSchema.path('notifyMessages') || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('status') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || !currentSchema.path('isOnVacation')) {
         delete mongoose.models.User;
     }
 }

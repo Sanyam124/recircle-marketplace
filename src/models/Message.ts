@@ -8,6 +8,9 @@ export interface IMessage extends Document {
     offer?: {
         offerId: mongoose.Types.ObjectId;
         price: number;
+        offerType?: 'Buy' | 'Rent';
+        rentDuration?: number;
+        rentUnit?: string;
         status: 'Pending' | 'Accepted' | 'Declined';
     };
     content: string;
@@ -26,7 +29,11 @@ const MessageSchema: Schema<IMessage> = new Schema(
         offer: {
             offerId: { type: Schema.Types.ObjectId, ref: 'Offer' },
             price: { type: Number },
-            status: { type: String, enum: ['Pending', 'Accepted', 'Declined'] }
+            offerType: { type: String, enum: ['Buy', 'Rent'] },
+            rentDuration: { type: Number },
+            rentUnit: { type: String },
+            status: { type: String, enum: ['Pending', 'Accepted', 'Declined'] },
+            verificationCode: { type: String }
         },
         content: { type: String, required: true, maxlength: 2000 },
         isRead: { type: Boolean, default: false, index: true },

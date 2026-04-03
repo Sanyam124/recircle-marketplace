@@ -70,23 +70,44 @@ export function getConversationStatus(conv: any, currentUserId: string | undefin
     if (product) {
         const sellerId = product.seller?.toString() || product.seller?._id?.toString();
 
-        if (product.status === 'Sold') {
+        if (product.status === 'Sold' || product.status === 'Rented') {
+            const isRented = product.status === 'Rented';
             const price = conv.latestOffer?.offeredPrice?.toLocaleString();
+            const color = isRented ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-indigo-400';
+            const statusLabel = isRented ? 'RENTED' : 'SOLD';
 
-            // Current user was the buyer
+            // Current user was the buyer/renter
             if (currentUserId === buyerId) {
-                return { label: 'BOUGHT', isStatus: true, color: 'text-green-600 dark:text-green-400', priceLabel: price ? `OFFER ₹${price}` : null };
+                return { 
+                    label: isRented ? 'RENTED' : 'BOUGHT', 
+                    isStatus: true, 
+                    color: isRented ? 'text-emerald-600 dark:text-emerald-400' : 'text-green-600 dark:text-green-400', 
+                    priceLabel: price ? `OFFER ₹${price}` : null 
+                };
             }
-            // Current user was the seller
+            // Current user was the seller/owner
             if (currentUserId === sellerId) {
-                // The other person in this chat was the actual buyer
+                // The other person in this chat was the actual buyer/renter
                 if (conv.user._id.toString() === buyerId) {
-                    return { label: 'SOLD', isStatus: true, color: 'text-indigo-600 dark:text-indigo-400', priceLabel: price ? `OFFER ₹${price}` : null };
+                    return { 
+                        label: isRented ? 'RENTED OUT' : 'SOLD', 
+                        isStatus: true, 
+                        color, 
+                        priceLabel: price ? `OFFER ₹${price}` : null 
+                    };
                 }
-                // The product was sold to someone else
-                return { label: 'SOLD TO OTHER USER', isStatus: true, color: 'text-gray-500 font-medium italic' };
+                // The product was sold/rented to someone else
+                return { 
+                    label: `${statusLabel} TO OTHER USER`, 
+                    isStatus: true, 
+                    color: 'text-gray-500 font-medium italic' 
+                };
             }
-            return { label: 'UNAVAILABLE NOW', isStatus: true, color: 'text-red-500 dark:text-red-400' };
+            return { 
+                label: isRented ? 'CURRENTLY RENTED' : 'UNAVAILABLE NOW', 
+                isStatus: true, 
+                color: isRented ? 'text-emerald-500 dark:text-emerald-400' : 'text-red-500 dark:text-red-400' 
+            };
         }
 
         // Product is still available — show active offer negotiation status
@@ -109,7 +130,7 @@ export function getConversationStatus(conv: any, currentUserId: string | undefin
 
         // Active orders take priority over offer status when they are more recent
         if (conv.orderStatus && orderTime >= offerTime) {
-            const activeStatuses = ['Scheduled', 'Paid', 'Dispute_Pending'];
+            const activeStatuses = ['Scheduled'];
 
             if (activeStatuses.includes(conv.orderStatus)) {
                 return { label: 'ACTIVE', isStatus: true, color: 'text-indigo-600 dark:text-indigo-400', priceLabel: price ? `APPO. ₹${price}` : null };
