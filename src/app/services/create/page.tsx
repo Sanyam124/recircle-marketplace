@@ -28,7 +28,7 @@ export default function CreateServicePage() {
     price: '',
     priceUnit: 'per hour',
     category: 'Academic Help (Tutoring, Notes)',
-    availability: '',
+    availability: 'Flexible',
     visibility: 'Public',
     communityId: '',
   });
@@ -42,6 +42,7 @@ export default function CreateServicePage() {
 
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
   const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,8 +137,11 @@ export default function CreateServicePage() {
         throw new Error(data.error || 'Failed to create service');
       }
 
-      router.push('/services');
-      router.refresh();
+      setSuccess(true);
+      setTimeout(() => {
+        router.push('/services');
+        router.refresh();
+      }, 1500);
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
@@ -147,7 +151,19 @@ export default function CreateServicePage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Offer a Service</h1>
+        {success ? (
+          <div className="py-20 text-center animate-in fade-in zoom-in duration-500">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-black text-gray-900 mb-2">Service Offered!</h1>
+            <p className="text-gray-500 font-medium">Redirecting you to the marketplace...</p>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold text-gray-900 mb-6">Offer a Service</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
@@ -269,11 +285,11 @@ export default function CreateServicePage() {
               <select
                 id="availability"
                 name="availability"
+                required
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white"
                 value={formData.availability}
                 onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
               >
-                <option value="">Select Availability</option>
                 <option value="Flexible">Flexible / Anytime</option>
                 <option value="Weekends Only">Weekends Only</option>
                 <option value="Weekdays (Evenings)">Weekdays (Evenings)</option>
@@ -414,13 +430,15 @@ export default function CreateServicePage() {
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.price || Number(formData.price) < 0 || Number(formData.price) > 100000}
+              disabled={loading || !formData.price || !formData.availability || Number(formData.price) < 0 || Number(formData.price) > 100000}
               className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
             >
               {loading ? 'Creating...' : 'List Service'}
             </button>
           </div>
         </form>
+        </>
+        )}
       </div>
     </div>
   );

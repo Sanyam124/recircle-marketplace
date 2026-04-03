@@ -24,7 +24,11 @@ export default function CreateProductPage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    forSell: true,
     price: '',
+    forRent: false,
+    rentPrice: '',
+    rentUnit: 'month',
     category: 'Textbooks',
     condition: 'Good',
     visibility: 'Public',
@@ -40,6 +44,7 @@ export default function CreateProductPage() {
 
   const [images, setImages] = useState<string[]>([]); // Base64 strings
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
   // Prevent form flicker while loading auth or if redirect is imminent
@@ -126,7 +131,8 @@ export default function CreateProductPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          price: Number(formData.price),
+          price: formData.forSell ? Number(formData.price) : undefined,
+          rentPrice: formData.forRent ? Number(formData.rentPrice) : undefined,
           images,
           visibility: formData.visibility,
           communityId: formData.visibility === 'Community' ? formData.communityId : undefined,
@@ -139,8 +145,11 @@ export default function CreateProductPage() {
         throw new Error(data.error || 'Failed to create product');
       }
 
-      router.push('/products');
-      router.refresh();
+      setSuccess(true);
+      setTimeout(() => {
+        router.push('/products');
+        router.refresh();
+      }, 1500);
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
@@ -150,7 +159,19 @@ export default function CreateProductPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">List Item for Sale</h1>
+        {success ? (
+          <div className="py-20 text-center animate-in fade-in zoom-in duration-500">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-black text-gray-900 mb-2">Listing Created!</h1>
+            <p className="text-gray-500 font-medium">Redirecting you to the marketplace...</p>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold text-gray-900 mb-6">List Item for Sale</h1>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Title, Price, Description, Category, Condition fields remain same... */}
@@ -174,36 +195,89 @@ export default function CreateProductPage() {
               />
             </div>
 
-            <div className="sm:col-span-2">
-              <label htmlFor="price" className="block text-sm font-medium text-gray-700">Price (₹)</label>
-              <input
-                type="number"
-                name="price"
-                id="price"
-                required
-                min="5" 
-                max="1000000"
-                step="1"
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-indigo-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white ${
-                  formData.price && Number(formData.price) > 1000000 ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-indigo-500'
-                }`}
-                value={formData.price}
-                onInput={(e: React.FormEvent<HTMLInputElement>) => {
-                  const val = e.currentTarget.value;
-                  if (val.length > 7) e.currentTarget.value = val.slice(0, 7);
-                }}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (!/^\d*$/.test(val)) return;
-                  setFormData({ ...formData, price: val });
-                }}
-              />
-              <p className="mt-1 text-[10px] text-gray-500">Max limit: ₹1,000,000</p>
-              {formData.price && Number(formData.price) > 1000000 && (
-                <p className="mt-1 text-xs font-bold text-red-600 animate-pulse">
-                  Price cannot exceed ₹1,000,000
-                </p>
+            {/* Listing Type Modes */}
+            <div className="sm:col-span-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <label className="block text-sm font-bold text-gray-900 mb-3">Listing Modes <span className="text-red-500">*</span></label>
+              <div className="flex gap-6">
+                 <label className="flex items-center gap-2 cursor-pointer group">
+                    <input type="checkbox" checked={formData.forSell} onChange={(e) => setFormData({...formData, forSell: e.target.checked})} className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300" />
+                    <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-600 transition-colors">For Sell</span>
+                 </label>
+                 <label className="flex items-center gap-2 cursor-pointer group">
+                    <input type="checkbox" checked={formData.forRent} onChange={(e) => setFormData({...formData, forRent: e.target.checked})} className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300" />
+                    <span className="text-sm font-medium text-gray-700 group-hover:text-emerald-600 transition-colors">For Rent</span>
+                 </label>
+              </div>
+              {!formData.forSell && !formData.forRent && (
+                <p className="mt-2 text-[10px] font-bold text-red-500">You must select at least one listing mode.</p>
               )}
+            </div>
+
+            {/* Dynamic Price Fields */}
+            <div className="sm:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+               {formData.forSell && (
+                  <div>
+                    <label htmlFor="price" className="block text-sm font-bold text-indigo-700 mb-1">Selling Price (₹)</label>
+                    <input
+                      type="number"
+                      name="price"
+                      id="price"
+                      required={formData.forSell}
+                      min="5" 
+                      max="1000000"
+                      step="1"
+                      className={`block w-full rounded-md shadow-sm focus:ring-indigo-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white ${
+                        formData.price && Number(formData.price) > 1000000 ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-indigo-500'
+                      }`}
+                      value={formData.price}
+                      onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                        const val = e.currentTarget.value;
+                        if (val.length > 7) e.currentTarget.value = val.slice(0, 7);
+                      }}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!/^\d*$/.test(val)) return;
+                        setFormData({ ...formData, price: val });
+                      }}
+                    />
+                    <p className="mt-1 text-[10px] text-gray-500">Max limit: ₹1,000,000</p>
+                  </div>
+               )}
+
+               {formData.forRent && (
+                  <div>
+                    <label htmlFor="rentPrice" className="block text-sm font-bold text-emerald-700 mb-1">Rent Price (₹)</label>
+                    <div className="flex">
+                       <input
+                         type="number"
+                         name="rentPrice"
+                         id="rentPrice"
+                         required={formData.forRent}
+                         min="5" 
+                         max="100000"
+                         step="1"
+                         className="block w-full rounded-l-md shadow-sm border-gray-300 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm h-10 px-3 border text-gray-900 bg-white"
+                         value={formData.rentPrice}
+                         onChange={(e) => {
+                           const val = e.target.value;
+                           if (!/^\d*$/.test(val)) return;
+                           setFormData({ ...formData, rentPrice: val });
+                         }}
+                       />
+                       <select 
+                         value={formData.rentUnit} 
+                         onChange={(e) => setFormData({...formData, rentUnit: e.target.value})} 
+                         className="rounded-r-md border-l-0 shadow-sm border-gray-300 bg-emerald-50 text-emerald-800 sm:text-sm h-10 focus:ring-emerald-500 font-bold px-3 border outline-none"
+                       >
+                          <option value="hour">/ hour</option>
+                          <option value="day">/ day</option>
+                          <option value="week">/ week</option>
+                          <option value="month">/ month</option>
+                          <option value="year">/ year</option>
+                       </select>
+                    </div>
+                  </div>
+               )}
             </div>
 
             <div className="sm:col-span-6">
@@ -415,13 +489,20 @@ export default function CreateProductPage() {
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.price || Number(formData.price) < 5 || Number(formData.price) > 1000000}
+              disabled={
+                loading || 
+                (!formData.forSell && !formData.forRent) || 
+                (formData.forSell && (!formData.price || Number(formData.price) < 5 || Number(formData.price) > 1000000)) || 
+                (formData.forRent && (!formData.rentPrice || Number(formData.rentPrice) < 5))
+              }
               className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
             >
               {loading ? 'Creating...' : 'List Item'}
             </button>
           </div>
         </form>
+        </>
+        )}
       </div>
     </div>
   );

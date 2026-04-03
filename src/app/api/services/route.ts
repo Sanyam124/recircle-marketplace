@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         const availability = rawAvailability?.trim();
         const price = Math.round(rawPrice);
 
-        if (!title || !description || !price || !category) {
+        if (!title || !description || !price || !category || !availability) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
         const query: any = { status: 'Active' };
 
         if (decoded && !provider) {
-             const currentUser = await User.findById(decoded.userId).select('blockedUsers verifiedCommunities');
+             const currentUser = await User.findById(decoded.userId).select('blockedUsers verifiedCommunities').lean();
              if (currentUser && currentUser.blockedUsers) {
                   blockedUserIds = currentUser.blockedUsers.map((id: any) => id.toString());
              }
@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
                  query.community = communityFilter;
              } else {
                  // 'All' filter rule: Must be 'Public' OR belong to one of the user's verified communities
-                 const verifiedCommunityIds = currentUser?.verifiedCommunities || [];
+                 const verifiedCommunityIds = (currentUser as any)?.verifiedCommunities || [];
                   query.$or = [
                       { visibility: 'Public' },
                       { visibility: { $exists: false } },
@@ -127,14 +127,14 @@ export async function GET(req: NextRequest) {
         // Hide listings from users who are on vacation or have been blocked by the current user
         // Only apply if we are not looking for a specific provider's items
         if (!provider) {
-            const vacationUsers = await User.find({ isOnVacation: true }).select('_id');
+            const vacationUsers = await User.find({ isOnVacation: true }).select('_id').lean();
             const vacationUserIds = vacationUsers.map(u => u._id.toString());
             
             let hiddenIds = [...vacationUserIds, ...blockedUserIds];
             
             // Reverse-block check: Hide listings of people who blocked the current user
             if (decoded?.userId) {
-                const usersWhoBlockedMe = await User.find({ blockedUsers: decoded.userId }).select('_id');
+                const usersWhoBlockedMe = await User.find({ blockedUsers: decoded.userId }).select('_id').lean();
                 const usersWhoBlockedMeIds = usersWhoBlockedMe.map(u => u._id.toString());
                 hiddenIds = [...hiddenIds, ...usersWhoBlockedMeIds];
             }
@@ -181,7 +181,8 @@ export async function GET(req: NextRequest) {
             .populate('community', 'name')
             .sort(Object.keys(dbSort).length > 0 ? dbSort : { createdAt: -1, _id: -1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         // Optimize: Aggregate ratings for all providers in one grouped database query (Eliminate N+1 Leak)
         const providerIds = services.map((s: any) => s.provider._id);
@@ -195,7 +196,7 @@ export async function GET(req: NextRequest) {
         const servicesWithRatings = services.map((service: any) => {
             const stats = reviewMap.get(service.provider._id.toString()) || { average: 0, count: 0 };
             return {
-                ...service.toObject(),
+                ...service,
                 providerRating: stats.average,
                 reviewCount: stats.count
             };
