@@ -19,16 +19,15 @@ export async function GET(req: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '20');
         const skip = (page - 1) * limit;
 
-        const totalNotifications = await Notification.countDocuments({ recipient: decoded.userId, isRead: false });
-        const totalPages = Math.ceil(totalNotifications / limit);
+        const unreadCount = await Notification.countDocuments({ recipient: decoded.userId, isRead: false });
+        const totalPages = Math.ceil(unreadCount / limit);
 
         const notifications = await Notification.find({ recipient: decoded.userId, isRead: false })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate('sender', 'name');
-
-        const unreadCount = await Notification.countDocuments({ recipient: decoded.userId, isRead: false });
+            .populate('sender', 'name')
+            .lean();
 
         return NextResponse.json({
             notifications,
@@ -36,7 +35,7 @@ export async function GET(req: NextRequest) {
             pagination: {
                 currentPage: page,
                 totalPages,
-                totalNotifications,
+                totalNotifications: unreadCount,
                 hasMore: page < totalPages
             }
         }, { status: 200 });
