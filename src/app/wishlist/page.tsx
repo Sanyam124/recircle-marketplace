@@ -1,156 +1,107 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import useSWR from 'swr';
 import ProductCard from '@/components/ProductCard';
 import ServiceCard from '@/components/ServiceCard';
-import { ItemCardSkeleton } from '@/components/Skeletons';
+import { ItemCardSkeleton, WishlistPageSkeleton, ItemsGridSkeleton } from '@/components/Skeletons';
 
-export default function WishlistPage() {
-  const [wishlist, setWishlist] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [type, setType] = useState<'product' | 'service' | 'all'>('all');
-  const [cols, setCols] = useState<3 | 4 | 5>(4);
-
+function WishlistPageContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const [cols, setCols] = useState<3 | 4 | 5>(4);
+
+  const { data, error, isLoading } = useSWR(user ? '/api/wishlist' : null);
+  const wishlist = data?.wishlist || [];
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push(`/auth?redirect=${encodeURIComponent('/wishlist')}`);
-      return;
+      router.push('/auth?redirect=/wishlist');
     }
+  }, [user, authLoading, router]);
 
-    if (user?.role === 'delivery_partner') {
-        router.push('/delivery-dashboard');
-        return;
-    }
-    fetchWishlist();
-  }, [user, authLoading, router, page, type]);
+  if (authLoading) {
+    return <WishlistPageSkeleton />;
+  }
 
-  const handleTypeChange = (newType: 'product' | 'service' | 'all') => {
-    if (newType !== type) {
-        setType(newType);
-        setPage(1); // Reset page on tab switch
-        setWishlist([]); // Clear current items while loading
-    }
-  };
-
-  const fetchWishlist = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/wishlist?page=${page}&limit=20&type=${type}`);
-      if (res.ok) {
-        const data = await res.json();
-        setWishlist(data.wishlist || []);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setTotalItems(data.pagination?.totalItems || 0);
-      }
-    } catch (error) {
-      console.error('Failed to load wishlist', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (authLoading || (loading && wishlist.length === 0)) {
-      return (
-          <div className="max-w-7xl mx-auto px-4 py-10">
-              <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
-                  {[...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)}
-              </div>
-          </div>
-      );
+  if (error && error.status === 429) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-900 transition-colors">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-10 max-w-md w-full text-center shadow-xl border border-gray-100 dark:border-gray-700">
+           <div className="w-20 h-20 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+           </div>
+           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Too many refreshes</h3>
+           <p className="text-gray-500 dark:text-gray-400 mb-6">Please take a short break. You can try viewing your wishlist again in a minute.</p>
+           <button onClick={() => window.location.reload()} className="w-full py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md">Refresh Now</button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
-          <h1 id="wishlist-top" className="text-2xl font-bold text-gray-900 dark:text-white">My Wishlist ({totalItems})</h1>
-          
-          {/* Toggle Tabs */}
-          <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl max-w-sm w-full sm:w-auto self-start border border-gray-200 dark:border-gray-700">
-             <button
-                 onClick={() => handleTypeChange('all')}
-                 className={`flex-1 py-1.5 px-4 text-sm font-semibold rounded-lg transition-all ${type === 'all' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-             >
-                 All
-             </button>
-             <button
-                 onClick={() => handleTypeChange('product')}
-                 className={`flex-1 py-1.5 px-4 text-sm font-semibold rounded-lg transition-all ${type === 'product' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-             >
-                 Products
-             </button>
-             <button
-                 onClick={() => handleTypeChange('service')}
-                 className={`flex-1 py-1.5 px-4 text-sm font-semibold rounded-lg transition-all ${type === 'service' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-             >
-                 Services
-             </button>
-          </div>
-      </div>
-      {/* Controls Bar */}
-      <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6 flex justify-between items-center transition-colors">
-        <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">
-          {loading ? 'Searching...' : `Showing ${totalItems} ${type === 'all' ? 'items' : type + 's'}`}
-        </p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 transition-colors duration-500">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12">
+        <div className="flex flex-col gap-2">
+            <h1 className="text-4xl sm:text-5xl font-black text-gray-950 dark:text-white tracking-tighter italic leading-none">
+              Your Wishlist
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 font-bold tracking-tight">Saved items and services for quick access.</p>
+        </div>
         
-        <div className="hidden sm:flex items-center gap-1 bg-gray-50 dark:bg-gray-900 overflow-hidden p-1 rounded-lg border border-gray-200 dark:border-gray-700">
-           <button onClick={() => setCols(3)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 3 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>3 Wide</button>
-           <button onClick={() => setCols(4)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 4 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>4 Wide</button>
-           <button onClick={() => setCols(5)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 5 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>5 Wide</button>
+        <div className="hidden sm:flex items-center gap-1.5 p-1.5 bg-gray-200/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-[1.5rem] border border-white/50 dark:border-gray-700/50 shadow-inner overflow-hidden flex-shrink-0">
+           <button onClick={() => setCols(3)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${cols === 3 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5 italic' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent'}`}>3 Wide</button>
+           <button onClick={() => setCols(4)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${cols === 4 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5 italic' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent'}`}>4 Wide</button>
+           <button onClick={() => setCols(5)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${cols === 5 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5 italic' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent'}`}>5 Wide</button>
         </div>
       </div>
       
-      {loading && wishlist.length === 0 ? (
-        <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
-            {[...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)}
-        </div>
+      {isLoading && wishlist.length === 0 ? (
+        <ItemsGridSkeleton count={8} cols={cols} />
       ) : wishlist.length > 0 ? (
-        <>
-          <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
-            {wishlist.map((item) => {
-               const itemType = item.itemType || (type === 'all' ? 'product' : type);
-               return itemType === 'product' ? (
-                   <ProductCard key={item._id} product={item} />
-               ) : (
-                   <ServiceCard key={item._id} service={item} />
-               );
-            })}
-          </div>
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-10 flex items-center justify-center gap-3">
-              <button
-                onClick={() => { document.getElementById('wishlist-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); setPage(p => Math.max(1, p - 1)); }}
-                disabled={page === 1}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-gray-500 dark:text-gray-400">Page {page} of {totalPages}</span>
-              <button
-                onClick={() => { document.getElementById('wishlist-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); setPage(p => Math.min(totalPages, p + 1)); }}
-                disabled={page === totalPages}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
+        <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
+          {wishlist.map((item: any) => (
+            item.itemType === 'product' ? (
+              <ProductCard key={item._id} product={item} />
+            ) : (
+              <ServiceCard key={item._id} service={item} />
+            )
+          ))}
+        </div>
       ) : (
-        <div className="text-center py-20 bg-gray-50 dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
-            <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">No {type}s saved</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Start browsing and save {type}s you like!</p>
+        <div className="bg-white/70 dark:bg-gray-800/40 backdrop-blur-xl rounded-[3rem] p-16 text-center border border-white/40 dark:border-gray-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all">
+          <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/40 rounded-[2rem] flex items-center justify-center mx-auto mb-8 rotate-3 shadow-inner">
+             <svg className="w-12 h-12 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+             </svg>
+          </div>
+          <h3 className="text-3xl font-black text-gray-950 dark:text-white italic tracking-tighter mb-4">EMPTY WISHLIST</h3>
+          <p className="text-gray-500 dark:text-gray-400 mt-2 font-bold max-w-md mx-auto leading-relaxed">
+            You haven't saved any items yet. Start exploring to find something you like and reserve it here!
+          </p>
+          <button 
+            onClick={() => router.push('/explore')}
+            className="mt-10 px-8 py-4 bg-gray-950 dark:bg-white text-white dark:text-gray-950 font-black uppercase text-[10px] tracking-[0.3em] rounded-2xl hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white transition-all shadow-xl active:scale-95 italic inline-flex items-center gap-2"
+          >
+            <span>Explore Marketplace</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </button>
         </div>
       )}
     </div>
+  );
+}
+
+export default function WishlistPage() {
+  return (
+    <Suspense fallback={<WishlistPageSkeleton />}>
+      <WishlistPageContent />
+    </Suspense>
   );
 }

@@ -9,12 +9,14 @@ import { confirmAction } from '@/lib/confirm';
 interface Report {
   _id: string;
   reporter: { name: string; username: string; email: string };
-  targetUser: { _id: string; name: string; username: string; email: string };
+  targetUser: { _id: string; name: string; username: string; email: string; status?: string };
   itemType: 'product' | 'service' | 'none';
   itemId?: string;
   reason: string;
   status: 'Pending' | 'Reviewed' | 'Dismissed';
   createdAt: string;
+  targetUserReportCount?: { totalReports: number; pendingReports: number };
+  itemReportCount?: number;
 }
 
 import PaginationControls from '@/components/PaginationControls';
@@ -153,7 +155,35 @@ export default function AdminReportsPage() {
 
                   <p className="text-xs text-red-600 dark:text-red-400 font-medium transition-colors">
                     Target: <span className="font-bold text-red-700 dark:text-red-400">{report.targetUser?.name}</span> (@{report.targetUser?.username})
+                    {report.targetUser?.status === 'Banned' && (
+                      <span className="ml-2 px-1.5 py-0.5 text-[10px] font-black uppercase rounded bg-red-600 text-white">Banned</span>
+                    )}
                   </p>
+
+                  {/* Report count badges */}
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    {report.targetUserReportCount && (
+                      <span className={`px-2 py-0.5 text-[10px] font-black uppercase rounded-full border transition-colors ${
+                        report.targetUserReportCount.totalReports >= 5
+                          ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
+                          : report.targetUserReportCount.totalReports >= 3
+                            ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800'
+                            : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+                      }`}>
+                        {report.targetUserReportCount.totalReports} report{report.targetUserReportCount.totalReports !== 1 ? 's' : ''} against user
+                        {report.targetUserReportCount.pendingReports > 0 && ` (${report.targetUserReportCount.pendingReports} pending)`}
+                      </span>
+                    )}
+                    {report.itemReportCount && report.itemReportCount > 1 && (
+                      <span className={`px-2 py-0.5 text-[10px] font-black uppercase rounded-full border transition-colors ${
+                        report.itemReportCount >= 5
+                          ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
+                          : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                      }`}>
+                        {report.itemReportCount} reports on this {report.itemType}
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex items-center gap-4 mt-2">
                     <Link

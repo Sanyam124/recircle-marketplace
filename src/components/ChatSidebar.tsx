@@ -10,14 +10,14 @@ import { formatChatMessageDate } from '@/lib/utils';
 import { ChatSidebarSkeleton } from './Skeletons';
 import { ChatItem } from './ChatItem';
 import { confirmAction } from '@/lib/confirm';
+import useSWR from 'swr';
 
 export default function ChatSidebar() {
     const { user, refreshUser } = useAuth();
+    const [page, setPage] = useState(1);
     const [conversations, setConversations] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState<'all' | 'buying' | 'selling'>('all');
-    const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
-    const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
     const [activeMenu, setActiveMenu] = useState<string | null>(null); // To track which menu is open
     const [reportTarget, setReportTarget] = useState<{ userId: string, type: 'product' | 'service' | null, id: string | null } | null>(null);
@@ -25,19 +25,35 @@ export default function ChatSidebar() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
+    // Primary fetcher for the first page with SWR polling
+    const { data: initialData, mutate: mutateConversations, isLoading: initialLoading } = useSWR(
+        user ? `/api/chat/conversations?page=1&limit=10` : null,
+        { refreshInterval: 10000, keepPreviousData: true }
+    );
+
+    // Sync SWR data to our local state which supports pagination
+    useEffect(() => {
+        if (initialData?.conversations) {
+            setConversations(prev => {
+                // If we've already loaded more than one page, we only update the head
+                if (page > 1) {
+                    const others = prev.slice(initialData.conversations.length);
+                    return [...initialData.conversations, ...others];
+                }
+                return initialData.conversations;
+            });
+            setHasMore(initialData.pagination.hasMore);
+        }
+    }, [initialData, page]);
+
     useEffect(() => {
         if (!user) return;
-
-        fetchConversations(1, false);
-        // Polling for updates
-        const interval = setInterval(() => fetchConversations(1, false), 5000);
         
         // Close menu on click outside
         const handleClickOutside = () => setActiveMenu(null);
         window.addEventListener('click', handleClickOutside);
         
         return () => {
-            clearInterval(interval);
             window.removeEventListener('click', handleClickOutside);
         };
     }, [user]);
@@ -45,40 +61,20 @@ export default function ChatSidebar() {
     const fetchConversations = async (pageNum: number, append: boolean = false) => {
         try {
             if (append) setLoadingMore(true);
-            else if (pageNum === 1) {
-                // For silent polling, don't trigger global loading
-            } else {
-                setLoading(true);
-            }
-
+            
             const res = await fetch(`/api/chat/conversations?page=${pageNum}&limit=10`);
             if (res.ok) {
                 const data = await res.json();
                 if (append) {
                     setConversations(prev => [...prev, ...data.conversations]);
-                } else if (pageNum === 1) {
-                    setConversations(prev => {
-                        // Compare current page 1 with new data to avoid flickering
-                        const currentTop = prev.slice(0, data.conversations.length);
-                        const isSame = JSON.stringify(currentTop) === JSON.stringify(data.conversations);
-                        
-                        if (isSame) return prev;
-
-                        // If we are on a later page, only update the first page part and keep the rest
-                        if (page > 1) {
-                            return [...data.conversations, ...prev.slice(data.conversations.length)];
-                        }
-                        return data.conversations;
-                    });
+                    setHasMore(data.pagination.hasMore);
                 } else {
-                    setConversations(data.conversations);
+                    mutateConversations(data, false);
                 }
-                setHasMore(data.pagination.hasMore);
             }
         } catch (error) {
             console.error('Failed to fetch conversations', error);
         } finally {
-            setLoading(false);
             setLoadingMore(false);
         }
     };
@@ -259,10 +255,10 @@ export default function ChatSidebar() {
                 </div>
             </div>
             <div className="flex-1 overflow-y-auto">
-                {loading && conversations.length === 0 && (
+                {initialLoading && conversations.length === 0 && (
                     <ChatSidebarSkeleton />
                 )}
-                {!loading && filteredConversations.length === 0 && (
+                {!initialLoading && filteredConversations.length === 0 && (
                     <div className="p-10 text-center">
                         <div className="flex justify-center mb-3 text-gray-300 dark:text-gray-600">
                             <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">

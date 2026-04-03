@@ -13,6 +13,8 @@ export default function AdminCommunitiesPage() {
     const [isAdding, setIsAdding] = useState(false);
     const [formData, setFormData] = useState({ name: '', emailDomains: '', description: '', image: '' });
 
+    const [totalCount, setTotalCount] = useState(0);
+
     useEffect(() => {
         fetchCommunities();
     }, []);
@@ -24,6 +26,7 @@ export default function AdminCommunitiesPage() {
             if (res.ok) {
                 const data = await res.json();
                 setCommunities(data.communities || []);
+                setTotalCount(data.totalCount || data.communities?.length || 0);
             }
         } catch (error) {
             console.error('Failed to fetch communities', error);
@@ -78,7 +81,7 @@ export default function AdminCommunitiesPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Campus Circles</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Campus Circles ({totalCount})</h1>
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Define and manage university communities and their email domains.</p>
                 </div>
                 <button

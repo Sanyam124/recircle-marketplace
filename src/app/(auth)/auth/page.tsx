@@ -35,7 +35,8 @@ export default function AuthPage() {
     const { login } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const redirectUrl = searchParams.get('redirect') || '/';
+    const rawRedirect = searchParams.get('redirect') || '/';
+    const redirectUrl = (rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')) ? rawRedirect : '/';
 
     const passwordInputRef = useRef<HTMLInputElement>(null);
 
@@ -101,7 +102,7 @@ export default function AuthPage() {
             } else {
                 // Direct login for existing user
                 login(data.user);
-                router.push(redirectUrl);
+                window.location.href = redirectUrl;
             }
         } catch (err: any) {
             setError(err.message);
@@ -189,7 +190,7 @@ export default function AuthPage() {
             if (!res.ok) throw new Error(data.error || 'Login failed');
 
             login(data.user);
-            router.push(redirectUrl);
+            window.location.href = redirectUrl;
         } catch (err: any) {
             setError(err.message);
             setIsLoading(false);
@@ -289,7 +290,7 @@ export default function AuthPage() {
 
             setTimeout(() => {
                 login(data.user);
-                router.push(redirectUrl);
+                window.location.href = redirectUrl;
             }, 100);
         } catch (err: any) {
             setError(err.message);

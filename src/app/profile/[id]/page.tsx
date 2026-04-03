@@ -15,7 +15,7 @@ import ProductCard from '@/components/ProductCard';
 import ServiceCard from '@/components/ServiceCard';
 import { confirmAction } from '@/lib/confirm';
 
-// ── Pagination Controls ───────────────────────────────────────────────────────
+export const dynamic = 'force-dynamic';
 
 function PaginationControls({
   page, totalPages, onPageChange, scrollTargetId,
@@ -30,51 +30,51 @@ function PaginationControls({
   };
 
   return (
-    <div className="mt-5 flex items-center justify-center gap-2">
+    <div className="mt-12 flex items-center justify-center gap-2">
       <button
         onClick={() => go(Math.max(1, page - 1))}
         disabled={page === 1}
-        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="p-3.5 rounded-xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 text-gray-400 disabled:opacity-20 hover:text-indigo-600 transition-all active:scale-90 shadow-sm"
       >
-        Previous
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
       </button>
-      {Array.from({ length: totalPages }, (_, i) => i + 1)
-        .filter(p => Math.abs(p - page) <= 2)
-        .map(p => (
-          <button
-            key={p}
-            onClick={() => go(p)}
-            className={`w-8 h-8 text-sm font-bold rounded-lg transition-colors ${
-              p === page ? 'bg-indigo-600 text-white' : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-            }`}
-          >
-            {p}
-          </button>
-        ))}
+      
+      <div className="flex items-center gap-1.5 bg-white/50 dark:bg-gray-800/50 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-inner">
+        {Array.from({ length: totalPages }, (_, i) => i + 1)
+          .filter(p => Math.abs(p - page) <= 2)
+          .map(p => (
+            <button
+              key={p}
+              onClick={() => go(p)}
+              className={`w-10 h-10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-95 ${
+                p === page ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+      </div>
+
       <button
         onClick={() => go(Math.min(totalPages, page + 1))}
         disabled={page === totalPages}
-        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="p-3.5 rounded-xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 text-gray-400 disabled:opacity-20 hover:text-indigo-600 transition-all active:scale-90 shadow-sm"
       >
-        Next
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
       </button>
     </div>
   );
 }
 
-
-// ── Item Card (public listing card) ──────────────────────────────────────────
-
-
-// ── Order Card (owner My Orders) ─────────────────────────────────────────────
+type TabKey = 'all' | 'products' | 'services';
 
 function OrderCard({ order }: { order: any }) {
   const item = order.product || order.service;
   const type = order.product ? 'products' : 'services';
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all flex flex-col">
+    <div className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-xl border border-gray-100 dark:border-gray-700 shadow-sm rounded-[1.5rem] overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col group">
       <div className="p-4 flex gap-4 flex-1">
-        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 dark:border-gray-600">
+        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-2xl border-2 border-white dark:border-gray-700 shadow-sm transition-transform group-hover:scale-105">
           {item?.images?.[0] ? (
             <Image 
               src={item.images[0]} 
@@ -85,56 +85,38 @@ function OrderCard({ order }: { order: any }) {
               referrerPolicy="no-referrer" 
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gray-50 dark:bg-gray-700 text-gray-300">
+            <div className="flex h-full w-full items-center justify-center bg-gray-50 dark:bg-gray-900 text-gray-300">
               <svg className="w-8 h-8 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
           )}
         </div>
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex flex-col flex-1 min-w-0 py-0.5">
           <div className="flex items-start justify-between">
-            <h4 className="font-bold text-gray-900 dark:text-white truncate text-sm">{item?.title || 'Unknown Item'}</h4>
-            <span className={`text-[10px] font-bold uppercase tracking-tighter px-1.5 py-0.5 rounded ml-2 flex-shrink-0 ${
-              order.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
+            <h4 className="font-black text-gray-950 dark:text-white truncate text-sm uppercase tracking-tight italic">{item?.title || 'Unknown Item'}</h4>
+            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg ml-2 flex-shrink-0 shrink-0 ${
+              order.status === 'Completed' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-800' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-100 dark:border-gray-700'
             }`}>{order.status}</span>
           </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-            {order.product ? 'Seller' : 'Provider'}:
-            <Link href={`/profile/${order.seller?._id}`} className="ml-1 font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 uppercase font-black tracking-tight">
+            {order.product ? 'SOURCE' : 'PROVIDER'}:
+            <Link href={`/profile/${order.seller?._id}`} className="ml-1 text-indigo-600 dark:text-indigo-400 hover:underline">
               {order.seller?.name || 'Unknown'}
             </Link>
           </p>
-          <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-auto">₹{order.totalAmount}</p>
+          <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 mt-auto">₹{order.totalAmount}</p>
         </div>
       </div>
-      <div className="px-4 py-2.5 bg-gray-50/60 dark:bg-gray-700/60 border-t border-gray-100 dark:border-gray-600 flex gap-2">
-        {item && <Link href={`/${type}/${item._id}`} className="text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-2 py-1 transition-colors">View</Link>}
+      <div className="px-5 py-3 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800/50 flex gap-4">
+        {item && <Link href={`/${type}/${item._id}`} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-indigo-600 transition-colors">Details</Link>}
         {order.status === 'Completed' && (
-          <Link href={`/${type}/${item?._id}#reviews`} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 px-2 py-1 transition-colors">Leave Review</Link>
+          <Link href={`/${type}/${item?._id}#reviews`} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline transition-colors ml-auto">Write Review</Link>
         )}
       </div>
     </div>
   );
 }
-
-function ExpandableBio({ bio }: { bio: string }) {
-  return (
-    <div className="mb-4 max-w-2xl mx-auto md:mx-0">
-      <ExpandableText 
-        text={bio || ''} 
-        maxLines={3} 
-        incrementalLines={20}
-        className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
-        showReadMore={true}
-      />
-    </div>
-  );
-}
-
-// ── Page ─────────────────────────────────────────────────────────────────────
-
-type TabKey = 'all' | 'products' | 'services';
 
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -142,14 +124,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const { user: authUser, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isOwner = authUser?.id === id;
   const isFirstRender = useRef(true);
 
   const tabParam = searchParams.get('tab') as TabKey;
   const pPageParam = parseInt(searchParams.get('pPage') || '1');
   const sPageParam = parseInt(searchParams.get('sPage') || '1');
   const aPageParam = parseInt(searchParams.get('aPage') || '1');
-
 
   const [activeTab, setActiveTab] = useState<TabKey>(tabParam || 'all');
   const [productPage, setProductPage] = useState(pPageParam);
@@ -160,40 +140,31 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [blocking, setBlocking] = useState(false);
   const [cols, setCols] = useState<3 | 4 | 5>(4);
 
-  // Sync URL -> State (Back button)
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') as TabKey;
-    if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-    }
-
+    if (tabFromUrl && tabFromUrl !== activeTab) setActiveTab(tabFromUrl);
     const pPFromUrl = parseInt(searchParams.get('pPage') || '1');
     if (pPFromUrl !== productPage) setProductPage(pPFromUrl);
-
     const sPFromUrl = parseInt(searchParams.get('sPage') || '1');
     if (sPFromUrl !== servicePage) setServicePage(sPFromUrl);
-
     const aPFromUrl = parseInt(searchParams.get('aPage') || '1');
     if (aPFromUrl !== allPage) setAllPage(aPFromUrl);
   }, [searchParams]);
 
-  // Sync state to URL 
   useEffect(() => {
     if (isFirstRender.current) {
         isFirstRender.current = false;
         return;
     }
-
     const params = new URLSearchParams();
     if (activeTab !== 'all') params.set('tab', activeTab);
     if (productPage > 1) params.set('pPage', productPage.toString());
     if (servicePage > 1) params.set('sPage', servicePage.toString());
     if (allPage > 1) params.set('aPage', allPage.toString());
-    
     const queryString = params.toString();
     const url = `/profile/${id}${queryString ? `?${queryString}` : ''}`;
     router.push(url, { scroll: false });
-  }, [activeTab, productPage, servicePage, allPage, id]); // Only sync when internal state changes
+  }, [activeTab, productPage, servicePage, allPage, id]);
 
   const getQueryUrl = () => {
     const params = new URLSearchParams();
@@ -220,15 +191,13 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     revalidateOnFocus: false
   });
 
+  const isRateLimited = error?.status === 429;
   const loading = isLoading && !data;
   const sectionLoading = isValidating && data;
   const errorMsg = error?.message || null;
 
   useEffect(() => {
-    // Check if the auth user has already blocked this profile
-    if (authUser?.blockedUsers?.some((b: any) => b.toString() === id)) {
-        setIsBlocked(true);
-    }
+    if (authUser?.blockedUsers?.some((b: any) => b.toString() === id)) setIsBlocked(true);
   }, [id, authUser]);
 
   const handleDelete = async (itemId: string, type: 'products' | 'services') => {
@@ -242,7 +211,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     try {
       const res = await fetch(`/api/${type}/${itemId}`, { method: 'DELETE' });
       if (res.ok) mutate();
-      else alert('Failed to delete');
     } catch { console.error('Delete failed'); }
   };
 
@@ -254,7 +222,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
           body: JSON.stringify({ status: newStatus })
       });
       if (res.ok) mutate();
-      else alert('Failed to update status');
     } catch { console.error('Update failed'); }
   };
 
@@ -267,444 +234,266 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         headers: { 'Content-Type': 'application/json' },
         ...(isBlocked ? {} : { body: JSON.stringify({ targetUserId: id }) })
       });
-      
       if (res.ok) {
         setIsBlocked(!isBlocked);
         await refreshUser();
-        alert(isBlocked ? `User unblocked.` : `User blocked. Their listings are now hidden and they cannot message you.`);
-      } else {
-        alert("Failed to update block status.");
       }
-    } catch (error) {
-       console.error(error);
-    } finally {
-       setBlocking(false);
-    }
+    } catch (error) { console.error(error); } finally { setBlocking(false); }
   };
+
+  if (isRateLimited) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-12 shadow-xl border border-gray-100 dark:border-gray-700">
+          <div className="w-20 h-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+            <svg className="w-10 h-10 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </div>
+          <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2 uppercase italic tracking-tighter">Whoa, slow down!</h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-xs mx-auto mb-8 font-medium">You're browsing faster than we can keep up with. Please wait a minute before refreshing.</p>
+          <button onClick={() => mutate()} className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all active:scale-95">Try Again</button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) return <ProfileSkeleton />;
   if (errorMsg) return (
-     <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <div className="bg-red-50 dark:bg-red-900/20 rounded-3xl p-12 border-2 border-red-100 dark:border-red-900/30 shadow-xl">
-          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0-6V9m0 12a9 9 0 110-18 9 9 0 010 18z" />
-            </svg>
+       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+          <div className="bg-red-50 dark:bg-red-900/20 rounded-3xl p-12 border-2 border-red-100 dark:border-red-900/30 shadow-xl">
+            <div className="w-20 h-20 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0-6V9m0 12a9 9 0 110-18 9 9 0 010 18z" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4">Access Denied</h1>
+            <p className="text-gray-600 dark:text-gray-400 text-lg mb-8">
+              {errorMsg === 'Failed to load profile' ? 'You are blocked from viewing this profile, or the user has restricted access.' : errorMsg}
+            </p>
+            <button onClick={() => router.back()} className="px-8 py-3 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg active:scale-95">Go Back</button>
           </div>
-          <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4">Access Denied</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg mb-8">
-            You are blocked from viewing this profile, or the user has restricted access.
-          </p>
-          <button 
-            onClick={() => router.back()}
-            className="px-8 py-3 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg active:scale-95"
-          >
-            Go Back
-          </button>
-        </div>
-     </div>
-  );
+       </div>
+    );
   if (!data) return <div className="text-center py-20">User not found</div>;
 
   const { user, products, services, allItems, pagination, stats } = data;
+  
+  // Extra robust owner check
+  const isOwner = authUser?.id === id || 
+                  authUser?.id === user?.id || 
+                  authUser?.id === user?._id?.toString() || 
+                  (authUser?.id && user?._id && authUser.id.toString() === user._id.toString());
+
   const productPagination = pagination?.products;
   const servicePagination = pagination?.services;
   const allPagination = pagination?.all;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors duration-300">
-
-      {/* ── Profile Header ─────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8 overflow-hidden transition-colors duration-300">
-        <div className="p-8 flex flex-col md:flex-row items-center md:items-start gap-6">
-          {/* Avatar */}
-          <div className="h-24 w-24 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-4xl font-bold text-indigo-600 dark:text-indigo-400 border-4 border-white dark:border-gray-800 shadow-xl overflow-hidden flex-shrink-0">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors duration-300 overflow-x-hidden w-full">
+      {/* Profile Header */}
+      <div className="bg-white/70 dark:bg-gray-800/40 backdrop-blur-xl rounded-[3rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-700/50 mb-10 overflow-hidden transition-all">
+        <div className="p-8 sm:p-12 flex flex-col md:flex-row items-center md:items-start gap-10">
+          <div className="h-32 w-32 rounded-full bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/40 dark:to-indigo-800/40 flex items-center justify-center text-5xl font-black text-indigo-600 dark:text-indigo-400 border-4 border-white dark:border-gray-800 shadow-2xl overflow-hidden flex-shrink-0 relative group">
             {user.profilePicture ? (
-              <Image 
-                src={user.profilePicture} 
-                alt={user.name} 
-                width={96} 
-                height={96} 
-                className="object-cover w-full h-full"
-                referrerPolicy="no-referrer"
-              />
+              <Image src={user.profilePicture} alt={user.name} width={128} height={128} className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
             ) : (
               user.name?.charAt(0).toUpperCase() || 'U'
             )}
+            <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
 
-          {/* Info */}
           <div className="text-center md:text-left flex-1 min-w-0">
-            <h1 className="text-3xl font-black text-gray-900 dark:text-white leading-tight mb-2 break-words">
-              {user.name}
-            </h1>
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mb-3">
+              <h1 className="text-4xl font-black text-gray-950 dark:text-white leading-none tracking-tighter italic break-words">{user.name}</h1>
+              {user.isOnVacation && (
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-600 dark:text-amber-400">
+                  <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
+                  <span className="text-[10px] font-black uppercase tracking-widest italic">On Sabbatical</span>
+                </div>
+              )}
+            </div>
 
-            {/* Vacation Notice Banner */}
-            {user.isOnVacation && (
-              <div className="inline-flex items-center gap-2 mb-4 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-2xl text-amber-700 dark:text-amber-400">
-                <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
-                <span className="text-xs font-black uppercase tracking-widest italic">Currently on Vacation</span>
-              </div>
-            )}
-            
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
-              <span className="font-bold text-indigo-600 dark:text-indigo-400">@{user.username || 'user'}</span>
-              
-              <span className="flex items-center gap-1.5 py-0.5">
-                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                Joined {new Date(user.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-5 gap-y-3 text-xs text-gray-500 dark:text-gray-400 mb-6">
+              <span className="font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-lg">@{user.username || 'user'}</span>
+              <span className="flex items-center gap-2 font-black uppercase tracking-tight opacity-70">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                EST. {new Date(user.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()}
               </span>
             </div>
             
-            {/* Verified Communities Tags */}
             {user.verifiedCommunities && user.verifiedCommunities.length > 0 && (
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-4">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 mb-6">
                 {user.verifiedCommunities.map((community: any) => (
-                  <div key={community._id} className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-full text-emerald-700 dark:text-emerald-400 shadow-sm transition-transform hover:scale-105 select-none">
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-xs font-bold whitespace-nowrap">{community.name}</span>
+                  <div key={community._id} className="flex items-center gap-2 px-4 py-2 bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 rounded-[1rem] text-emerald-700 dark:text-emerald-400 shadow-sm transition-all hover:border-emerald-500/40 select-none">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">{community.name}</span>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Contact Info Rows */}
-            <div className="flex flex-col gap-2 mb-4">
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-                {/* Display Phone if allowed */}
-                {(user.allowPhoneContact || isOwner) && user.phone && (
-                  <div className="flex items-center gap-2 py-1.5 px-3 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100/50 dark:border-indigo-800/30 text-indigo-700 dark:text-indigo-300">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                    <span className="text-xs font-bold tracking-tight">{user.phone}</span>
-                  </div>
-                )}
+            <div className="flex flex-col gap-3 mb-6 max-w-full lg:max-w-xl">
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(user.allowPhoneContact || isOwner) && user.phone && (
+                    <div className="flex items-center gap-3 p-3.5 bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800">
+                        <div className="p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm text-indigo-500">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Phone</span>
+                          <span className="text-xs font-black text-gray-950 dark:text-white">{user.phone}</span>
+                        </div>
+                    </div>
+                  )}
+                  {user.gender && user.gender !== 'none' && (
+                    <div className="flex items-center gap-3 p-3.5 bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800">
+                        <div className="p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm text-indigo-500">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Gender</span>
+                          <span className="text-xs font-black text-gray-950 dark:text-white capitalize">{user.gender}</span>
+                        </div>
+                    </div>
+                  )}
+               </div>
 
-                {/* Display Gender if provided */}
-                {user.gender && user.gender !== 'hidden' && user.gender !== 'none' && (
-                  <div className="flex items-center gap-2 py-1.5 px-3 bg-fuchsia-50/50 dark:bg-fuchsia-900/20 rounded-xl border border-fuchsia-100/50 dark:border-fuchsia-800/30 text-fuchsia-700 dark:text-fuchsia-300">
-                    {user.gender === 'male' ? (
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="10" cy="14" r="5" />
-                        <path d="M15 9l6-6" />
-                        <path d="M16 3h5v5" />
-                      </svg>
-                    ) : user.gender === 'female' ? (
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="9" r="5" />
-                        <path d="M12 14v7" />
-                        <path d="M9 18h6" />
-                      </svg>
-                    ) : (
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 3l1.5 4.5h4.5l-3.5 3 1.5 4.5-4-3-4 3 1.5-4.5-3.5-3h4.5z" />
-                      </svg>
-                    )}
-                    <span className="text-xs font-bold tracking-tight capitalize">{user.gender}</span>
-                  </div>
-                )}
-              </div>
+               {(user.allowEmailContact || isOwner) && user.email && (
+                 <div className="flex items-center gap-3 p-3.5 bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800 w-full">
+                    <div className="p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm text-indigo-500">
+                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                       <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Email</span>
+                       <span className="text-xs font-black text-gray-950 dark:text-white break-all leading-tight">{user.email}</span>
+                    </div>
+                 </div>
+               )}
 
-              {/* Display Email if allowed (Second Row) */}
-              {(user.allowEmailContact || isOwner) && user.email && (
-                <div className="flex items-center justify-center md:justify-start">
-                  <div className="flex items-center gap-2 py-1.5 px-3 bg-blue-50/50 dark:bg-blue-900/20 rounded-xl border border-blue-100/50 dark:border-blue-800/30 text-blue-700 dark:text-blue-300">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                    <span className="text-xs font-bold tracking-tight">{user.email}</span>
-                  </div>
-                </div>
-              )}
+               {user.address && (
+                 <div className="flex items-start gap-3 p-3.5 bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800 w-full">
+                    <div className="p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm text-indigo-500 shrink-0 mt-1">
+                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg>
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                       <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Location</span>
+                       <span className="text-xs font-black text-gray-950 dark:text-white leading-relaxed break-words">{user.address}</span>
+                    </div>
+                 </div>
+               )}
             </div>
 
-            {/* Display Address if provided */}
-            {user.address && (
-              <div className="flex items-start justify-center md:justify-start mb-4 max-w-full">
-                <div className="flex items-center gap-2 py-1.5 px-3 bg-amber-50/50 dark:bg-amber-900/10 rounded-xl border border-amber-100/50 dark:border-amber-800/20 text-amber-700 dark:text-amber-400 max-w-full">
-                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className="text-xs font-bold tracking-tight whitespace-pre-wrap break-words min-w-0">{user.address}</span>
-                </div>
+            {user.bio && (
+              <div className="mb-6 relative">
+                 <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500/20 rounded-full" />
+                 <div className="pl-5">
+                    <ExpandableText text={user.bio} maxLines={3} incrementalLines={20} className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed font-bold italic" showReadMore={true} />
+                 </div>
               </div>
             )}
-
-            
-            <div className="flex items-center justify-center md:justify-start gap-4 mb-4">
-              <div className="flex items-center gap-3">
-                {/* Google Icon */}
-                <div className={`p-1.5 rounded-full border ${user.authProvider === 'google' ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-gray-50 border-gray-100 text-gray-300'} relative group/icon`}>
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.908 3.153-1.859 4.104-1.187 1.187-3.047 2.487-6.981 2.487-6.01 0-10.73-4.86-10.73-10.87s4.72-10.87 10.73-10.87c3.25 0 5.59 1.28 7.35 2.95l2.31-2.31C18.63 1.05 15.73 0 12.48 0 5.86 0 .3 5.38.3 12s5.56 12 12.18 12c3.51 0 6.16-1.16 8.25-3.35 2.12-2.12 2.79-5.11 2.79-7.51 0-.71-.06-1.38-.18-2.02h-10.91z"/>
-                  </svg>
-                  {user.authProvider === 'google' && (
-                    <div className="absolute -top-1 -right-1 bg-indigo-500 rounded-full p-0.5 border-2 border-white dark:border-gray-800">
-                      <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
-                    </div>
-                  )}
-                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover/icon:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                    Google Connected
-                  </div>
-                </div>
-
-                {/* Email Icon */}
-                <div className={`p-1.5 rounded-full border ${user.isVerified ? 'bg-green-50 border-green-200 text-green-600' : 'bg-gray-50 border-gray-100 text-gray-300'} relative group/icon`}>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  {user.isVerified && (
-                    <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-white dark:border-gray-800">
-                      <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
-                    </div>
-                  )}
-                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover/icon:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                    Email Verified
-                  </div>
-                </div>
-
-                {/* Phone Icon */}
-                <div className={`p-1.5 rounded-full border ${user.isPhoneVerified ? 'bg-green-50 border-green-200 text-green-600' : 'bg-gray-50 border-gray-100 text-gray-300'} relative group/icon`}>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  {user.isPhoneVerified && (
-                    <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-white dark:border-gray-800">
-                      <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
-                    </div>
-                  )}
-                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover/icon:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                    Phone Verified
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1.5 rounded-lg border border-yellow-100 dark:border-yellow-900/30 text-sm">
-                <span className="text-yellow-500 mr-1.5 text-base">★</span>
-                <span className="font-bold text-yellow-800 dark:text-yellow-400">{user.rating}</span>
-                <span className="text-gray-500 dark:text-gray-400 ml-1.5 font-medium">({user.reviewCount} reviews)</span>
-              </div>
-            </div>
-
-            {user.bio && <ExpandableBio bio={user.bio} />}
           </div>
 
-          {/* Actions — owner vs visitor */}
-          <div className="flex flex-col sm:flex-row gap-2 mt-4 md:mt-0 flex-shrink-0">
+          <div className="flex flex-col gap-3 w-full md:w-auto">
             {isOwner ? (
-              <>
-                <Link
-                  href="/profile/edit"
-                  className="inline-flex items-center justify-center px-5 py-2 text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition-all active:scale-95 gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Edit Profile
+                <Link href="/profile/edit" className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-100 dark:shadow-none hover:bg-indigo-700 active:scale-95 transition-all">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                  Edit profile
                 </Link>
-
-              </>
             ) : (
-              <>
-                <div className="flex bg-gray-100 dark:bg-gray-700 p-0.5 rounded-xl">
-                  {user.allowEmailContact && user.email && (
-                    <a
-                      href={`mailto:${user.email}`}
-                      className="px-3 py-2 text-xs font-bold rounded-lg text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
-                      title="Send Email"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </a>
-                  )}
-                  <button
-                    onClick={() => document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="px-3 py-2 text-xs font-bold rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
-                    title="Read Reviews"
-                  >
-                    <span className="text-base">★</span>
-                  </button>
-                  {authUser && (
-                    <button
-                      onClick={async () => {
-                        const action = isBlocked ? 'unblock' : 'block';
-                        const confirmed = await confirmAction({
-                            title: isBlocked ? `Unblock ${user.name}?` : `Block ${user.name}?`,
-                            text: isBlocked 
-                               ? `Are you sure you want to unblock ${user.name}?`
-                               : `They will no longer see your listings and cannot message you.`,
-                            dangerMode: !isBlocked,
-                            confirmButtonText: isBlocked ? 'Unblock' : 'Block User'
-                        });
-                           
-                        if (confirmed) {
-                          handleBlockUser();
-                        }
-                      }}
-                      disabled={blocking}
-                      className={`px-3 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50 ${isBlocked ? 'text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600' : 'text-red-500 dark:text-red-400 hover:bg-white dark:hover:bg-gray-600'}`}
-                      title={isBlocked ? "Unblock User" : "Block User"}
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                         {isBlocked ? (
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                         ) : (
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
-                         )}
-                      </svg>
-                      <span className="hidden sm:inline">{isBlocked ? 'Unblock' : 'Block'}</span>
-                    </button>
-                  )}
-                  {authUser && (
-                    <button
-                      onClick={() => setReportOpen(true)}
-                      className="px-3 py-2 text-xs font-bold rounded-lg text-orange-500 dark:text-orange-400 hover:bg-white dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
-                      title="Report User"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    </button>
-                  )}
-                </div>
-                <ShareButton
-                  title={`${user.name}'s profile on ReCircle`}
-                  className="px-4 py-2 border border-gray-200 dark:border-gray-600 text-sm font-bold rounded-xl text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 shadow-sm transition-all active:scale-95"
-                />
-              </>
+              <div className="flex flex-col gap-3">
+                 <button onClick={() => document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' })} className="w-full flex items-center justify-between px-6 py-4 bg-yellow-500/10 border border-yellow-500/20 text-yellow-700 dark:text-yellow-400 rounded-2xl active:scale-95 transition-all group">
+                    <div className="flex flex-col items-start px-2">
+                       <span className="text-[9px] font-black uppercase tracking-widest opacity-70">User Rating</span>
+                       <span className="text-lg font-black tracking-tighter italic">★ {user.rating}</span>
+                    </div>
+                    <div className="p-2 bg-yellow-500 text-white rounded-xl shadow-lg group-hover:rotate-12 transition-transform">
+                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.175 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.382-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+                    </div>
+                 </button>
+                 <div className="flex gap-2">
+                    <button onClick={() => setReportOpen(true)} className="flex-1 p-4 bg-orange-500/10 border border-orange-500/20 text-orange-600 rounded-2xl active:scale-95 transition-all"><svg className="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></button>
+                    <button onClick={handleBlockUser} disabled={blocking} className={`flex-1 p-4 border rounded-2xl active:scale-95 transition-all ${isBlocked ? 'bg-gray-100 border-gray-200 text-gray-500' : 'bg-red-500/10 border-red-500/20 text-red-600 hover:bg-red-500/20'}`}><svg className="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d={isBlocked ? "M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" : "M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636"} /></svg></button>
+                    <ShareButton title={`${user.name}'s profile on ReCircle`} className="flex-1 p-4 bg-gray-100 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-400 rounded-2xl hover:text-indigo-600 transition-all" />
+                 </div>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Stats Bar - Premium Bento Style */}
-        <div className="border-t border-gray-100 dark:border-gray-700 px-4 sm:px-6 py-5 grid grid-cols-2 gap-3 sm:gap-4 bg-gray-50/60 dark:bg-gray-700/40">
-          <div className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl bg-white dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all hover:shadow-md hover:scale-[1.02]">
-            <div className="flex items-center gap-2 mb-1">
-               <span className="text-lg sm:text-xl">📦</span>
-               <p className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400">{stats?.totalProducts ?? 0}</p>
+        <div className="border-t border-gray-100/50 dark:border-gray-800/50 px-6 sm:px-12 py-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50/10 dark:bg-gray-700/5">
+          <div className="flex flex-col p-6 rounded-[2rem] bg-white/50 dark:bg-gray-800/20 backdrop-blur-sm border border-gray-100 dark:border-gray-700/50 transition-all hover:shadow-xl hover:-translate-y-1">
+            <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3 ml-1 italic">Total Products</span>
+            <div className="flex items-end justify-between">
+               <span className="text-4xl font-black text-indigo-600 dark:text-indigo-400 leading-none italic">{stats?.totalProducts ?? 0}</span>
+               <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/40 rounded-[1.25rem] text-indigo-600 dark:text-indigo-400"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg></div>
             </div>
-            <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 dark:text-gray-500">Products</p>
-            <div className="flex flex-wrap justify-center gap-1.5 mt-3">
-              <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800/30">
-                {stats?.totalProductsAvailable ?? 0} ACTIVE
-              </span>
-              <span className="text-[9px] font-black text-gray-500 bg-gray-50 dark:bg-gray-700 px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-600/50">
-                {stats?.totalProductsSold ?? 0} SOLD
-              </span>
-            </div>
+            <p className="mt-4 text-[9px] font-black uppercase tracking-tight text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-xl border border-emerald-100 dark:border-emerald-800/40 w-fit">{stats?.totalProductsAvailable ?? 0} ACTIVE NOW</p>
           </div>
           
-          <div className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl bg-white dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all hover:shadow-md hover:scale-[1.02]">
-             <div className="flex items-center gap-2 mb-1">
-               <span className="text-lg sm:text-xl">🛠️</span>
-               <p className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400">{isOwner ? (stats?.totalServices ?? 0) : (stats?.totalServicesActive ?? 0)}</p>
+          <div className="flex flex-col p-6 rounded-[2rem] bg-white/50 dark:bg-gray-800/20 backdrop-blur-sm border border-gray-100 dark:border-gray-700/50 transition-all hover:shadow-xl hover:-translate-y-1">
+            <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3 ml-1 italic">Total Services</span>
+            <div className="flex items-end justify-between">
+               <span className="text-4xl font-black text-indigo-600 dark:text-indigo-400 leading-none italic">{isOwner ? (stats?.totalServices ?? 0) : (stats?.totalServicesActive ?? 0)}</span>
+               <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/40 rounded-[1.25rem] text-indigo-600 dark:text-indigo-400"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></div>
             </div>
-            <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 dark:text-gray-500">Services</p>
-            <div className="mt-3 text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-800/30 uppercase tracking-tighter">
-              {stats?.totalEnrollments ?? 0} Clients Served
+            <p className="mt-4 text-[9px] font-black uppercase tracking-tight text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1.5 rounded-xl border border-indigo-100 dark:border-indigo-800/40 w-fit">{stats?.totalEnrollments ?? 0} CLIENTS SERVED</p>
+          </div>
+
+          <div className="flex flex-col p-6 rounded-[2rem] bg-white/50 dark:bg-gray-800/20 backdrop-blur-sm border border-gray-100 dark:border-gray-700/50 transition-all hover:shadow-xl hover:-translate-y-1">
+             <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3 ml-1 italic">Performance</span>
+             <div className="flex items-end justify-between">
+               <span className="text-4xl font-black text-indigo-600 dark:text-indigo-400 leading-none italic">{user.rating}</span>
+               <div className="p-2.5 bg-yellow-400/10 rounded-[1.25rem] text-yellow-500"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg></div>
             </div>
+            <p className="mt-4 text-[9px] font-black uppercase tracking-tight text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-700 w-fit">{user.reviewCount} GLOBAL REVIEWS</p>
+          </div>
+
+          <div className="flex flex-col p-6 rounded-[2rem] bg-indigo-600 text-white shadow-xl shadow-indigo-100 dark:shadow-none transition-all hover:-translate-y-1">
+             <span className="text-[9px] font-black text-indigo-200 uppercase tracking-[0.2em] mb-3 ml-1 italic">Market Share</span>
+             <div className="flex items-end justify-between">
+               <span className="text-4xl font-black leading-none italic">{stats?.totalProductsSold ?? 0}</span>
+               <div className="p-2.5 bg-indigo-500/30 rounded-[1.25rem]"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg></div>
+            </div>
+            <p className="mt-4 text-[9px] font-black uppercase tracking-tight text-indigo-100 bg-indigo-500/30 px-3 py-1.5 rounded-xl border border-indigo-400/30 w-fit uppercase tracking-widest">TOTAL SALES</p>
           </div>
         </div>
       </div>
 
-      {/* ── Tab Bar (Sticky on Mobile) ────────────────────────────────────────────────── */}
-      <div className={`transition-opacity duration-200 ${sectionLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-        <div id="listings-top" className="sticky top-[64px] sm:static z-20 flex items-center gap-1 p-1 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sm:bg-gray-100 sm:dark:bg-gray-800 rounded-xl max-w-full overflow-x-auto scrollbar-hide mb-6 transition-all border-b sm:border-none border-gray-100 dark:border-gray-800">
-          {/* All */}
-          <button
-            onClick={() => setActiveTab('all')}
-            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'all' ? 'bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-            All
-            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === 'all' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300'}`}>
-              {(isOwner ? (stats?.totalProducts ?? 0) : (stats?.totalProductsAvailable ?? 0)) + (isOwner ? (stats?.totalServices ?? 0) : (stats?.totalServicesActive ?? 0))}
-            </span>
-          </button>
-          
-          {/* Products */}
-          <button
-            onClick={() => setActiveTab('products')}
-            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'products' ? 'bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-            Products
-            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === 'products' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300'}`}>
-              {isOwner ? (stats?.totalProducts ?? 0) : (stats?.totalProductsAvailable ?? 0)}
-            </span>
-          </button>
-          {/* Services */}
-          <button
-            onClick={() => setActiveTab('services')}
-            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'services' ? 'bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            Services
-            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === 'services' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300'}`}>
-              {isOwner ? (stats?.totalServices ?? 0) : (stats?.totalServicesActive ?? 0)}
-            </span>
-          </button>
+      <div className={`transition-all duration-300 w-full max-w-full overflow-hidden ${sectionLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 w-full">
+          <div id="listings-top" className="flex items-center gap-1.5 p-1.5 bg-gray-100/50 dark:bg-gray-800/50 backdrop-blur-md rounded-2xl w-full sm:w-fit overflow-x-auto scrollbar-hide border border-gray-100 dark:border-gray-700/50">
+            {[
+              { id: 'all', label: 'ALL LISTINGS', count: (isOwner ? (stats?.totalProducts ?? 0) : (stats?.totalProductsAvailable ?? 0)) + (isOwner ? (stats?.totalServices ?? 0) : (stats?.totalServicesActive ?? 0)), icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 6h16M4 10h16M4 14h16M4 18h16" /> },
+              { id: 'products', label: 'PRODUCTS', count: isOwner ? (stats?.totalProducts ?? 0) : (stats?.totalProductsAvailable ?? 0), icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /> },
+              { id: 'services', label: 'SERVICES', count: isOwner ? (stats?.totalServices ?? 0) : (stats?.totalServicesActive ?? 0), icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /> }
+            ].map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`group flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all active:scale-95 whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-xl shadow-indigo-100/20 dark:shadow-none font-black italic' : 'text-gray-400 hover:text-gray-950 dark:hover:text-white font-black opacity-60'}`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">{tab.icon}</svg>
+                <span className="text-[10px] uppercase tracking-[0.2em]">{tab.label}</span>
+                <span className={`text-[9px] px-2 py-0.5 rounded-lg border font-black ${activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/50 border-indigo-100 dark:border-indigo-800' : 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700 opacity-50'}`}>{tab.count}</span>
+              </button>
+            ))}
+          </div>
 
-
+          <div className="hidden sm:flex items-center gap-1.5 bg-gray-100/30 dark:bg-gray-800/30 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700">
+             {[3, 4, 5].map(v => (
+               <button key={v} onClick={() => setCols(v as 3 | 4 | 5)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-90 ${cols === v ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-100 dark:border-gray-700 italic' : 'text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>{v}x</button>
+             ))}
+          </div>
         </div>
 
-        {/* View Density Controls */}
-        <div className="flex justify-end mb-4">
-           <div className="hidden sm:flex items-center gap-1 bg-gray-50 dark:bg-gray-900 overflow-hidden p-1 rounded-lg border border-gray-200 dark:border-gray-700">
-              <button onClick={() => setCols(3)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 3 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>3 Wide</button>
-              <button onClick={() => setCols(4)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 4 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>4 Wide</button>
-              <button onClick={() => setCols(5)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${cols === 5 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border border-transparent'}`}>5 Wide</button>
-           </div>
-        </div>
-
-        {/* All Panel */}
         {activeTab === 'all' && (
           <div className="mb-10">
             {allItems.length === 0 ? (
-              <div className="text-center py-16 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-800 transition-colors">
-                <p className="text-gray-500 dark:text-gray-400 text-sm italic">No items found.</p>
-              </div>
+              <div className="text-center py-16 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-800 transition-colors"><p className="text-gray-500 dark:text-gray-400 text-sm italic">No items found.</p></div>
             ) : (
-              <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6 transition-all duration-300' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6 transition-all duration-300' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 transition-all duration-300'}>
-                {sectionLoading ? (
-                  [...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)
-                ) : (
-                  allItems.map((item: any) => (
-                    item.type === 'product' ? (
-                      <ProductCard
-                        key={item._id} product={item} isOwner={isOwner}
-                        onDelete={handleDelete}
-                        onToggleStatus={handleToggleStatus}
-                      />
-                    ) : (
-                      <ServiceCard
-                        key={item._id} service={item} isOwner={isOwner}
-                        onDelete={handleDelete}
-                        onToggleStatus={handleToggleStatus}
-                      />
-                    )
-                  ))
-                )}
+              <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6'}>
+                {sectionLoading ? ([...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)) : (allItems.map((item: any) => (item.type === 'product' ? <ProductCard key={item._id} product={item} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} /> : <ServiceCard key={item._id} service={item} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} />)))}
               </div>
             )}
             <PaginationControls page={allPage} totalPages={allPagination?.totalPages || 1} onPageChange={setAllPage} scrollTargetId="listings-top" />
           </div>
         )}
 
-        {/* Products Panel */}
         {activeTab === 'products' && (
           <div className="mb-10">
             {products.length === 0 ? (
@@ -714,18 +503,8 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
             ) : (
               <>
-                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6 transition-all duration-300' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6 transition-all duration-300' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 transition-all duration-300'}>
-                  {sectionLoading ? (
-                    [...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)
-                  ) : (
-                    products.map((product: any) => (
-                      <ProductCard
-                        key={product._id} product={product} isOwner={isOwner}
-                        onDelete={handleDelete}
-                        onToggleStatus={handleToggleStatus}
-                      />
-                    ))
-                  )}
+                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6'}>
+                  {sectionLoading ? ([...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)) : (products.map((product: any) => (<ProductCard key={product._id} product={product} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} />)))}
                 </div>
                 <PaginationControls page={productPage} totalPages={productPagination?.totalPages || 1} onPageChange={setProductPage} scrollTargetId="listings-top" />
               </>
@@ -733,7 +512,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
           </div>
         )}
 
-        {/* Services Panel */}
         {activeTab === 'services' && (
           <div className="mb-10">
             {services.length === 0 ? (
@@ -743,18 +521,8 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
             ) : (
               <>
-                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6 transition-all duration-300' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6 transition-all duration-300' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 transition-all duration-300'}>
-                  {sectionLoading ? (
-                    [...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)
-                  ) : (
-                    services.map((service: any) => (
-                      <ServiceCard
-                        key={service._id} service={service} isOwner={isOwner}
-                        onDelete={handleDelete}
-                        onToggleStatus={handleToggleStatus}
-                      />
-                    ))
-                  )}
+                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6'}>
+                  {sectionLoading ? ([...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)) : (services.map((service: any) => (<ServiceCard key={service._id} service={service} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} />)))}
                 </div>
                 <PaginationControls page={servicePage} totalPages={servicePagination?.totalPages || 1} onPageChange={setServicePage} scrollTargetId="listings-top" />
               </>
@@ -762,18 +530,8 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
           </div>
         )}
 
-
-
-
-        {/* Reviews */}
-        <div id="reviews-section">
-          <ReviewSection targetId={user.id || user._id} targetName={user.name} />
-        </div>
-
+        <div id="reviews-section"><ReviewSection targetId={user.id || user._id} targetName={user.name} /></div>
       </div>
-
-
-
       {reportOpen && (
         <ReportModal targetUserId={user.id || user._id} itemType={null} itemId={null} onClose={() => setReportOpen(false)} />
       )}

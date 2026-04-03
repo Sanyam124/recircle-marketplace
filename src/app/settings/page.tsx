@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/context/AuthContext';
+import NextImage from 'next/image';
 import Loader from '@/components/Loader';
 import CommunityManager from '@/components/CommunityManager';
 import { siteConfig } from '@/lib/config';
@@ -141,151 +142,176 @@ export default function SettingsPage() {
   if (authLoading || loading) return <Loader />;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors duration-300">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Settings</h1>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors duration-300">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Settings</h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1 font-medium italic">Your hub for account preferences and privacy.</p>
+      </div>
       
       {/* Appearance Section */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-8 transition-colors duration-300">
-        <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Appearance</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Customize how ReCircle looks on your device.</p>
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border border-gray-100 dark:border-gray-700 rounded-3xl p-6 sm:p-8 mb-8 transition-all hover:shadow-md">
+        <div className="flex items-center gap-3 mb-6">
+           <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/40 rounded-2xl">
+              <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+           </div>
+           <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight leading-none">Appearance</h2>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-sm">Customize how the platform looks on your device.</p>
         
         {mounted && (
-          <div className="flex gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <button
               onClick={() => setTheme('light')}
-              className={`flex-1 flex flex-col items-center justify-center py-4 px-4 rounded-xl border-2 transition-all ${theme === 'light' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-500' : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-gray-600'}`}
+              className={`flex flex-col items-center justify-center py-6 px-4 rounded-2xl border-2 transition-all active:scale-95 ${theme === 'light' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 shadow-md' : 'border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:border-indigo-200'}`}
             >
-              <div className="w-10 h-10 mb-2 rounded-full bg-gray-100 flex items-center justify-center text-yellow-500">
+              <div className="w-12 h-12 mb-3 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center text-yellow-500 shadow-md border border-gray-100 dark:border-gray-700">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">Light</span>
+              <span className="text-xs font-black uppercase tracking-widest text-gray-900 dark:text-white">Light</span>
             </button>
             
             <button
               onClick={() => setTheme('dark')}
-              className={`flex-1 flex flex-col items-center justify-center py-4 px-4 rounded-xl border-2 transition-all ${theme === 'dark' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-500' : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-gray-600'}`}
+              className={`flex flex-col items-center justify-center py-6 px-4 rounded-2xl border-2 transition-all active:scale-95 ${theme === 'dark' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 shadow-md' : 'border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:border-indigo-200'}`}
             >
-              <div className="w-10 h-10 mb-2 rounded-full bg-gray-800 flex items-center justify-center text-indigo-400">
-                <svg className="w-5 h-5" fill="solid" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              <div className="w-12 h-12 mb-3 rounded-full bg-gray-900 flex items-center justify-center text-indigo-400 shadow-md border border-gray-800">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                 </svg>
               </div>
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">Dark</span>
+              <span className="text-xs font-black uppercase tracking-widest text-gray-900 dark:text-white">Dark</span>
             </button>
 
             <button
               onClick={() => setTheme('system')}
-              className={`flex-1 flex flex-col items-center justify-center py-4 px-4 rounded-xl border-2 transition-all ${theme === 'system' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-500' : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-gray-600'}`}
+              className={`col-span-2 sm:col-span-1 flex flex-col items-center justify-center py-6 px-4 rounded-2xl border-2 transition-all active:scale-95 ${theme === 'system' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 shadow-md' : 'border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:border-indigo-200'}`}
             >
-              <div className="w-10 h-10 mb-2 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
+              <div className="w-12 h-12 mb-3 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 shadow-md border border-gray-200 dark:border-gray-600">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">System</span>
+              <span className="text-xs font-black uppercase tracking-widest text-gray-900 dark:text-white">System</span>
             </button>
           </div>
         )}
       </div>
 
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 transition-colors duration-300">
-        <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Privacy & Notifications</h2>
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border border-gray-100 dark:border-gray-700 rounded-3xl p-6 sm:p-8 transition-all hover:shadow-md mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div className="flex items-center gap-3">
+               <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/40 rounded-2xl">
+                  <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0-6V9m0 12a9 9 0 110-18 9 9 0 010 18z" /></svg>
+               </div>
+               <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight leading-none">Privacy & Safety</h2>
+            </div>
             <button
                 onClick={() => router.push('/profile/edit')}
-                className="text-sm text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                className="text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 px-5 py-2.5 bg-indigo-50 dark:bg-indigo-900/40 rounded-xl transition-all active:scale-95"
             >
-                Edit Profile Info instead &rarr;
+                Edit Info &rarr;
             </button>
         </div>
         
         {message && (
-          <div className={`mb-4 p-3 rounded text-sm ${message.includes('success') ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+          <div className={`mb-8 p-4 rounded-2xl text-sm font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-2 overflow-hidden ${message.includes('success') ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-100 dark:border-rose-800/50'}`}>
+            <span className="shrink-0 w-2 h-2 rounded-full bg-current animate-pulse" />
             {message}
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <label htmlFor="allowEmailContact" className="text-sm font-bold text-gray-900 dark:text-white">Allow Contact via Email</label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Let other users see your email address and contact you outside of the platform.</p>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="p-5 sm:p-7 bg-gray-50/50 dark:bg-gray-900/30 rounded-3xl border border-gray-100 dark:border-gray-700/50 hover:bg-white dark:hover:bg-gray-900/50 transition-all group">
+            <div className="flex items-center justify-between">
+              <div className="pr-4">
+                <label htmlFor="allowEmailContact" className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest italic leading-none block mb-2">Email Visibility</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Allow people to find you via email for external communication.</p>
+              </div>
+              
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input 
+                  type="checkbox" 
+                  id="allowEmailContact" 
+                  className="sr-only peer" 
+                  checked={allowEmailContact}
+                  onChange={(e) => setAllowEmailContact(e.target.checked)}
+                />
+                <div className="w-14 h-7 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500 shadow-inner ring-4 ring-transparent group-hover:ring-indigo-100 dark:group-hover:ring-indigo-900/20"></div>
+              </label>
             </div>
-            
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                id="allowEmailContact" 
-                className="sr-only peer" 
-                checked={allowEmailContact}
-                onChange={(e) => setAllowEmailContact(e.target.checked)}
-              />
-              <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500"></div>
-            </label>
           </div>
 
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <label htmlFor="allowPhoneContact" className="text-sm font-bold text-gray-900 dark:text-white">Allow Contact via Phone</label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Let other users see your phone number and contact you outside of the platform.</p>
+          <div className="p-5 sm:p-7 bg-gray-50/50 dark:bg-gray-900/30 rounded-3xl border border-gray-100 dark:border-gray-700/50 hover:bg-white dark:hover:bg-gray-900/50 transition-all group">
+            <div className="flex items-center justify-between">
+              <div className="pr-4">
+                <label htmlFor="allowPhoneContact" className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest italic leading-none block mb-2">Phone Visibility</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Show your phone number to verified campus members.</p>
+              </div>
+              
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input 
+                  type="checkbox" 
+                  id="allowPhoneContact" 
+                  className="sr-only peer" 
+                  checked={allowPhoneContact}
+                  onChange={(e) => setAllowPhoneContact(e.target.checked)}
+                />
+                <div className="w-14 h-7 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500 shadow-inner ring-4 ring-transparent group-hover:ring-indigo-100 dark:group-hover:ring-indigo-900/20"></div>
+              </label>
             </div>
-            
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                id="allowPhoneContact" 
-                className="sr-only peer" 
-                checked={allowPhoneContact}
-                onChange={(e) => setAllowPhoneContact(e.target.checked)}
-              />
-              <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500"></div>
-            </label>
           </div>
 
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <label htmlFor="isOnVacation" className="text-sm font-bold text-gray-900 dark:text-white">Vacation Mode</label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Temporarily hide all your products and services from the feed. Perfect for semester breaks!</p>
+          <div className="p-5 sm:p-7 bg-amber-50/30 dark:bg-amber-900/10 rounded-3xl border border-amber-100 dark:border-amber-900/30 hover:bg-amber-50/50 dark:hover:bg-amber-900/20 transition-all group">
+            <div className="flex items-center justify-between">
+              <div className="pr-4">
+                <label htmlFor="isOnVacation" className="text-sm font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest italic leading-none block mb-2">Vacation Mode</label>
+                <p className="text-xs text-amber-600/70 dark:text-amber-500/70 font-medium">Temporarily hide your listings while you're away.</p>
+              </div>
+              
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input 
+                  type="checkbox" 
+                  id="isOnVacation" 
+                  className="sr-only peer" 
+                  checked={isOnVacation}
+                  onChange={(e) => setIsOnVacation(e.target.checked)}
+                />
+                <div className="w-14 h-7 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-amber-500 dark:peer-checked:bg-amber-600 shadow-inner ring-4 ring-transparent group-hover:ring-amber-100 dark:group-hover:ring-amber-900/20"></div>
+              </label>
             </div>
-            
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                id="isOnVacation" 
-                className="sr-only peer" 
-                checked={isOnVacation}
-                onChange={(e) => setIsOnVacation(e.target.checked)}
-              />
-              <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500 dark:peer-checked:bg-amber-600"></div>
-            </label>
           </div>
 
           {/* Blocked Users Section */}
-          <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Blocked Users</h3>
+          <div className="mt-12 pt-10 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-3 mb-8">
+               <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">Blocked People</h3>
+               <span className="px-3 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[10px] font-black rounded-full border border-gray-200 dark:border-gray-600">{blockedUsers.length}</span>
+            </div>
             
             {blockedUsers.length === 0 ? (
-              <div className="text-center py-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
-                <p className="text-sm text-gray-500 dark:text-gray-400">You haven't blocked any users yet.</p>
+              <div className="text-center py-16 bg-gray-50/50 dark:bg-gray-900/30 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700 transition-colors">
+                <div className="w-16 h-16 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100 dark:border-gray-700">
+                   <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest italic opacity-50">Peaceful. No one here.</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {blockedUsers.map(blockedUser => (
-                  <div key={blockedUser._id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
-                    <Link href={`/profile/${blockedUser._id}`} className="flex items-center gap-3 group hover:opacity-80 transition-opacity flex-1 min-w-0">
-                      <div className="h-10 w-10 shrink-0 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center font-bold text-gray-600 dark:text-gray-300 overflow-hidden relative border border-gray-300 dark:border-gray-500 shadow-sm group-hover:ring-2 group-hover:ring-indigo-400 group-hover:ring-offset-1 transition-all">
+                  <div key={blockedUser._id} className="flex items-center justify-between p-4 bg-white/50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:bg-rose-50/30 dark:hover:bg-rose-900/10">
+                    <Link href={`/profile/${blockedUser._id}`} className="flex items-center gap-3 group flex-1 min-w-0">
+                      <div className="h-12 w-12 shrink-0 rounded-2xl bg-indigo-50 dark:bg-indigo-900/50 flex items-center justify-center font-bold text-indigo-600 dark:text-indigo-400 overflow-hidden relative border-2 border-white dark:border-gray-800 shadow-md group-hover:rotate-3 transition-all">
                         {blockedUser.profilePicture ? (
-                           <img src={blockedUser.profilePicture} alt={blockedUser.name} className="object-cover w-full h-full" />
+                           <NextImage src={blockedUser.profilePicture} alt={blockedUser.name} width={48} height={48} className="object-cover w-full h-full" referrerPolicy="no-referrer" />
                         ) : (
                            blockedUser.name?.charAt(0).toUpperCase() || 'U'
                         )}
                       </div>
                       <div className="truncate">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">{blockedUser.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{blockedUser.username}</p>
+                        <p className="text-sm font-black text-gray-900 dark:text-white truncate tracking-tight">{blockedUser.name}</p>
+                        <p className="text-[10px] uppercase font-black text-gray-400 tracking-widest mt-0.5 opacity-70">@{blockedUser.username}</p>
                       </div>
                     </Link>
                     
@@ -293,9 +319,9 @@ export default function SettingsPage() {
                       type="button"
                       onClick={() => handleUnblock(blockedUser._id)}
                       disabled={unblockingId === blockedUser._id}
-                      className="px-4 py-1.5 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors shadow-sm active:scale-95"
+                      className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all shrink-0 shadow-lg"
                     >
-                      {unblockingId === blockedUser._id ? 'Unblocking...' : 'Unblock'}
+                      {unblockingId === blockedUser._id ? '...' : 'Unblock'}
                     </button>
                   </div>
                 ))}
@@ -303,43 +329,68 @@ export default function SettingsPage() {
             )}
           </div>
 
-
-
-          <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex justify-end pt-10 border-t border-gray-100 dark:border-gray-700">
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
+              className="w-full sm:w-auto inline-flex justify-center items-center gap-3 py-4 px-12 border border-transparent text-sm font-black uppercase tracking-widest rounded-2xl text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 shadow-2xl shadow-indigo-100 dark:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-all active:scale-95 group"
             >
-              {saving ? 'Saving...' : 'Save Settings'}
+              {saving ? (
+                <>
+                  <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  Save Changes
+                  <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                </>
+              )}
             </button>
           </div>
         </form>
       </div>
 
-      <CommunityManager />
+      <div className="mb-8">
+        <CommunityManager />
+      </div>
 
-       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mt-8 transition-colors duration-300">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Help & Support</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Need assistance or want to report an issue? Contact the administration team directly.</p>
+       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border border-gray-100 dark:border-gray-700 rounded-3xl p-6 sm:p-10 mb-8 transition-all hover:shadow-md">
+          <div className="flex items-center gap-4 mb-6">
+             <div className="p-3 bg-blue-50 dark:bg-blue-900/40 rounded-2xl">
+                <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+             </div>
+             <div>
+                <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Need help?</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium tracking-tight">Our campus admin team is here for you 24/7.</p>
+             </div>
+          </div>
           <a
             href={`mailto:${siteConfig.supportEmail}?subject=Support%20Request%20-%20ReCircle`}
-            className="inline-flex items-center justify-center px-5 py-2.5 border border-indigo-200 dark:border-indigo-800 text-sm font-bold rounded-xl text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 shadow-sm transition-all active:scale-95 gap-2"
+            className="inline-flex items-center justify-center w-full px-8 py-4 border-2 border-blue-100 dark:border-blue-900/50 text-sm font-black uppercase tracking-widest rounded-2xl text-blue-700 dark:text-blue-400 bg-blue-50/20 dark:bg-blue-900/10 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all active:scale-[0.98] gap-3"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            Send Support Ticket
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            Contact Support
           </a>
        </div>
 
-       <div className="bg-red-50 dark:bg-red-900/20 shadow rounded-lg p-6 mt-8 border border-red-100 dark:border-red-900/30 transition-colors duration-300">
-          <h2 className="text-lg font-medium text-red-800 dark:text-red-400 mb-2">Danger Zone</h2>
-          <p className="text-sm text-red-600 dark:text-red-300 mb-4">Once you delete your account, there is no going back. Please be certain.</p>
-          <button type="button" onClick={handleDeleteAccount} disabled={saving} className="text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 bg-white dark:bg-transparent hover:bg-red-50 dark:hover:bg-red-900/50 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 transition-colors">
-             {saving ? 'Processing...' : 'Delete Account'}
+       <div className="bg-rose-50/40 dark:bg-rose-950/20 backdrop-blur-sm shadow-sm border border-rose-100 dark:border-rose-900/40 rounded-3xl p-6 sm:p-10 transition-all hover:border-rose-200 dark:hover:border-rose-800">
+          <div className="flex items-center gap-4 mb-6">
+             <div className="p-3 bg-rose-100 dark:bg-rose-900/60 rounded-2xl shadow-sm">
+                <svg className="w-6 h-6 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+             </div>
+             <div>
+                <h2 className="text-2xl font-black text-rose-800 dark:text-rose-400 tracking-tight leading-none mb-1">Danger Zone</h2>
+                <p className="text-sm text-rose-600/80 dark:text-rose-500/80 font-medium">Think twice. This action is absolutely permanent.</p>
+             </div>
+          </div>
+          <button type="button" onClick={handleDeleteAccount} disabled={saving} className="w-full px-8 py-4 text-sm font-black uppercase tracking-widest rounded-2xl border-2 border-rose-200 dark:border-rose-900/60 bg-white dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 transition-all active:scale-[0.98] shadow-sm">
+             {saving ? 'Processing Account Wipe...' : 'Delete Account Permanently'}
           </button>
        </div>
     </div>
+
   );
 }

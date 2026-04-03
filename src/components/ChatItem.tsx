@@ -55,30 +55,33 @@ export const ChatItem = React.memo(({
                         <div className="absolute top-0 left-0 right-2 bottom-2 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform group-hover:scale-105">
                             <Image src={itemImage || '/placeholder.png'} alt={itemTitle} fill sizes="56px" className="object-cover" />
                         </div>
-                        <div className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-700 dark:text-indigo-300 text-[10px] font-black border-2 border-white dark:border-gray-900 shadow-md z-10 transition-transform group-hover:translate-x-0.5 group-hover:translate-y-0.5">
-                            {conv.user.name?.charAt(0).toUpperCase()}
+                        <div className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-700 dark:text-indigo-300 text-[10px] font-black border-2 border-white dark:border-gray-900 shadow-md z-10 transition-transform group-hover:translate-x-0.5 group-hover:translate-y-0.5 overflow-hidden">
+                            {conv.user.profilePicture ? (
+                                <Image 
+                                    src={conv.user.profilePicture} 
+                                    alt={conv.user.name} 
+                                    fill 
+                                    sizes="28px" 
+                                    className="object-cover"
+                                />
+                            ) : (
+                                conv.user.name?.charAt(0).toUpperCase()
+                            )}
                         </div>
                     </div>
 
                     <div className="flex-1 min-w-0 pr-8">
-                        <div className="flex justify-between items-start mb-0.5">
-                            <h3 className="text-sm font-bold text-gray-900 dark:text-white break-words flex-1 min-w-0 pr-1">
+                        <div className="flex justify-between items-center mb-0.5">
+                            <h3 className="text-sm font-extrabold text-gray-900 dark:text-white truncate pr-1">
                                 {conv.user.name}
                             </h3>
-                            <div className="flex flex-col items-end shrink-0 pl-1">
-                                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 whitespace-nowrap">
-                                    {formatChatMessageDate(conv.lastMessage.createdAt)}
-                                </span>
-                                {displayUnread > 0 && (
-                                    <span className="mt-1 bg-red-600 text-white text-[10px] font-black h-5 w-5 rounded-full flex items-center justify-center shadow-sm animate-in zoom-in-50 duration-300 z-[5]">
-                                        {displayUnread}
-                                    </span>
-                                )}
-                            </div>
+                            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 whitespace-nowrap shrink-0">
+                                {formatChatMessageDate(conv.lastMessage.createdAt)}
+                            </span>
                         </div>
 
-                        <div className="flex items-center mb-1 min-w-0">
-                            <p className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 break-words flex-1 min-w-0">
+                        <div className="flex items-center mb-0.5 min-w-0">
+                            <p className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 truncate flex-1 min-w-0">
                                 <span className="uppercase text-[9px] opacity-70 mr-1">{conv.product ? 'Product' : 'Service'}:</span>
                                 {itemTitle}
                             </p>
@@ -99,12 +102,21 @@ export const ChatItem = React.memo(({
                                                 <path d="M4 12l4 4L18 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
                                             </svg>
                                         )}
-                                        <span className="ml-1 shrink-0">You: </span>
+                                        <span className="ml-1 shrink-0 font-bold opacity-80 italic">You: </span>
                                     </span>
                                 )}
                                 <span className="truncate">{conv.lastMessage.content}</span>
                             </div>
                         </div>
+
+                        {/* Stable Unread Badge */}
+                        {displayUnread > 0 && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 group-hover:opacity-0 transition-opacity">
+                                <span className="bg-red-600 text-white text-[10px] font-black h-5 w-5 rounded-full flex items-center justify-center shadow-lg border border-white/20 animate-in zoom-in-50 duration-300 z-[5]">
+                                    {displayUnread}
+                                </span>
+                            </div>
+                        )}
 
                         {/* Status Banner Row (Price + Status) */}
                         {statusInfo.isStatus && (
@@ -114,7 +126,7 @@ export const ChatItem = React.memo(({
                                 statusInfo.color?.includes('red') ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-400' :
                                 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-400'
                             }`}>
-                                <div className="font-bold flex items-center gap-1.5 truncate">
+                                <div className="font-bold flex items-center gap-1.5 truncate text-[9px]">
                                     {statusInfo.priceLabel && (
                                         <span className="shrink-0 font-black">{statusInfo.priceLabel}</span>
                                     )}
@@ -122,7 +134,7 @@ export const ChatItem = React.memo(({
                                         <span className="opacity-40">|</span>
                                     )}
                                     {statusInfo.label && (
-                                        <span className="truncate italic uppercase tracking-widest text-[9px]">{statusInfo.label}</span>
+                                        <span className="truncate italic uppercase tracking-widest text-[8px]">{statusInfo.label}</span>
                                     )}
                                 </div>
                             </div>
