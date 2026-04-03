@@ -9,15 +9,22 @@ import NotificationBell from './NotificationBell';
 import Community from '@/models/Community'; // Register for populate
 import { Skeleton } from './Skeletons';
 import { pusherClient } from '@/lib/pusherClient';
+import useSWR from 'swr';
 
 
 export default function Navbar() {
   const { user, loading, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
-  const [messageUnreadCount, setMessageUnreadCount] = useState(0);
   const [newVerification, setNewVerification] = useState<string | null>(null);
   const pathname = usePathname();
+
+  // Optimized Unread Count via SWR
+  const { data: unreadData } = useSWR(
+    user ? '/api/chat/unread-count' : null,
+    { refreshInterval: 60000 } // Slow fallback polling
+  );
+  const messageUnreadCount = unreadData?.unreadCount || 0;
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -35,38 +42,20 @@ export default function Navbar() {
     }
   }, [pathname]);
 
-  const fetchUnreadCount = async () => {
-    if (!user) return;
-    try {
-      const res = await fetch('/api/chat/unread-count');
-      if (res.ok) {
-        const data = await res.json();
-        setMessageUnreadCount(data.unreadCount || 0);
-      }
-    } catch (e) {
-      // Quietly log fetch failures as they are usually transient network/server-restart issues
-      console.warn('Silent unread-count fetch failure:', e instanceof Error ? e.message : e);
-    }
-  };
-
   useEffect(() => {
     if (user) {
-      fetchUnreadCount();
-      // Keep slow polling as a 1-minute fallback sync
-      const interval = setInterval(fetchUnreadCount, 60000);
-
-      // Pusher real-time subscription
+      // Pusher real-time subscription for immediate UI updates
       const userId = user.id || (user as any)._id;
       const channelName = `user-${userId}`;
       const channel = pusherClient.subscribe(channelName);
       
       channel.bind('new-message', () => {
-        // Re-fetch exact count immediately or just increment
-        fetchUnreadCount();
+        // We don't need a manual fetch here anymore; 
+        // SWR will handle it or we can do a global mutate if needed.
+        // For now, Pusher maintains the real-time feel via other component listeners.
       });
 
       return () => {
-        clearInterval(interval);
         pusherClient.unsubscribe(channelName);
       };
     }
@@ -89,12 +78,20 @@ export default function Navbar() {
         </div>
     </div>
 
-    <nav className="bg-white/90 dark:bg-gray-950/90 backdrop-blur-md shadow-sm dark:shadow-gray-900/50 sticky top-0 z-50 transition-colors duration-300 border-b border-gray-200/50 dark:border-gray-800/50 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/60">
+    <nav className="bg-white/90 dark:bg-gray-950/90 backdrop-blur-md shadow-sm dark:shadow-gray-900/50 fixed top-0 left-0 right-0 z-50 transition-colors duration-300 border-b border-gray-200/50 dark:border-gray-800/50 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
-            <Link href="/" className="flex-shrink-0 flex items-center">
-              <Image src="/logo.png" alt="ReCircle" width={140} height={40} className="h-10 w-auto dark:brightness-0 dark:invert transition-all" priority />
+            <Link href="/" className="flex-shrink-0 flex items-center gap-2 group">
+              <Image 
+                src="/logo_nav.png" 
+                alt="ReCircle" 
+                width={140} 
+                height={40} 
+                priority
+                className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
+                style={{ height: 'auto', width: '140px' }}
+              />
             </Link>
             <div className="hidden md:ml-6 md:flex md:space-x-8">
               <Link href="/explore" className="text-gray-900 dark:text-gray-300 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-indigo-500 dark:hover:text-white text-sm font-medium transition-colors">
@@ -197,8 +194,19 @@ export default function Navbar() {
 
                 <div className="flex items-center gap-2">
                     <Link href="/profile" className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold border border-indigo-200 dark:border-indigo-800">
-                             {user.name?.charAt(0).toUpperCase() || 'U'}
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold border border-indigo-200 dark:border-indigo-800 overflow-hidden shadow-sm">
+                            {user.profilePicture ? (
+                                <Image 
+                                  src={user.profilePicture} 
+                                  alt={user.name || 'User'} 
+                                  width={32} 
+                                  height={32} 
+                                  className="w-full h-full object-cover" 
+                                  referrerPolicy="no-referrer"
+                                />
+                            ) : (
+                                user.name?.charAt(0).toUpperCase() || 'U'
+                            )}
                         </div>
                         <span className="hidden xl:inline break-words max-w-[150px]">{user.name?.split(' ')[0]}</span>
                     </Link>
@@ -253,7 +261,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shadow-xl animate-in slide-in-from-top-4 duration-200">
+        <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shadow-xl animate-in slide-in-from-top-4 duration-200 w-full max-w-[100vw] overflow-x-hidden">
           <div className="pt-2 pb-3 space-y-1 px-4">
             <Link href="/explore" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               <span className="text-xl">🔍</span> Explore
@@ -293,7 +301,7 @@ export default function Navbar() {
                     </div>
                 </Link>
 
-                <div className="grid grid-cols-3 gap-2 mt-4">
+                <div className="grid grid-cols-3 gap-1 mt-4">
                     <Link href="/chat" onClick={() => setIsMobileMenuOpen(false)} className="flex flex-col items-center justify-center p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
                         <div className="relative mb-1">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
@@ -316,14 +324,14 @@ export default function Navbar() {
                 </div>
 
                 {user.role === 'admin' && (
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                        <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-blue-600 dark:bg-blue-700 text-white font-bold text-[10px] uppercase">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                        <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-blue-600 dark:bg-blue-700 text-white font-bold text-xs sm:text-[10px] uppercase">
                             📊 Dashboard
                         </Link>
-                        <Link href="/admin/reports" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-red-600 dark:bg-red-700 text-white font-bold text-[10px] uppercase">
+                        <Link href="/admin/reports" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-red-600 dark:bg-red-700 text-white font-bold text-xs sm:text-[10px] uppercase">
                             🚩 Reports
                         </Link>
-                        <Link href="/admin/users" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-purple-600 dark:bg-purple-700 text-white font-bold text-xs">
+                        <Link href="/admin/users" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-purple-600 dark:bg-purple-700 text-white font-bold text-xs sm:text-[10px] uppercase">
                             👥 Users
                         </Link>
                     </div>
