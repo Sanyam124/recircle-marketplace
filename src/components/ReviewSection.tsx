@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import StarRating from './StarRating';
 import Link from 'next/link';
@@ -12,9 +12,18 @@ interface Review {
   rating: number;
   comment: string;
   createdAt: string;
+  product?: string;
+  service?: string;
 }
 
-export default function ReviewSection({ targetId, targetName }: { targetId: string, targetName: string }) {
+interface ReviewSectionProps {
+  targetId: string;
+  targetName: string;
+  productId?: string;
+  serviceId?: string;
+}
+
+export default function ReviewSection({ targetId, targetName, productId, serviceId }: ReviewSectionProps) {
   const { user } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [average, setAverage] = useState(0);
@@ -32,23 +41,21 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Check if user has already reviewed
-  const hasReviewed = user && reviews.some((r) => r.reviewer?._id === user.id);
+  // Determine if user has already reviewed the specific item or target
+  const hasReviewed = user && reviews.some((r) => {
+      if (productId) return r.reviewer?._id === user.id && r.product === productId;
+      if (serviceId) return r.reviewer?._id === user.id && r.service === serviceId;
+      return r.reviewer?._id === user.id;
+  });
 
-  useEffect(() => {
-    if (!targetId || targetId === 'undefined') {
-        setLoading(false);
-        return;
-    }
-    setReviews([]);
-    setPage(1);
-    fetchReviews(1);
-  }, [targetId, filterRating]);
-
-  const fetchReviews = async (pageNum: number, append: boolean = false) => {
+  const fetchReviews = useCallback(async (pageNum: number, append: boolean = false) => {
     try {
       if (!append) setLoading(true);
-      let url = `/api/reviews?targetId=${targetId}&page=${pageNum}&limit=5`;
+      let url = `/api/reviews?page=${pageNum}&limit=5`;
+      if (productId) url += `&productId=${productId}`;
+      else if (serviceId) url += `&serviceId=${serviceId}`;
+      else if (targetId) url += `&targetId=${targetId}`;
+      
       if (filterRating) url += `&rating=${filterRating}`;
 
       const res = await fetch(url);
@@ -63,6 +70,8 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
         setCount(data.count);
         setRatingCounts(data.ratingCounts || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
         setHasMore(data.pagination.hasMore);
+        
+        // canReview logic might still need targetId for backend check
         if (!append) {
             setCanReview(data.canReview || false);
         }
@@ -72,7 +81,17 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
     } finally {
       setLoading(false);
     }
-  };
+  }, [targetId, productId, serviceId, filterRating]);
+
+  useEffect(() => {
+    if ((!targetId || targetId === 'undefined') && !productId && !serviceId) {
+        setLoading(false);
+        return;
+    }
+    setReviews([]);
+    setPage(1);
+    fetchReviews(1);
+  }, [targetId, productId, serviceId, filterRating, fetchReviews]);
 
   const handleLoadMore = () => {
     const nextPage = page + 1;
@@ -90,7 +109,7 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
       const res = await fetch('/api/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetId, rating, comment }),
+        body: JSON.stringify({ targetId, productId, serviceId, rating, comment }),
       });
 
       const data = await res.json();
@@ -121,7 +140,9 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 mt-8 transition-colors">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Reviews for {targetName}</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+        Reviews {productId || serviceId ? 'for this listing' : `for ${targetName}`}
+      </h2>
       
       <div className="flex flex-col md:flex-row gap-8 mb-8 border-b border-gray-100 dark:border-gray-700 pb-8">
         
@@ -129,7 +150,7 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
         <div className="flex flex-col items-center justify-center md:w-1/3 bg-gray-50 dark:bg-gray-700/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700">
            <span className="text-5xl font-extrabold text-indigo-600 dark:text-indigo-400 mb-2 tracking-tighter">{average}</span>
            <StarRating rating={average} />
-           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-2">{count} global ratings</p>
+           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-2">{count} {productId || serviceId ? 'listing ratings' : 'seller ratings'}</p>
         </div>
 
         {/* Right Col: Distribution Bars */}
@@ -182,13 +203,13 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
           <p className="mb-8 text-sm text-gray-500 dark:text-gray-400">You cannot review yourself.</p>
       ) : hasReviewed ? (
           <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-sm">
-              You have already reviewed this user.
+              You've already shared your feedback for this.
           </div>
       ) : !canReview ? (
           <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-600">
-             <p className="font-medium text-gray-900 dark:text-white mb-1">Notice</p>
-             Only users who have completed a verified transaction with this person can leave a review. 
-             If you've already completed a purchase or enrollment, ensure the provider has added you to the transaction history.
+             <p className="font-medium text-gray-900 dark:text-white mb-1">Authentic Reviews Only</p>
+             Only users who have completed a verified transaction for this {productId ? 'product' : 'service'} can leave a review. 
+             If you've bought this, ensure the order is marked as "Completed" in your order history.
           </div>
       ) : (
           <div className="mb-8 border-b border-gray-100 dark:border-gray-700 pb-8">
@@ -217,7 +238,7 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
                    className="w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border text-gray-900 dark:text-white bg-white dark:bg-gray-700 transition-colors"
                    value={comment}
                    onChange={(e) => setComment(e.target.value)}
-                   placeholder="Share your experience..."
+                   placeholder="How was the product and the seller's service?"
                    required
                  />
               </div>
@@ -237,7 +258,7 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
           <div key={review._id} className="flex space-x-4">
              <div className="flex-shrink-0">
                <Link href={`/profile/${review.reviewer?._id || ''}`}>
-                 <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold border border-gray-200 dark:border-gray-600 text-base hover:ring-2 hover:ring-indigo-500 transition-all cursor-pointer overflow-hidden">
+                 <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold border border-gray-200 dark:border-gray-600 text-base hover:ring-2 hover:ring-indigo-500 transition-all cursor-pointer overflow-hidden uppercase">
                     {review.reviewer?.profilePicture ? (
                         <Image 
                           src={review.reviewer.profilePicture} 
@@ -248,7 +269,7 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
                           referrerPolicy="no-referrer"
                         />
                     ) : (
-                        review.reviewer?.name?.charAt(0).toUpperCase() || 'U'
+                        review.reviewer?.name?.charAt(0) || 'U'
                     )}
                  </div>
                </Link>
@@ -269,7 +290,7 @@ export default function ReviewSection({ targetId, targetName }: { targetId: stri
              </div>
           </div>
         ))}
-        {reviews.length === 0 && <p className="text-gray-500 dark:text-gray-400 text-sm">No reviews yet.</p>}
+        {reviews.length === 0 && <p className="text-gray-500 dark:text-gray-400 text-sm">No reviews yet for this listing.</p>}
         {hasMore && (
            <div className="flex justify-center mt-6">
              <button

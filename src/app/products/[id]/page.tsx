@@ -12,12 +12,17 @@ import ReviewSection from '@/components/ReviewSection';
 import ExpandableText from '@/components/ExpandableText';
 import Image from 'next/image';
 import { confirmAction } from '@/lib/confirm';
+import { formatTimeAgo } from '@/lib/utils';
 
 interface Product {
   _id: string;
   title: string;
   description: string;
   price: number;
+  rentPrice?: number;
+  rentUnit?: string;
+  forRent?: boolean;
+  forSell?: boolean;
   images: string[];
   category: string;
   condition: string;
@@ -42,8 +47,6 @@ interface Product {
   createdAt: string;
 }
 
-import { formatTimeAgo } from '@/lib/utils';
-
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
@@ -66,24 +69,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const toggleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
-
-    if (!user) {
-        router.push('/auth');
-        return;
-    }
-    
+    if (!user) { router.push('/auth'); return; }
     if (!product) return;
 
-    // Optimistic Update
     const isLiked = !liked;
     setLiked(isLiked); 
     
-    // Update global user state optimistically
     if (user.wishlist) {
         const newWishlist = isLiked 
             ? [...user.wishlist, product._id]
-            : user.wishlist.filter(id => id !== product._id);
-            
+            : user.wishlist.filter(item => item !== product._id);
         setUser({ ...user, wishlist: newWishlist });
     }
 
@@ -95,7 +90,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         });
     } catch (error) {
         console.error('Wishlist toggle failed', error);
-        setLiked(!liked); // Revert local
+        setLiked(!liked);
     }
   };
 
@@ -111,8 +106,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         setProduct(data.product);
       } else if (res.status === 403) {
         setIsBlocked(true);
-      } else {
-        // Handle 404
       }
     } catch (error) {
       console.error('Failed to fetch product', error);
@@ -140,10 +133,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const handleDelete = async () => {
     const confirmed = await confirmAction({
-      title: 'Delete Product?',
-      text: 'Are you sure you want to delete this product? This action cannot be undone.',
+      title: 'Delete Listing?',
+      text: 'Are you sure you want to delete this listing? This action cannot be undone.',
       dangerMode: true,
-      confirmButtonText: 'Delete Product'
+      confirmButtonText: 'Delete Listing'
     });
     if (!confirmed) return;
 
@@ -153,7 +146,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         method: 'DELETE',
       });
       if (res.ok) {
-        router.push('/products');
+        router.push('/explore');
       }
     } catch (error) {
       console.error('Failed to delete product', error);
@@ -162,263 +155,217 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const isBlockedByMe = user?.blockedUsers?.some((id: any) => id.toString() === product?.seller._id.toString());
+  const isOwner = user?.id === product?.seller._id;
 
   if (loading) return <DetailSkeleton />;
   
   if (isBlocked) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <div className="bg-red-50 dark:bg-red-900/20 rounded-3xl p-12 border-2 border-red-100 dark:border-red-900/30 shadow-xl">
+        <div className="bg-red-50 dark:bg-red-900/20 rounded-3xl p-12 border-2 border-red-100 dark:border-red-900/30 shadow-xl text-center">
           <div className="w-20 h-20 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg className="w-10 h-10 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0-6V9m0 12a9 9 0 110-18 9 9 0 010 18z" />
             </svg>
           </div>
           <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4">Access Denied</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg mb-8">
-            You are blocked from viewing this listing, or the user has restricted access.
-          </p>
-          <button 
-            onClick={() => router.back()}
-            className="px-8 py-3 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg active:scale-95"
-          >
-            Go Back
-          </button>
+          <p className="text-gray-600 dark:text-gray-400 text-lg mb-8">You are blocked from viewing this listing.</p>
+          <button onClick={() => router.back()} className="px-8 py-3 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg active:scale-95">Go Back</button>
         </div>
       </div>
     );
   }
 
-  if (!product) return <div className="text-center py-20">Product not found</div>;
+  if (!product) return <div className="text-center py-20">Listing not found</div>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 transition-colors">
-      <div className="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
-        {/* Image Carousel */}
-        <div>
-          <ImageCarousel images={product.images} alt={product.title} />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-all duration-300 overflow-x-hidden">
+      <div className="lg:grid lg:grid-cols-2 lg:gap-x-12 lg:items-start">
+        {/* Left Column: Image Carousel */}
+        <div className="w-full max-w-2xl mx-auto lg:max-w-none mb-10 lg:mb-0">
+          <div className="relative group rounded-3xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <ImageCarousel images={product.images || []} alt={product.title} />
+          </div>
         </div>
 
-        {/* Product Info */}
-        <div className="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl break-words">{product.title}</h1>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <ShareButton
-                title={product.title}
-                text={`Check out "${product.title}" on ReCircle — ₹${product.price}`}
-                className="px-3 py-1.5 text-sm font-semibold border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50"
-              />
-              {user && user.id !== product.seller._id && (
-                <button
-                  onClick={() => setReportOpen(true)}
-                  className="px-3 py-1.5 text-sm font-semibold border border-red-200 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-                >
-                  Report
-                </button>
-              )}
+        {/* Right Column: Information */}
+        <div className="flex flex-col gap-8">
+          {/* Header & Meta */}
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                 <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-md">
+                    <span className="text-[11px] font-bold uppercase tracking-wider">{product.category}</span>
+                 </div>
+                 <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border ${
+                   product.status === 'Available' 
+                     ? 'bg-green-50 dark:bg-green-900/20 text-green-600 border-green-200 dark:border-green-800/50' 
+                     : 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800/50'
+                 }`}>
+                   <span className={`w-1.5 h-1.5 rounded-full ${product.status === 'Available' ? 'bg-green-500' : 'bg-rose-500 animate-pulse'}`} />
+                   {product.status}
+                 </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 w-full min-w-0">
+                <h1 className="flex-1 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight break-all max-w-full leading-tight min-w-0">
+                  {product.title}
+                </h1>
+                
+                <div className="flex gap-2 shrink-0">
+                  <ShareButton
+                    title={product.title}
+                    className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  />
+                  {user && !isOwner && (
+                    <button
+                      onClick={() => setReportOpen(true)}
+                      className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold text-xs"
+                    >
+                      Report
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-          <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">Posted {formatTimeAgo(product.createdAt)}</p>
-          <div className="mt-3">
-            <h2 className="sr-only">Product information</h2>
-            <p className="text-3xl text-gray-900 dark:text-white">₹{product.price}</p>
+
+            {/* Pricing Section - Dynamic Grid */}
+            <div className={`grid gap-4 mt-2 ${product.forSell !== false && product.forRent ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                {product.forSell !== false && (
+                    <div className="p-5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 flex flex-col items-start transition-all w-full">
+                        <span className="text-xs font-bold uppercase tracking-widest text-indigo-800/70 dark:text-indigo-400 mb-1 block">Purchase Price</span>
+                        <span className="text-3xl font-black text-indigo-900 dark:text-indigo-300">₹{product.price?.toLocaleString()}</span>
+                    </div>
+                )}
+                {product.forRent && (
+                    <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 flex flex-col items-start transition-all w-full">
+                        <span className="text-xs font-bold uppercase tracking-widest text-emerald-800/70 dark:text-emerald-400 mb-1 block">Rent Rate</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-black text-emerald-900 dark:text-emerald-300">₹{product.rentPrice?.toLocaleString()}</span>
+                            <span className="text-sm font-bold text-emerald-700/60 ml-1">/ {product.rentUnit}</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-1">
+               <span className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wide">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  Posted {formatTimeAgo(product.createdAt)}
+               </span>
+               <span className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wide">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
+                  {product.location?.city || 'Location unavailable'}
+               </span>
+            </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-3 items-center">
-            <div className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300">
-              {product.category}
-            </div>
-            <div className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
-              {product.condition}
-            </div>
-            {product.community && typeof product.community === 'object' && (
-              <div className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400">
-                🏫 {product.community.name}
-              </div>
-            )}
-            {(product.location?.city || product.location?.state) && (
-              <div className="inline-flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
-                <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                {product.location.city}{product.location.city && product.location.state ? ', ' : ''}{product.location.state}
-              </div>
-            )}
-          </div>
-
-          <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white">Seller Information</h3>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800 uppercase tracking-wider">
-                    Direct Coordination
-                </span>
-            </div>
-            <Link href={`/profile/${product.seller._id}`} className="flex items-center group bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-3 hover:shadow-md transition-all">
-              <div className="flex-shrink-0">
-                <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold overflow-hidden border border-indigo-200 dark:border-indigo-800 group-hover:border-indigo-400 transition-colors uppercase">
+          {/* Seller Card - Synced with Service Provider view */}
+          <div className="bg-white dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm">
+             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-5 border-b border-gray-100 dark:border-gray-800 pb-5">
+                <Link href={`/profile/${product.seller._id}`} className="relative h-16 w-16 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm flex-shrink-0 group">
                    {product.seller.profilePicture ? (
-                     <Image 
-                        src={product.seller.profilePicture} 
-                        alt={product.seller.name} 
-                        width={40} 
-                        height={40} 
-                        className="object-cover w-full h-full"
-                        referrerPolicy="no-referrer"
-                      />
+                     <Image src={product.seller.profilePicture} alt={product.seller.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" referrerPolicy="no-referrer" />
                    ) : (
-                     product.seller.name?.charAt(0) || 'U'
+                     <div className="h-full w-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-bold text-xl">{product.seller.name?.charAt(0)}</div>
+                   )}
+                </Link>
+                <div className="text-center sm:text-left flex-1 min-w-0 flex flex-col justify-center">
+                   <Link href={`/profile/${product.seller._id}`} className="text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">{product.seller.name}</Link>
+                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-1">Seller • {product.reviewCount || 0} reviews</p>
+                   {product.averageRating && product.averageRating > 0 ? (
+                     <div className="flex items-center justify-center sm:justify-start gap-1 mt-2">
+                        <span className="text-yellow-400 text-sm">★</span>
+                        <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{product.averageRating}</span>
+                     </div>
+                   ) : null}
+                </div>
+                {product.community && (
+                   <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center shrink-0">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase mb-0.5 tracking-wide">Campus</span>
+                      <span className="text-sm font-bold text-gray-800 dark:text-gray-300 whitespace-nowrap">{product.community.name}</span>
+                   </div>
+                )}
+             </div>
+
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0">
+                <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-transparent dark:border-gray-800">
+                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Category</span>
+                   <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 capitalize block truncate">{product.category}</span>
+                </div>
+                <div className="p-3 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100/50 dark:border-indigo-800/30">
+                   <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1 block">Condition</span>
+                   <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300 capitalize block truncate">{product.condition}</span>
+                </div>
+             </div>
+          </div>
+
+          {/* Description */}
+          <div className="flex flex-col gap-3">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-2">Description</h3>
+            <div className="text-base text-gray-600 dark:text-gray-300 leading-relaxed font-normal pt-1">
+              <ExpandableText text={product.description} maxLines={8} className="whitespace-pre-wrap" showReadMore={true} />
+            </div>
+          </div>
+
+          {/* Action Hub */}
+          <div className="bg-gray-50 dark:bg-gray-900/50 rounded-[2rem] p-6 sm:p-8 border border-gray-200 dark:border-gray-800 shadow-sm transition-all focus-within:ring-4 focus-within:ring-indigo-100">
+             <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-1">
+                   <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Interested in this item?</h3>
+                   <p className="text-sm text-gray-500 dark:text-gray-400">Directly coordinate with the seller to discuss pricing, pickup, or delivery details.</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                   {user && isOwner ? (
+                      <button onClick={handleDelete} disabled={isDeleting} className="col-span-full w-full py-4 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-xl font-bold tracking-wide transition-all disabled:opacity-50">
+                        {isDeleting ? 'Deleting...' : 'Delete Listing'}
+                      </button>
+                   ) : isBlockedByMe ? (
+                      <button onClick={handleUnblock} disabled={unblocking} className="col-span-full w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold tracking-wide transition-all">
+                        {unblocking ? 'Unblocking...' : 'Unblock User'}
+                      </button>
+                   ) : (
+                      <>
+                        <button
+                          onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${product.seller._id}?productId=${product._id}`); }}
+                          disabled={product.status !== 'Available'}
+                          className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all ${
+                            product.status !== 'Available' ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm active:scale-95'
+                          }`}
+                        >
+                          {product.status !== 'Available' ? 'Not Available' : 'Message Seller'}
+                        </button>
+                        <button
+                          onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${product.seller._id}?productId=${product._id}&tab=action&autoMsg=true`); }}
+                          disabled={product.status !== 'Available'}
+                          className={`w-full py-4 border-2 rounded-xl font-bold text-sm tracking-wide transition-all ${
+                            product.status !== 'Available' ? 'border-gray-200 text-gray-400 dark:border-gray-800 dark:text-gray-600' : 'border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 active:scale-95'
+                          }`}
+                        >
+                          Reserve Item
+                        </button>
+                      </>
                    )}
                 </div>
-              </div>
-              <div className="ml-4 flex-1 min-w-0">
-                <div className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">{product.seller.name}</div>
-                <div className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">@{ product.seller.username || product.seller._id?.toString().slice(-4) }</div>
-                
-                {/* Average Rating & Review Count */}
-                <button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="flex items-center mt-1 group/rating"
-                >
-                  <div className="flex items-center">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <svg
-                        key={star}
-                        className={`h-3 w-3 ${ (product.averageRating || 0) >= star ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600' }`}
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                  </div>
-                  <span className="ml-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-indigo-600 transition-colors">
-                    {product.averageRating || '0'} ({product.reviewCount || 0} reviews)
-                  </span>
-                </button>
-              </div>
-              <div className="ml-auto">
-                <svg className="w-5 h-5 text-gray-300 dark:text-gray-600 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-              </div>
-            </Link>
+
+                {!isOwner && product.status === 'Available' && user && (
+                   <button
+                     onClick={toggleWishlist}
+                     className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all border ${liked ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:border-rose-900/50' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 active:scale-95'}`}
+                   >
+                     {liked ? 'Added to Wishlist' : 'Add to Wishlist'}
+                   </button>
+                )}
+             </div>
           </div>
 
-          <div className="mt-10">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">Description</h3>
-            <div className="mt-3">
-              <ExpandableText 
-                text={product.description} 
-                maxLines={5} 
-                incrementalLines={20}
-                isHtml={false}
-                showReadMore={true}
-                className="text-base text-gray-700 dark:text-gray-300"
+          <div className="mt-8" id="reviews-section">
+             <ReviewSection 
+                targetId={product.seller._id} 
+                targetName={product.seller.name} 
+                productId={product._id} 
               />
-            </div>
-          </div>
-          
-          <div className="mt-10 bg-gray-50 dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Things to Know</h3>
-            
-            <div className="space-y-4 mb-6">
-                <div>
-                    <h4 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">Direct Coordination</h4>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                        Connect with the seller via chat to coordinate the pickup point and payment. 
-                        Communication is key! Always clarify terms before the exchange.
-                    </p>
-                </div>
-
-                <div>
-                    <h4 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">Safe Exchange</h4>
-                    <ul className="list-disc list-inside text-xs text-gray-600 dark:text-gray-400 mt-1 space-y-1">
-                         <li>Meet in a public, well-lit place on campus.</li>
-                         <li>Inspect the item thoroughly before making any payment.</li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h4 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">Terms & Conditions</h4>
-                    <ul className="list-disc list-inside text-xs text-gray-600 dark:text-gray-400 mt-1 space-y-1">
-                        <li>All sales are final once the physical exchange is complete.</li>
-                        <li>Respect each other's time by being punctual for pickups.</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 mb-2">
-             {/* Action Buttons or Unblock Button */}
-             {product.status === 'Available' && user && user.id !== product.seller._id && isBlockedByMe ? (
-                <button
-                  type="button"
-                  onClick={handleUnblock}
-                  disabled={unblocking}
-                  className="w-full bg-red-600 text-white rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold hover:bg-red-700 shadow-md shadow-red-100 dark:shadow-none transition-all active:scale-95 disabled:opacity-50"
-                >
-                  {unblocking ? 'Unblocking...' : 'Unblock User to Interact'}
-                </button>
-             ) : product.status === 'Available' && (!user || user.id !== product.seller._id) && (
-               <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!user) {
-                      router.push('/auth');
-                      return;
-                    }
-                    router.push(`/chat/${product.seller._id}?productId=${product._id}`);
-                  }}
-                  className="flex-1 bg-indigo-600 text-white rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold hover:bg-indigo-700 shadow-md shadow-indigo-100 dark:shadow-none transition-all active:scale-95"
-                >
-                  Chat with Seller
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!user) {
-                      router.push('/auth');
-                      return;
-                    }
-                    router.push(`/chat/${product.seller._id}?productId=${product._id}&tab=action&autoMsg=true`);
-                  }}
-                  className="flex-1 bg-white dark:bg-gray-800 border-2 border-indigo-600 dark:border-indigo-500 text-indigo-700 dark:text-indigo-400 rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/40 transition-all active:scale-95"
-                >
-                  Make an Offer
-                </button>
-               </>
-             )}
-            </div>
-
-            {!isBlockedByMe && (
-              <div className="flex flex-col sm:flex-row gap-3">
-                {product.status === 'Available' && user && user.id !== product.seller._id && (
-                    <button
-                    type="button"
-                    onClick={toggleWishlist}
-                    className={`flex-1 rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold transition-all active:scale-95 ${liked ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-2 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50' : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                    >
-                    {liked ? 'Remove from Wishlist' : 'Add to Wishlist'}
-                    </button>
-                )}
-                {user && user.id === product.seller._id && (
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className={`flex-1 border-2 border-red-200 dark:border-red-800 rounded-xl py-3.5 px-6 flex items-center justify-center text-base font-bold bg-white dark:bg-gray-800 text-red-600 dark:text-red-400 transition-all active:scale-95 ${isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-50 dark:hover:bg-red-900/30'}`}
-                  >
-                    {isDeleting ? 'Deleting...' : 'Delete Listing'}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="mt-12" id="reviews-section">
-             {/* Review Section */}
-             <ReviewSection targetId={product.seller._id} targetName={product.seller.name} />
           </div>
 
           {reportOpen && (
