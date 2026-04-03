@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from 'next/script';
 import "./globals.css";
@@ -6,6 +6,8 @@ import { AuthProvider } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { SWRProvider } from "@/components/SWRProvider";
+import PushNotificationManager from "@/components/PushNotificationManager";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,10 +25,20 @@ export const metadata: Metadata = {
     template: "%s | ReCircle",
   },
   description: "The open community platform for students to securely trade essentials, buy and sell, and offer freelance services on campus.",
-  keywords: ["student marketplace", "campus", "buy sell", "freelance", "college", "ReCircle", "second hand", "services"],
+  keywords: ["student marketplace", "campus", "recycle", "freelance", "college", "ReCircle", "second hand", "services"],
   authors: [{ name: "ReCircle Team" }],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'ReCircle',
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
-    icon: '/logo.png',
+    icon: '/logo_main.png',
+    apple: '/icon-192x192.png',
   },
   openGraph: {
     title: "ReCircle - The Student's Marketplace",
@@ -34,6 +46,12 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "ReCircle",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#4F46E5',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 
@@ -60,13 +78,16 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AuthProvider>
-            <Navbar />
-            <main className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-              {children}
-            </main>
-            <Footer />
-          </AuthProvider>
+          <SWRProvider>
+            <AuthProvider>
+              <PushNotificationManager />
+              <Navbar />
+              <main className="min-h-screen pt-16 flex flex-col bg-[#f5f6f9] dark:bg-gray-900 transition-colors duration-500">
+                {children}
+              </main>
+              <Footer />
+            </AuthProvider>
+          </SWRProvider>
         </ThemeProvider>
       </body>
     </html>
