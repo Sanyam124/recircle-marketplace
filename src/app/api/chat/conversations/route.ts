@@ -176,6 +176,9 @@ export async function GET(req: NextRequest) {
                 user,
                 product,
                 service,
+                rawUserId: d._id.otherUserId, // Preserves the ID even if user is null
+                rawProductId: d._id.productId || null, // Preserves the ID even if product is null
+                rawServiceId: d._id.serviceId || null, // Preserves the ID even if service is null
                 lastMessage: d.lastMessage,
                 unreadCount: d.unreadCount,
                 latestOffer,
@@ -185,8 +188,8 @@ export async function GET(req: NextRequest) {
             };
         }));
 
-        // Filter out general user-to-user legacy chats without an item
-        const finalConversations = conversations.filter((c: any) => c.user && (c.product || c.service));
+        // Maintain conversations even if user or item is missing (for history)
+        const finalConversations = conversations;
 
         return NextResponse.json({
             conversations: finalConversations,
@@ -235,13 +238,28 @@ export async function DELETE(req: NextRequest) {
             ...(productId ? { product: new mongoose.Types.ObjectId(productId) } : { service: new mongoose.Types.ObjectId(serviceId!) })
         };
 
-        // Add the current user's ID to the deletedBy array for all matching messages
+        // 1. Add the current user's ID to the deletedBy array for all matching messages (Soft-Delete/Hide)
         await Message.updateMany(
             baseMatch,
             { $addToSet: { deletedBy: objectIdUserId } }
         );
 
-        return NextResponse.json({ success: true }, { status: 200 });
+        // 2. SMART PURGE: "Mutual Deletion" Cleanup
+        // If BOTH participants have now marked these messages as deleted, or if the other party is gone, wipe them permanently.
+        const otherUserExists = await User.exists({ _id: objectIdOtherUser });
+        
+        const deleteQuery = {
+            ...baseMatch,
+            $or: [
+                { deletedBy: { $all: [objectIdUserId, objectIdOtherUser] } }, // Both clicked delete
+                ...( !otherUserExists ? [{}] : [] ) // The other account is dead, wipe immediately
+            ]
+        };
+
+        const deleteResult = await Message.deleteMany(deleteQuery);
+        console.log(`Smart Purge: Deleted ${deleteResult.deletedCount} messages permanently.`);
+
+        return NextResponse.json({ success: true, purged: deleteResult.deletedCount > 0 }, { status: 200 });
     } catch (error) {
         console.error('Conversations DELETE Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

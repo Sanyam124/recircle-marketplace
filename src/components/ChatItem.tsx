@@ -33,9 +33,15 @@ export const ChatItem = React.memo(({
     onItemClick
 }: ChatItemProps) => {
     const { user } = useAuth();
-    const itemTitle = conv.product?.title || conv.service?.title || 'Unknown Item';
-    const itemImage = conv.product?.images?.[0] || conv.service?.images?.[0] || '/placeholder.png';
-    const menuKey = `${conv.user._id}-${conv.product?._id || conv.service?._id}`;
+    const itemTitle = conv.product?.title || conv.service?.title || 'Listing Removed';
+    const itemImage = conv.product?.images?.[0] || conv.service?.images?.[0] || null;
+    const currentRawUserId = conv.rawUserId || conv.user?._id;
+    const currentRawProductId = conv.rawProductId || conv.product?._id;
+    const currentRawServiceId = conv.rawServiceId || conv.service?._id;
+    
+    // Create a truly unique key for each item thread, even if listing is removed
+    const itemIdentifier = currentRawProductId || currentRawServiceId || 'generic';
+    const menuKey = `${currentRawUserId || 'deleted'}-${itemIdentifier}`;
 
     // Determine what status badge to show (e.g. SOLD, ACTIVE, CANCELLED).
     // Business logic is kept in chatUtils.ts for testability and readability.
@@ -44,7 +50,7 @@ export const ChatItem = React.memo(({
     return (
         <div className="relative group">
             <Link
-                href={`/chat/${conv.user._id}${conv.product ? `?productId=${conv.product._id}` : (conv.service ? `?serviceId=${conv.service._id}` : '')}`}
+                href={`/chat/${currentRawUserId || 'deleted'}${currentRawProductId ? `?productId=${currentRawProductId}` : (currentRawServiceId ? `?serviceId=${currentRawServiceId}` : '')}`}
                 onClick={onItemClick}
                 className={`block p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800 ${
                     isActive ? 'bg-indigo-50 dark:bg-indigo-900/30 border-r-4 border-r-indigo-600 dark:border-r-indigo-400' : ''
@@ -53,27 +59,31 @@ export const ChatItem = React.memo(({
                 <div className="flex items-start gap-4 mx-1">
                     <div className="relative shrink-0 flex items-center justify-center w-14 h-14 mt-1">
                         <div className="absolute top-0 left-0 right-2 bottom-2 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform group-hover:scale-105">
-                            <Image src={itemImage || '/placeholder.png'} alt={itemTitle} fill sizes="56px" className="object-cover" />
+                            {itemImage ? (
+                                <Image src={itemImage} alt={itemTitle} fill sizes="56px" className="object-cover" />
+                            ) : (
+                                <div className="flex items-center justify-center w-full h-full text-gray-300 dark:text-gray-700"><svg className="w-6 h-6 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+                            )}
                         </div>
                         <div className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-700 dark:text-indigo-300 text-[10px] font-black border-2 border-white dark:border-gray-900 shadow-md z-10 transition-transform group-hover:translate-x-0.5 group-hover:translate-y-0.5 overflow-hidden">
-                            {conv.user.profilePicture ? (
+                            {conv.user?.profilePicture ? (
                                 <Image 
                                     src={conv.user.profilePicture} 
-                                    alt={conv.user.name} 
+                                    alt={conv.user.name || 'User'} 
                                     fill 
                                     sizes="28px" 
                                     className="object-cover"
                                 />
                             ) : (
-                                conv.user.name?.charAt(0).toUpperCase()
+                                conv.user?.name?.charAt(0).toUpperCase() || '?'
                             )}
                         </div>
                     </div>
 
                     <div className="flex-1 min-w-0 pr-8">
                         <div className="flex justify-between items-center mb-0.5">
-                            <h3 className="text-sm font-extrabold text-gray-900 dark:text-white truncate pr-1">
-                                {conv.user.name}
+                            <h3 className="text-sm font-extrabold text-gray-900 dark:text-white truncate pr-1 whitespace-nowrap overflow-hidden">
+                                {conv.user ? (conv.user.name || conv.user.username || 'Anonymous User') : 'User Departed'}
                             </h3>
                             <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 whitespace-nowrap shrink-0">
                                 {formatChatMessageDate(conv.lastMessage.createdAt)}
@@ -90,7 +100,7 @@ export const ChatItem = React.memo(({
                         {/* Message Preview */}
                         <div className="flex items-center min-w-0 mb-1">
                             <div className={`text-xs flex items-center min-w-0 ${displayUnread > 0 ? 'text-gray-900 dark:text-gray-100 font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
-                                {conv.lastMessage.sender.toString() !== conv.user._id.toString() && (
+                                {conv.user && conv.lastMessage.sender.toString() !== conv.user?._id?.toString() && (
                                     <span className="flex items-center shrink-0 mr-1">
                                         {conv.lastMessage.isRead ? (
                                             <svg className="w-3.5 h-3.5 text-indigo-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -149,7 +159,7 @@ export const ChatItem = React.memo(({
                     e.stopPropagation();
                     setActiveMenu(activeMenu === menuKey ? null : menuKey);
                 }}
-                className="absolute top-4 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-4 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 z-[20] opacity-0 group-hover:opacity-100 transition-opacity"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -157,7 +167,7 @@ export const ChatItem = React.memo(({
             </button>
 
             {activeMenu === menuKey && (
-                <div className="absolute right-3 top-12 w-40 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute right-3 top-12 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1.5 z-[100] animate-in fade-in zoom-in-95 duration-200">
                     <button
                         onClick={(e) => handleDeleteChat(e, conv)}
                         className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium flex items-center gap-2 transition-colors"

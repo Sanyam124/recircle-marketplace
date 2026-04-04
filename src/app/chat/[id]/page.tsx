@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { MessageBubbleSkeleton } from '@/components/Skeletons';
 import { pusherClient } from '@/lib/pusherClient';
-import { confirmAction } from '@/lib/confirm';
+import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 import ReviewModal from '@/components/ReviewModal';
 
 export default function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -143,15 +143,6 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
         fetchHistory(null);
         fetchOtherUser();
-        
-        // Keep a slow 30-second polling heartbeat as a fallback sync
-        const interval = setInterval(() => {
-            fetchHistory(null, true);
-            const currentItem = referencingItemRef.current;
-            if (currentItem?.id) {
-                fetchItemData(currentItem.type, currentItem.id);
-            }
-        }, 30000); 
 
         // WebSockets Real-time Updates
         let channelName = '';
@@ -186,7 +177,6 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         const heartbeatInterval = setInterval(heartbeat, 30_000);
 
         return () => { 
-            clearInterval(interval); 
             clearInterval(heartbeatInterval); 
             if (channelName) pusherClient.unsubscribe(channelName);
         };
@@ -470,15 +460,17 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             }
 
             if (res.ok) {
+                showSuccess('Offer Accepted', 'The deal has been confirmed!');
                 await fetchHistory(); 
                 if (referencingItem) {
                     await fetchItemData(referencingItem.type, referencingItem.id);
                 }
-            } else if (!data.promptOverride) {
-                alert(data.error || 'Failed to accept offer');
+            } else {
+                showError('Action Denied', data.error || 'Failed to accept offer');
             }
         } catch (error) {
-            console.error('Accept offer error', error);
+            console.error(error);
+            showError('System Error', 'An unexpected error occurred.');
         } finally {
             setAcceptingOffer(false);
         }
@@ -682,12 +674,12 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
                     <div className="flex-1 min-w-0 pr-2">
                         <h1 className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
-                            {otherUser?.name || 'Loading...'}
+                            {otherUser?.name || (isBlockedByOther ? 'Restricted User' : (loading ? 'Loading...' : 'User Departed'))}
                         </h1>
                         <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 truncate">
                             {otherUserLastSeen && (Date.now() - otherUserLastSeen.getTime()) < 2 * 60 * 1000 
                                 ? 'Online now' 
-                                : 'Active conversation'}
+                                : (otherUser ? 'Active conversation' : 'Conversation archived')}
                         </p>
                     </div>
                     
@@ -697,16 +689,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                         </svg>
                     </div>
                 </div>
-            </div>
-
-            {/* Item Info Bar */}
-            {referencingItem?.data && (
-                <div className="flex flex-col bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-                    <div className="flex text-[11px] font-bold text-gray-500 dark:text-gray-400 divide-x divide-gray-200 dark:divide-gray-800">
-                        <div className="flex-1 px-4 py-1.5 truncate flex items-center gap-2">
-                            <span className="text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-extrabold shrink-0">Discussing</span>
-                            <span className="text-gray-700 dark:text-gray-200 truncate">{referencingItem.data.title}</span>
-                        </div>
+            </div>            {/* Item Info Bar */}
+            <div className="flex flex-col bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors">
+                <div className="flex text-[11px] font-bold text-gray-500 dark:text-gray-400 divide-x divide-gray-200 dark:divide-gray-800">
+                    <div className="flex-1 px-4 py-1.5 truncate flex items-center gap-2">
+                        <span className="text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-extrabold shrink-0">Discussing</span>
+                        <span className="text-gray-700 dark:text-gray-200 truncate">{referencingItem?.data?.title || 'Listing Removed from Marketplace'}</span>
+                    </div>
+                    {referencingItem?.data && (
                         <div className="px-4 py-1.5 shrink-0 flex items-center gap-3 bg-white/50 dark:bg-gray-900/20">
                             <span className="text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-extrabold">Price</span>
                             <div className="flex items-center gap-3">
@@ -733,32 +723,32 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                 )}
                             </div>
                         </div>
-                    </div>
-                    
-                    {(referencingItem.type === 'product' && (referencingItem.data?.status === 'Sold' || referencingItem.data?.status === 'Rented')) && (
-                        <div className={`px-4 py-1 border-t flex items-center justify-between ${isRented ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' : 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30'}`}>
-                            <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-tight ${isRented ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={isRented ? "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" : "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"} />
-                                </svg>
-                                {isRented ? 'Product Rented Out' : 'Product Sold'}
-                            </div>
-                            {(() => {
-                                const sellerId = referencingItem.data?.seller?.id || referencingItem.data?.seller?._id || referencingItem.data?.seller;
-                                const buyerId = referencingItem.data?.buyerId?.id || referencingItem.data?.buyerId?._id || referencingItem.data?.buyerId;
-                                const isSeller = sellerId?.toString() === user?.id?.toString();
-                                const isActualBuyer = buyerId?.toString() === user?.id?.toString();
-                                
-                                if (buyerId && !isActualBuyer && !isSeller) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>Not available</span>;
-                                if (isSeller && buyerId && buyerId.toString() !== userId.toString()) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>Rented to other user</span>;
-                                if (isActualBuyer) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>{isRented ? 'Product Rented' : 'Product Bought'}</span>;
-                                if (isSeller && buyerId?.toString() === userId?.toString()) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>{isRented ? 'Rented to this user' : 'Sold to this user'}</span>;
-                                return null;
-                            })()}
-                        </div>
                     )}
                 </div>
-            )}
+                
+                {(referencingItem?.data && referencingItem.type === 'product' && (referencingItem.data?.status === 'Sold' || referencingItem.data?.status === 'Rented')) && (
+                    <div className={`px-4 py-1 border-t flex items-center justify-between ${isRented ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' : 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30'}`}>
+                        <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-tight ${isRented ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={isRented ? "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" : "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"} />
+                            </svg>
+                            {isRented ? 'Product Rented Out' : 'Product Sold'}
+                        </div>
+                        {(() => {
+                            const sellerId = referencingItem.data?.seller?.id || referencingItem.data?.seller?._id || referencingItem.data?.seller;
+                            const buyerId = referencingItem.data?.buyerId?.id || referencingItem.data?.buyerId?._id || referencingItem.data?.buyerId;
+                            const isSeller = sellerId?.toString() === user?.id?.toString();
+                            const isActualBuyer = buyerId?.toString() === user?.id?.toString();
+                            
+                            if (buyerId && !isActualBuyer && !isSeller) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>Not available</span>;
+                            if (isSeller && buyerId && buyerId.toString() !== userId.toString()) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>Rented to other user</span>;
+                            if (isActualBuyer) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>{isRented ? 'Product Rented' : 'Product Bought'}</span>;
+                            if (isSeller && buyerId?.toString() === userId?.toString()) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>{isRented ? 'Rented to this user' : 'Sold to this user'}</span>;
+                            return null;
+                        })()}
+                    </div>
+                )}
+            </div>
 
             {/* Messages Area */}
             <div 
@@ -1191,7 +1181,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                 <input
                                                     type="number"
                                                     value={actionPrice}
-                                                    onChange={e => { setActionPrice(e.target.value); }}
+                                                    onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
+                                                    onChange={e => { setActionPrice(e.target.value.replace(/\D/g, '')); }}
                                                     placeholder={offerType === 'Rent' ? 'Rent Price...' : 'Enter amount...'}
                                                     className="w-full border border-gray-200 dark:border-gray-700 rounded-2xl pl-10 pr-4 py-2.5 text-sm focus:outline-none dark:bg-gray-800 dark:text-white"
                                                 />
@@ -1201,6 +1192,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                     <input 
                                                         type="number" 
                                                         value={rentDuration} 
+                                                        onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
                                                         onChange={e => setRentDuration(e.target.value.replace(/\D/g, ''))} 
                                                         placeholder="Qty"
                                                         className="w-16 border border-gray-200 dark:border-gray-700 rounded-2xl px-2 py-2.5 text-sm outline-none dark:bg-gray-800 dark:text-white"

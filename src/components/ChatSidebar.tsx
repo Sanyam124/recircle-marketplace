@@ -9,7 +9,8 @@ import ReportModal from './ReportModal';
 import { formatChatMessageDate } from '@/lib/utils';
 import { ChatSidebarSkeleton } from './Skeletons';
 import { ChatItem } from './ChatItem';
-import { confirmAction } from '@/lib/confirm';
+import { confirmAction, showError, showSuccess } from '@/lib/confirm';
+import { pusherClient } from '@/lib/pusherClient';
 import useSWR from 'swr';
 
 export default function ChatSidebar() {
@@ -25,19 +26,21 @@ export default function ChatSidebar() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
-    // Primary fetcher for the first page with SWR polling
+    // Primary fetcher for the first page
     const { data: initialData, mutate: mutateConversations, isLoading: initialLoading } = useSWR(
         user ? `/api/chat/conversations?page=1&limit=10` : null,
-        { refreshInterval: 10000, keepPreviousData: true }
+        { keepPreviousData: true }
     );
 
     // Sync SWR data to our local state which supports pagination
     useEffect(() => {
         if (initialData?.conversations) {
             setConversations(prev => {
-                // If we've already loaded more than one page, we only update the head
+                // If we've already loaded more than one page, merge cleanly by ID to avoid duplicates
                 if (page > 1) {
-                    const others = prev.slice(initialData.conversations.length);
+                    const getUniqueKey = (c: any) => `${c.rawUserId || (c.user?._id || c.user?.id) || 'deleted'}-${c.rawProductId || c.rawServiceId || 'generic'}`;
+                    const newKeys = new Set(initialData.conversations.map(getUniqueKey));
+                    const others = prev.filter(c => !newKeys.has(getUniqueKey(c)));
                     return [...initialData.conversations, ...others];
                 }
                 return initialData.conversations;
@@ -49,14 +52,27 @@ export default function ChatSidebar() {
     useEffect(() => {
         if (!user) return;
         
+        let channelName = '';
+        const currentUserId = user.id || (user as any)._id;
+        if (currentUserId) {
+            channelName = `user-${currentUserId}`;
+            const channel = pusherClient.subscribe(channelName);
+            
+            // Listen for any new messages and instantly refresh the sidebar
+            channel.bind('new-message', () => {
+                mutateConversations();
+            });
+        }
+        
         // Close menu on click outside
         const handleClickOutside = () => setActiveMenu(null);
         window.addEventListener('click', handleClickOutside);
         
         return () => {
+            if (channelName) pusherClient.unsubscribe(channelName);
             window.removeEventListener('click', handleClickOutside);
         };
-    }, [user]);
+    }, [user, mutateConversations]);
 
     const fetchConversations = async (pageNum: number, append: boolean = false) => {
         try {
@@ -66,7 +82,12 @@ export default function ChatSidebar() {
             if (res.ok) {
                 const data = await res.json();
                 if (append) {
-                    setConversations(prev => [...prev, ...data.conversations]);
+                    setConversations(prev => {
+                        const getUniqueKey = (c: any) => `${c.rawUserId || 'deleted'}-${c.rawProductId || c.rawServiceId || 'item'}`;
+                        const prevKeys = new Set(prev.map(getUniqueKey));
+                        const uniqueNew = data.conversations.filter((c: any) => !prevKeys.has(getUniqueKey(c)));
+                        return [...prev, ...uniqueNew];
+                    });
                     setHasMore(data.pagination.hasMore);
                 } else {
                     mutateConversations(data, false);
@@ -100,14 +121,19 @@ export default function ChatSidebar() {
         if (!confirmed) return;
 
         try {
-            const res = await fetch(`/api/chat/conversations?otherUserId=${conv.user._id}${conv.product ? `&productId=${conv.product._id}` : `&serviceId=${conv.service._id}`}`, {
+            const currentRawOtherUserId = conv.rawUserId || conv.user?._id;
+            const currentRawProductId = conv.rawProductId || conv.product?._id;
+            const currentRawServiceId = conv.rawServiceId || conv.service?._id;
+
+            const res = await fetch(`/api/chat/conversations?otherUserId=${currentRawOtherUserId}${currentRawProductId ? `&productId=${currentRawProductId}` : (currentRawServiceId ? `&serviceId=${currentRawServiceId}` : '')}`, {
                 method: 'DELETE'
             });
             
             if (res.ok) {
                 // Instantly remove from local state
                 setConversations(prev => prev.filter(c => 
-                    !(c.user._id === conv.user._id && (c.product?._id === conv.product?._id && c.service?._id === conv.service?._id))
+                    !( (c.rawUserId || c.user?._id) === currentRawOtherUserId && 
+                       ((c.rawProductId || c.product?._id) === currentRawProductId && (c.rawServiceId || c.service?._id) === currentRawServiceId) )
                 ));
             } else {
                 alert("Failed to delete chat.");
@@ -122,12 +148,13 @@ export default function ChatSidebar() {
         e.stopPropagation();
         setActiveMenu(null);
         
-        const type = conv.product ? 'product' : 'service';
-        const id = conv.product?._id || conv.service?._id;
+        const type = (conv.product || conv.rawProductId) ? 'product' : 'service';
+        const id = conv.product?._id || conv.rawProductId || conv.service?._id || conv.rawServiceId;
+        const targetUserId = (conv.user?._id || conv.user?.id) || conv.rawUserId;
         
-        if (id) {
+        if (id && targetUserId) {
             setReportTarget({
-                userId: conv.user._id,
+                userId: targetUserId.toString(),
                 type,
                 id: id.toString()
             });
@@ -139,8 +166,11 @@ export default function ChatSidebar() {
         e.stopPropagation();
         setActiveMenu(null);
         
+        const targetUserId = conv.user?._id || conv.rawUserId;
+        if (!targetUserId) return;
+
         setReportTarget({
-            userId: conv.user._id,
+            userId: targetUserId.toString(),
             type: null,
             id: null
         });
@@ -160,28 +190,32 @@ export default function ChatSidebar() {
         if (!confirmed) return;
 
         try {
+            const targetUserId = conv.user?._id || conv.rawUserId;
+            if (!targetUserId) return;
+
             const res = await fetch('/api/user/block', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetUserId: conv.user._id })
+                body: JSON.stringify({ targetUserId })
             });
             
             if (res.ok) {
                 // Remove from local state immediately
-                setConversations(prev => prev.filter(c => c.user._id !== conv.user._id));
+                setConversations(prev => prev.filter(c => (c.rawUserId || c.user?._id) !== targetUserId));
                 
                 // If the current chat is the one we just blocked, redirect to /chat
-                if (pathname === `/chat/${conv.user._id}`) {
+                if (pathname === `/chat/${targetUserId}`) {
                     router.push('/chat');
                 }
 
                 await refreshUser();
-                alert(`${conv.user.name} has been blocked.`);
+                showSuccess('User Blocked', `${conv.user?.name || 'User'} has been blocked.`);
             } else {
-                alert("Failed to block user.");
+                showError('Action Failed', "Failed to block user.");
             }
         } catch (err) {
             console.error(err);
+            showError('System Error', 'Something went wrong.');
         }
     };
 
@@ -200,8 +234,10 @@ export default function ChatSidebar() {
     const filteredConversations = useMemo(() => {
         if (!user) return conversations;
         return conversations.filter(conv => {
+            const targetUserId = conv.user?._id || conv.rawUserId;
+
             // [BLOCK FILTER] Skip conversations with blocked users
-            const isBlocked = user.blockedUsers?.some((id: any) => id.toString() === conv.user._id.toString());
+            const isBlocked = targetUserId && user.blockedUsers?.some((id: any) => id.toString() === targetUserId.toString());
             if (isBlocked) return false;
 
             if (activeTab === 'all') return true;
@@ -273,14 +309,18 @@ export default function ChatSidebar() {
                 {filteredConversations.map((conv) => {
                     const activeProductId = searchParams.get('productId');
                     const activeServiceId = searchParams.get('serviceId');
-                    const isActiveURL = pathname === `/chat/${conv.user._id.toString()}`;
-                    const isActiveItem = (conv.product && conv.product._id.toString() === activeProductId) || (conv.service && conv.service._id.toString() === activeServiceId);
+                    const currentRawUserId = conv.rawUserId || conv.user?._id;
+                    const currentRawProductId = conv.rawProductId || conv.product?._id;
+                    const currentRawServiceId = conv.rawServiceId || conv.service?._id;
+
+                    const isActiveURL = pathname === `/chat/${currentRawUserId?.toString()}`;
+                    const isActiveItem = (currentRawProductId && currentRawProductId.toString() === activeProductId) || (currentRawServiceId && currentRawServiceId.toString() === activeServiceId);
                     const isActive = isActiveURL && isActiveItem;
                     const displayUnread = isActive ? 0 : conv.unreadCount;
 
                     return (
                         <ChatItem 
-                            key={`${conv.user._id}-${conv.product?._id || conv.service?._id || 'generic'}`}
+                            key={`${currentRawUserId}-${currentRawProductId || currentRawServiceId || 'generic'}`}
                             conv={conv}
                             isActive={isActive}
                             displayUnread={displayUnread}
@@ -292,7 +332,7 @@ export default function ChatSidebar() {
                             handleBlockClick={handleBlockClick}
                             onItemClick={() => {
                                 setConversations(prev => prev.map(c => 
-                                    c.user._id === conv.user._id && (c.product?._id === conv.product?._id && c.service?._id === conv.service?._id)
+                                    (c.rawUserId || c.user?._id) === currentRawUserId && ((c.rawProductId || c.product?._id) === currentRawProductId && (c.rawServiceId || c.service?._id) === currentRawServiceId)
                                     ? { ...c, unreadCount: 0 } 
                                     : c
                                 ));

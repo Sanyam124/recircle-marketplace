@@ -88,7 +88,7 @@ export function getConversationStatus(conv: any, currentUserId: string | undefin
             // Current user was the seller/owner
             if (currentUserId === sellerId) {
                 // The other person in this chat was the actual buyer/renter
-                if (conv.user._id.toString() === buyerId) {
+                if (conv.user && (conv.user._id || conv.user.id)?.toString() === buyerId) {
                     return { 
                         label: isRented ? 'RENTED OUT' : 'SOLD', 
                         isStatus: true, 
