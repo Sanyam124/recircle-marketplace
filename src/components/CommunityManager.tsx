@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 import { getIcon } from '@/components/Icons';
-import { confirmAction } from '@/lib/confirm';
 
 export default function CommunityManager() {
     const { user, refreshUser } = useAuth();
@@ -48,12 +48,14 @@ export default function CommunityManager() {
 
     const fetchPendingRequests = async () => {
         try {
-            const res = await fetch('/api/verifier/requests/me'); // I'll need to create this simple route
+            const res = await fetch('/api/verifier/requests/me');
             if (res.ok) {
                 const data = await res.json();
                 setPendingRequests(data.requests || []);
             }
-        } catch (error) {}
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     useEffect(() => {
@@ -102,17 +104,17 @@ export default function CommunityManager() {
                 // Need Manual Verification
                 if (res.status === 400 || res.status === 409) {
                     if (res.status === 409) {
-                        alert(data.error); // Already requested
+                        showError('Already Requested', data.error); // Already requested
                     } else {
                         setShowUploadModal(true); // Open ID portal
                     }
                 } else {
-                    alert(data.error || 'Failed to apply.');
+                    showError('Apply Failed', data.error || 'Failed to apply.');
                 }
             }
         } catch (error) {
             console.error('Application Error:', error);
-            alert('An unexpected error occurred. Check console for details.');
+            showError('System Error', 'An unexpected error occurred. Check console for details.');
         } finally {
             setIsSubmitting(false);
         }
@@ -139,7 +141,7 @@ export default function CommunityManager() {
                 body: JSON.stringify({ communityId: selectedCommunity._id, idProof })
             });
             if (res.ok) {
-                alert('Verification Request Submitted! A verifier will review your ID soon.');
+                showSuccess('Submitted', 'Verification Request Submitted! A verifier will review your ID soon.');
                 setShowUploadModal(false);
                 setIdProof(null);
                 setSearchQuery('');
@@ -147,10 +149,11 @@ export default function CommunityManager() {
                 await refreshUser();
             } else {
                 const data = await res.json();
-                alert(data.error || 'Failed to submit application');
+                showError('Submit Failed', data.error || 'Failed to submit application');
             }
         } catch (error) {
-            alert('Error submitting application');
+            console.error('Failed to submit application', error);
+            showError('System Error', 'Error submitting application');
         } finally {
             setIsSubmitting(false);
         }
@@ -171,10 +174,11 @@ export default function CommunityManager() {
                 await refreshUser();
             } else {
                 const data = await res.json();
-                alert(data.error || 'Failed to remove');
+                showError('Remove Failed', data.error || 'Failed to remove');
             }
         } catch (error) {
-            alert('Error removing community');
+            console.error('Failed to remove community', error);
+            showError('System Error', 'Error removing community');
         }
     };
 

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Loader from '@/components/Loader';
 import Link from 'next/link';
 import ReviewSection from '@/components/ReviewSection';
-import { confirmAction } from '@/lib/confirm';
+import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 
 function PaginationControls({ page, totalPages, onPageChange, scrollTargetId }: { page: number; totalPages: number; onPageChange: (p: number) => void; scrollTargetId?: string }) {
     if (totalPages <= 1) return null;
@@ -106,7 +106,7 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
                 const json = await res.json();
                 setData(json);
             } else {
-                alert('Failed to load user');
+                showError('Load Error', 'Failed to load user');
                 router.back();
             }
         } catch (error) {
@@ -133,11 +133,11 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
             });
 
             if (res.ok) {
-                alert('Role updated successfully');
+                showSuccess('Success', 'Role updated successfully');
                 fetchUserDetail(productPage, servicePage);
             } else {
                 const json = await res.json();
-                alert(json.error || 'Failed to update role');
+                showError('Update Failed', json.error || 'Failed to update role');
             }
         } catch (error) {
             console.error('Update failed', error);

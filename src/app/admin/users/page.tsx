@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Loader from '@/components/Loader';
 import { optimizeCloudinaryUrl } from '@/lib/cloudinary-client';
-import { confirmAction } from '@/lib/confirm';
+import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<any[]>([]);
@@ -62,6 +62,8 @@ export default function AdminUsersPage() {
                 setUsers(data.users);
                 setTotalPages(data.pagination?.totalPages || 1);
                 setTotalUsers(data.pagination?.totalUsers || 0);
+            } else {
+                showError('Load Error', 'Failed to load users');
             }
         } catch (error) {
             console.error('Failed to fetch users', error);
@@ -97,7 +99,7 @@ export default function AdminUsersPage() {
                 setSelectedCommunityId('');
             } else {
                 const json = await res.json();
-                alert(json.error || 'Failed to update role');
+                showError('Update Failed', json.error || 'Failed to update role');
             }
         } catch (error) {
             console.error('Update failed', error);
@@ -127,7 +129,7 @@ export default function AdminUsersPage() {
             if (res.ok) {
                 setUsers(prev => prev.map(u => u._id === banUserId ? { ...u, status: 'Banned' } : u));
             } else {
-                alert('Failed to ban user');
+                showError('Action Failed', 'Failed to ban user');
             }
         } catch { console.error('Ban failed'); }
         finally { setActionLoading(null); }
@@ -158,14 +160,14 @@ export default function AdminUsersPage() {
                 setTotalUsers(prev => prev - 1);
             } else {
                 const data = await res.json();
-                alert(data.error || 'Failed to delete user');
+                showError('Deletion Failed', data.error || 'Failed to delete user');
             }
         } catch { console.error('Delete failed'); }
         finally { setActionLoading(null); }
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 transition-colors duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 transition-colors duration-300 overflow-x-clip">
             <div className="sm:flex sm:items-center mb-6">
                 <div className="sm:flex-auto">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
@@ -193,32 +195,33 @@ export default function AdminUsersPage() {
                 </select>
             </div>
 
-            {/* User Cards */}
+            {/* User Table Section */}
             {loading ? (
                 <Loader />
             ) : users.length === 0 ? (
                 <div className="text-center py-16 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-800 transition-colors">
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">No users found.</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm italic">No users found.</p>
                 </div>
             ) : (
-                <div className="space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
-                        <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
+                <div className="w-full min-w-0 space-y-6">
+                    <div className="w-full min-w-0 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
+                        <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800">
+                            <table className="min-w-[800px] md:min-w-full divide-y divide-gray-100 dark:divide-gray-700">
                             <thead className="bg-gray-50 dark:bg-gray-900/50 transition-colors">
                                 <tr>
-                                    <th className="py-3.5 pl-6 pr-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
-                                    <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Username</th>
-                                    <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                    <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
-                                    <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Listings</th>
-                                    <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                                    <th className="py-3.5 pl-6 pr-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">User</th>
+                                    <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">Username</th>
+                                    <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">Status</th>
+                                    <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">Role</th>
+                                    <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">Listings</th>
+                                    <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
                                 {users.map((user) => (
                                     <tr key={user._id} className={`hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors ${user.status === 'Banned' ? 'bg-red-50/30 dark:bg-red-900/10' : ''}`}>
                                         {/* Name + Email */}
-                                        <td className="py-4 pl-6 pr-3">
+                                        <td className="py-4 pl-6 pr-3 whitespace-nowrap">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm border border-indigo-200 dark:border-indigo-800 flex-shrink-0 overflow-hidden transition-colors">
                                                     {user.profilePicture ? (
@@ -244,19 +247,19 @@ export default function AdminUsersPage() {
                                         </td>
 
                                         {/* Username */}
-                                        <td className="px-3 py-4 text-sm text-indigo-500 dark:text-indigo-400 font-mono transition-colors">
+                                        <td className="px-3 py-4 text-sm text-indigo-500 dark:text-indigo-400 font-mono transition-colors whitespace-nowrap">
                                             @{user.username || 'not_set'}
                                         </td>
 
                                         {/* Status */}
-                                        <td className="px-3 py-4 transition-colors">
+                                        <td className="px-3 py-4 transition-colors whitespace-nowrap">
                                             {user.status === 'Banned' ? (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-100 dark:border-red-800 transition-colors">
                                                     🚫 Banned
                                                 </span>
                                             ) : user.isVerified ? (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-100 dark:border-green-800 transition-colors">
-                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>
+                                                    <svg className="w-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>
                                                     Verified
                                                 </span>
                                             ) : (
@@ -339,6 +342,7 @@ export default function AdminUsersPage() {
                             </tbody>
                         </table>
                     </div>
+                </div>
 
                     {/* Pagination Controls */}
                     {totalPages > 1 && (
@@ -394,11 +398,11 @@ export default function AdminUsersPage() {
                                         </button>
                                     </nav>
                                 </div>
-                            </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
-                </div>
-            )}
 
             {/* Community Assignment Modal */}
             {showCommunityModal && (
@@ -475,7 +479,8 @@ export default function AdminUsersPage() {
                                     min="1"
                                     max="365"
                                     value={banDays}
-                                    onChange={e => setBanDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 1)))}
+                                    onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
+                                    onChange={e => setBanDays(Math.max(1, Math.min(365, parseInt(e.target.value.replace(/\D/g, '')) || 1)))}
                                     className="w-full rounded-2xl border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3.5 text-sm font-bold text-gray-900 dark:text-white focus:border-red-500 focus:ring-0 transition-all outline-none"
                                     placeholder="Custom days..."
                                 />

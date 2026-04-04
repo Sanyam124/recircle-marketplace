@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
 import Link from 'next/link';
 import PaginationControls from '@/components/PaginationControls';
-import { confirmAction } from '@/lib/confirm';
+import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 
 interface Order {
     _id: string;
@@ -80,11 +80,11 @@ export default function AdminDisputesPage() {
             });
 
             if (res.ok) {
-                alert('Dispute Resolved Successfully');
+                showSuccess('Resolved', 'Dispute Resolved Successfully');
                 fetchDisputes(); // Refresh
             } else {
                 const data = await res.json();
-                alert(data.error || 'Failed to resolve');
+                showError('Action Failed', data.error || 'Failed to resolve');
             }
         } catch (error) {
             console.error('Error resolving dispute', error);

@@ -5,13 +5,14 @@ import Link from 'next/link';
 import Loader from '@/components/Loader';
 import ImageUpload from '@/components/ImageUpload';
 import NextImage from 'next/image';
-import { confirmAction } from '@/lib/confirm';
+import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 
 export default function AdminCommunitiesPage() {
     const [communities, setCommunities] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [formData, setFormData] = useState({ name: '', emailDomains: '', description: '', image: '' });
+    const [imageUploading, setImageUploading] = useState(false);
 
     const [totalCount, setTotalCount] = useState(0);
 
@@ -50,9 +51,10 @@ export default function AdminCommunitiesPage() {
                 setCommunities([data.community, ...communities]);
                 setIsAdding(false);
                 setFormData({ name: '', emailDomains: '', description: '', image: '' });
+                showSuccess('Circle Created', 'Community circle has been added.');
             } else {
                 const err = await res.json();
-                alert(err.error || 'Failed to create');
+                showError('Creation Failed', err.error || 'Failed to create');
             }
         } catch (error) {
             console.error('Failed to create', error);
@@ -71,6 +73,7 @@ export default function AdminCommunitiesPage() {
             const res = await fetch(`/api/admin/communities?id=${id}`, { method: 'DELETE' });
             if (res.ok) {
                 setCommunities(communities.filter(c => c._id !== id));
+                showSuccess('Circle Deleted', 'The community circle was removed.');
             }
         } catch (error) {
             console.error('Failed to delete', error);
@@ -100,6 +103,7 @@ export default function AdminCommunitiesPage() {
                                 label="Upload Circle Logo/Banner"
                                 folder="recircle/communities"
                                 onUpload={(url) => setFormData({ ...formData, image: url })}
+                                onUploadingChange={setImageUploading}
                                 currentImage={formData.image}
                                 imageClassName="w-40 h-24 rounded-2xl"
                             />
@@ -136,8 +140,8 @@ export default function AdminCommunitiesPage() {
                              />
                         </div>
                         <div className="sm:col-span-2 flex justify-end">
-                             <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold shadow-md hover:bg-indigo-700 transition-all">
-                                Create Community Circle
+                             <button type="submit" disabled={imageUploading} className={`px-6 py-2 text-white rounded-lg font-bold shadow-md transition-all ${imageUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                                {imageUploading ? 'Uploading Image...' : 'Create Community Circle'}
                              </button>
                         </div>
                     </form>

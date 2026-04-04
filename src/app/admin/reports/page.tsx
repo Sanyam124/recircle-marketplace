@@ -101,7 +101,7 @@ export default function AdminReportsPage() {
   if (!user || user.role !== 'admin') return <div className="p-8 text-center text-red-500">Access Denied</div>;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 transition-colors duration-300">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 transition-colors duration-300 overflow-x-clip">
       <div id="reports-top" className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">Reports</h1>
@@ -125,27 +125,22 @@ export default function AdminReportsPage() {
       ) : (
         <div className="space-y-3">
           {reports.map(report => (
-            <div key={report._id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
-              <div className="flex items-start gap-4 flex-wrap">
+            <div key={report._id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-xl transition-all duration-300 group">
+              <div className="flex flex-col lg:flex-row lg:items-start gap-6">
                 {/* Left */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <span className={`px-2 py-0.5 text-xs font-bold rounded-full border transition-colors ${STATUS_COLORS[report.status]}`}>
+                  <div className="flex items-center gap-2 flex-wrap mb-4">
+                    <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-full border transition-colors ${STATUS_COLORS[report.status]}`}>
                       {report.status}
                     </span>
-                    <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 transition-colors">
-                      User
+                    <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-full bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border border-orange-100 dark:border-orange-800 transition-colors">
+                      Type: {report.itemType === 'none' ? 'General User' : `${report.itemType} Violation`}
                     </span>
-                    {report.itemType !== 'none' && (
-                      <span className={`px-2 py-0.5 text-xs font-bold rounded-full transition-colors ${report.itemType === 'product' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'}`}>
-                        {report.itemType} Context
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-400 dark:text-gray-500 transition-colors">{new Date(report.createdAt).toLocaleDateString()}</span>
+                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 transition-colors ml-auto lg:ml-0">{new Date(report.createdAt).toLocaleDateString()}</span>
                   </div>
 
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1 transition-colors">
-                    Reason: <span className="font-normal text-gray-700 dark:text-gray-300">{report.reason}</span>
+                  <p className="text-lg font-black text-gray-900 dark:text-white mb-2 transition-colors leading-tight">
+                    Reason: <span className="font-medium text-gray-700 dark:text-gray-300 leading-snug">{report.reason}</span>
                   </p>
 
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 transition-colors">
@@ -298,7 +293,8 @@ export default function AdminReportsPage() {
                   min="1"
                   max="365"
                   value={banDays}
-                  onChange={e => setBanDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 1)))}
+                  onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
+                  onChange={e => setBanDays(Math.max(1, Math.min(365, parseInt(e.target.value.replace(/\D/g, '')) || 1)))}
                   className="w-full rounded-2xl border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3.5 text-sm font-bold text-gray-900 dark:text-white focus:border-red-500 focus:ring-0 transition-all outline-none"
                   placeholder="Custom days..."
                 />
