@@ -178,7 +178,7 @@ export default function ProductCard({
                 <Link href={`/profile/${product.seller._id}`} className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors pointer-events-auto truncate max-w-[120px]">
                     {product.seller?.name}
                 </Link>
-                <span className="hidden sm:flex ml-auto text-[9px] text-gray-400 font-bold uppercase tracking-widest opacity-60 whitespace-nowrap pl-1 truncate">
+                <span className="hidden sm:flex ml-auto text-[10px] text-gray-400 font-medium opacity-60 whitespace-nowrap pl-1 truncate">
                     {formatTimeAgo(product.createdAt)}
                 </span>
             </div>
@@ -201,7 +201,7 @@ export default function ProductCard({
                 {product.reviewCount ? (
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter ml-1">({product.reviewCount})</span>
                 ) : null}
-                <span className="ml-auto text-[8px] text-gray-400 font-bold uppercase tracking-widest opacity-60 whitespace-nowrap pl-1 truncate">
+                <span className="ml-auto text-[9px] text-gray-400 font-medium opacity-60 whitespace-nowrap pl-1 truncate">
                     {formatTimeAgo(product.createdAt)}
                 </span>
             </div>

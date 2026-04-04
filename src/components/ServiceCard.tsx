@@ -10,14 +10,16 @@ import { formatTimeAgo } from '@/lib/utils';
 
 interface ServiceCardProps {
   service: any;
+  isOwner?: boolean;
   onRefresh?: () => void;
-  onDelete?: (id: string, type: 'services') => void;
-  onToggleStatus?: (id: string, status: string, type: 'services') => void;
+  onDelete?: (id: string, type: 'products' | 'services') => void;
+  onToggleStatus?: (id: string, status: string, type: 'products' | 'services') => void;
   hideOwnerActions?: boolean;
 }
 
 const ServiceCard: React.FC<ServiceCardProps> = ({ 
   service, 
+  isOwner = false,
   onRefresh, 
   onDelete, 
   onToggleStatus,
@@ -29,7 +31,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
 
   // Use the same ownership logic as ProductCard
   const sellerId = typeof service.provider === 'object' ? service.provider._id : service.provider;
-  const isActualOwner = !hideOwnerActions && user && user.id === sellerId;
+  const isActualOwner = !hideOwnerActions && (isOwner || (user && user.id === sellerId));
 
   const isCampusOwned = service.communityFilter !== 'All';
   const communityName = service.communityName;
@@ -125,7 +127,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 <Link href={`/profile/${service.provider?._id || ''}`} className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors pointer-events-auto truncate max-w-[120px]">
                     {service.provider?.name}
                 </Link>
-                <span className="hidden sm:flex ml-auto text-[9px] text-gray-400 font-bold uppercase tracking-widest opacity-60 whitespace-nowrap pl-1 truncate">
+                <span className="hidden sm:flex ml-auto text-[10px] text-gray-400 font-medium opacity-60 whitespace-nowrap pl-1 truncate">
                     {formatTimeAgo(service.createdAt)}
                 </span>
             </div>
@@ -150,7 +152,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 {service.reviewCount ? (
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter ml-1">({service.reviewCount})</span>
                 ) : null}
-                <span className="ml-auto text-[8px] text-gray-400 font-bold uppercase tracking-widest opacity-60 whitespace-nowrap pl-1 truncate">
+                <span className="ml-auto text-[9px] text-gray-400 font-medium opacity-60 whitespace-nowrap pl-1 truncate">
                     {formatTimeAgo(service.createdAt)}
                 </span>
             </div>

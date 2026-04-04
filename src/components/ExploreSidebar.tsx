@@ -20,9 +20,16 @@ export interface ExploreFilters {
 interface ExploreSidebarProps {
   currentFilters: ExploreFilters;
   onFilterChange: (filters: ExploreFilters) => void;
+  isSidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export default function ExploreSidebar({ currentFilters, onFilterChange }: ExploreSidebarProps) {
+export default function ExploreSidebar({ 
+  currentFilters, 
+  onFilterChange,
+  isSidebarOpen = true,
+  onToggleSidebar
+}: ExploreSidebarProps) {
   const { user } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [filters, setFilters] = useState<ExploreFilters>(currentFilters);
@@ -114,11 +121,20 @@ export default function ExploreSidebar({ currentFilters, onFilterChange }: Explo
                 serviceDocsOpen={serviceDocsOpen} setServiceDocsOpen={setServiceDocsOpen}
                 citySearch={citySearch} setCitySearch={setCitySearch} availableCities={availableCities}
                 toggleCategory={toggleCategory} toggleCondition={toggleCondition} clearFilters={clearFilters} onFilterChange={onFilterChange} user={user}
+                isSidebarOpen={true} // Always "open" when in mobile drawer
               />
            </div>
             <div className="absolute bottom-0 left-0 right-0 p-8 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-t border-gray-100 dark:border-gray-800/50 flex gap-4">
                <button onClick={clearFilters} className="flex-1 py-5 text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 border-2 border-gray-100 dark:border-gray-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all active:scale-95">Reset</button>
-               <button onClick={() => setIsMobileOpen(false)} className="flex-[2] py-5 text-xs font-black uppercase tracking-widest text-white bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200 dark:shadow-none active:scale-95 transition-all text-center">Update Marketplace</button>
+               <button 
+                 onClick={() => {
+                   setIsMobileOpen(false);
+                   window.scrollTo({ top: 0, behavior: 'smooth' });
+                 }} 
+                 className="flex-[2] py-5 text-xs font-black uppercase tracking-widest text-white bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200 dark:shadow-none active:scale-95 transition-all text-center"
+               >
+                 Update Marketplace
+               </button>
             </div>
         </div>
       </div>
@@ -132,6 +148,8 @@ export default function ExploreSidebar({ currentFilters, onFilterChange }: Explo
               serviceDocsOpen={serviceDocsOpen} setServiceDocsOpen={setServiceDocsOpen}
               citySearch={citySearch} setCitySearch={setCitySearch} availableCities={availableCities}
               toggleCategory={toggleCategory} toggleCondition={toggleCondition} clearFilters={clearFilters} onFilterChange={onFilterChange} user={user}
+              isSidebarOpen={isSidebarOpen}
+              onToggleSidebar={onToggleSidebar}
            />
         </div>
       </div>
@@ -160,12 +178,22 @@ export default function ExploreSidebar({ currentFilters, onFilterChange }: Explo
 function FilterElements({ 
   filters, handleChange, setFilters, productDocsOpen, setProductDocsOpen, 
   serviceDocsOpen, setServiceDocsOpen, citySearch, setCitySearch, availableCities, 
-  toggleCategory, toggleCondition, clearFilters, onFilterChange, user
+  toggleCategory, toggleCondition, clearFilters, onFilterChange, user,
+  isSidebarOpen, onToggleSidebar
 }: any) {
   return (
     <div className="space-y-8">
+      {onToggleSidebar && (
+        <button 
+          onClick={onToggleSidebar}
+          className="hidden md:flex items-center gap-2 mb-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-indigo-600 transition-colors group"
+        >
+          <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M11 19l-7-7 7-7" /></svg>
+          Hide Sidebar
+        </button>
+      )}
       <div className="flex items-center justify-between">
-        <h3 className="font-extrabold text-gray-900 dark:text-white uppercase tracking-tight text-xl">Filters</h3>
+        <h3 className="font-extrabold text-gray-900 dark:text-white uppercase tracking-tight text-xl italic">Filters</h3>
         <button onClick={clearFilters} className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:underline transition-all opacity-70 hover:opacity-100">Reset</button>
       </div>
 

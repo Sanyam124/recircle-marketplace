@@ -50,11 +50,12 @@ export const ItemCardSkeleton = () => {
 };
 
 export const ItemsGridSkeleton = ({ count = 6, cols = 3 }: { count?: number; cols?: number }) => {
-  const gridClass = cols === 3 
-    ? 'grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6' 
-    : cols === 4 
-    ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'
-    : 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6';
+  const gridClass = `grid gap-6 ${
+    cols === 2 ? 'grid-cols-2' : 
+    cols === 3 ? 'grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3' : 
+    cols === 4 ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 
+    'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5'
+  }`;
 
   return (
     <div className={gridClass}>

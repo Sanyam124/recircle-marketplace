@@ -34,8 +34,9 @@ function ExploreFiltersAndGrid() {
   };
 
   const currentPage = parseInt(searchParams.get('page') || '1');
-  const [cols, setCols] = useState<3 | 4 | 5>(3);
+  const [cols, setCols] = useState<2 | 3 | 4 | 5>(3);
   const [mobileCols, setMobileCols] = useState<1 | 2>(2);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState(currentFilters.search);
   const isFirstRender = useRef(true);
 
@@ -118,7 +119,7 @@ function ExploreFiltersAndGrid() {
   const { data, error, isLoading, isValidating } = useSWR(getQueryUrl(), fetcher, { 
     keepPreviousData: true,
     revalidateOnFocus: false,
-    shouldRetryOnError: (err) => err.status !== 429 // Stop retrying on rate limits
+    shouldRetryOnError: (err) => err.status !== 429 
   });
 
   const loading = !data && isLoading; 
@@ -137,7 +138,7 @@ function ExploreFiltersAndGrid() {
               </svg>
            </div>
            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Slow Down</h3>
-           <p className="text-gray-500 dark:text-gray-400 mb-6">You've made too many requests in a short time. Please wait a minute before refreshing again.</p>
+           <p className="text-gray-500 dark:text-gray-400 mb-6">You''ve made too many requests in a short time. Please wait a minute before refreshing again.</p>
            <button onClick={() => window.location.reload()} className="w-full py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md">Try Again</button>
         </div>
       </div>
@@ -154,150 +155,101 @@ function ExploreFiltersAndGrid() {
   };
 
   return (
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Sidebar */}
-          <div className="w-full md:w-64 shrink-0">
-            <ExploreSidebar 
-              currentFilters={currentFilters}
-              onFilterChange={handleFilterChange} 
-            />
+    <>
+      {/* MOBILE STICKY ROW */}
+      <div className="md:hidden bg-white/95 dark:bg-gray-800/95 backdrop-blur-md pb-3 pt-2 px-6 rounded-b-[1.5rem] border-b border-gray-200 dark:border-gray-700/50 flex flex-col items-center gap-2 sticky top-[64px] z-[40] -mx-4 shadow-lg mb-6">
+        <div className="w-full relative group">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           </div>
-
-          {/* Main Content */}
-          <div className="flex-1 min-w-0">
-            {/* Results Info and Controls */}
-            <div className="bg-white/70 dark:bg-gray-800/40 backdrop-blur-md p-4 sm:p-5 rounded-3xl border border-gray-200 dark:border-gray-700/50 mb-8 flex flex-col-reverse sm:flex-row justify-between items-center transition-all shadow-sm gap-4">
-              
-              <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start shrink-0">
-                 <div className="flex flex-col text-left sm:text-right">
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">
-                      Items
-                    </p>
-                    <h2 className="text-sm font-bold text-gray-900 dark:text-white">
-                      {isFetchingFiltered ? 'Updating...' : loading ? 'Loading...' : `${totalItems} ${currentFilters.type === 'all' ? 'Found' : currentFilters.type}`}
-                    </h2>
-                 </div>
-
-                 {/* Mobile Grid Controls - visible only on mobile */}
-                 <div className="flex sm:hidden items-center gap-1 bg-gray-100/50 dark:bg-gray-900/50 p-1 rounded-xl border border-gray-100 dark:border-gray-800 shadow-inner shrink-0">
-                    <button onClick={() => setMobileCols(1)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${mobileCols === 1 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}>1x</button>
-                    <button onClick={() => setMobileCols(2)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${mobileCols === 2 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}>2x</button>
-                 </div>
-
-                 {/* Desktop Grid Controls - hidden on mobile */}
-                 <div className="hidden sm:flex items-center gap-1 bg-gray-100/50 dark:bg-gray-900/50 p-1 rounded-xl border border-gray-100 dark:border-gray-800 shadow-inner shrink-0">
-                    <button onClick={() => setCols(3)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${cols === 3 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}>3x</button>
-                    <button onClick={() => setCols(4)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${cols === 4 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}>4x</button>
-                    <button onClick={() => setCols(5)} className={`hidden lg:block px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${cols === 5 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}>5x</button>
-                 </div>
-              </div>
-
-              <div className="w-full sm:w-1/2 xl:w-1/3 relative group text-left">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors text-gray-400 group-focus-within:text-indigo-500">
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  name="search"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search products or services..."
-                  className="w-full pl-11 pr-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-900/20 transition-all outline-none font-medium text-left"
-                />
-              </div>
-            </div>
-
-            {loading ? (
-              <ItemsGridSkeleton count={12} cols={cols} />
-            ) : error ? (
-                <div className="bg-white/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-[3rem] p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
-                    <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                        <svg className="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">Something went wrong</h3>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2 font-bold text-sm">We couldn't load the items. Please check your internet.</p>
-                </div>
-            ) : items.length === 0 ? (
-              <div className="bg-white/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-[3rem] p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
-                <div className="w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                   <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                   </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">No Results Found</h3>
-                <p className="text-gray-500 dark:text-gray-400 mt-2 font-bold text-sm">Try using different filters or changing your search.</p>
-              </div>
-            ) : (
-              <>
-                <div 
-                  className={`grid gap-4 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} sm:grid-cols-2 ${
-                    cols === 3 ? 'md:grid-cols-3' : 
-                    cols === 4 ? 'md:grid-cols-3 lg:grid-cols-4' : 
-                    'md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
-                  }`}
-                >
-                  {items.map((item: any) => (
-                    <div key={item._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                      {item.itemType === 'product' ? (
-                        <ProductCard product={item} hideOwnerActions={true} />
-                      ) : (
-                        <ServiceCard service={item} hideOwnerActions={true} />
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="mt-20 flex justify-center items-center gap-3 pb-12">
-                    <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 text-gray-400 disabled:opacity-20 hover:text-indigo-600 transition-all active:scale-90"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
-                    </button>
-                    
-                    <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 p-2 rounded-[2rem] border border-gray-100 dark:border-gray-700">
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                          let pageNum;
-                          if (totalPages <= 5) pageNum = i + 1;
-                          else if (currentPage <= 3) pageNum = i + 1;
-                          else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
-                          else pageNum = currentPage - 2 + i;
-
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => handlePageChange(pageNum)}
-                              className={`w-12 h-12 rounded-xl text-xs font-black transition-all active:scale-90 ${
-                                currentPage === pageNum
-                                  ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 dark:shadow-none'
-                                  : 'text-gray-400 hover:text-indigo-600'
-                              }`}
-                            >
-                              {pageNum}
-                            </button>
-                          );
-                        })}
-                    </div>
-
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 text-gray-400 disabled:opacity-20 hover:text-indigo-600 transition-all active:scale-90"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
+          <input
+            name="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search..."
+            className="w-full pl-11 pr-5 py-2.5 bg-gray-50/50 dark:bg-gray-900/50 rounded-xl text-sm border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white transition-all outline-none font-medium"
+          />
+        </div>
+        <div className="flex items-center justify-between w-full px-1">
+          <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{totalItems} results</div>
+          <div className="flex items-center gap-1 bg-gray-100/50 dark:bg-gray-900/50 p-1 rounded-xl">
+            <button onClick={() => setMobileCols(1)} className={`px-3 py-1 text-xs font-bold rounded-lg ${mobileCols === 1 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400'}`}>1x</button>
+            <button onClick={() => setMobileCols(2)} className={`px-3 py-1 text-xs font-bold rounded-lg ${mobileCols === 2 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400'}`}>2x</button>
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-8 relative">
+        <div className={`hidden md:block fixed top-24 transition-all duration-500 z-[40] ${!isSidebarOpen ? 'left-8 opacity-100 scale-100' : 'left-0 opacity-0 scale-50 pointer-events-none'}`}>
+          <button 
+            onClick={() => { setIsSidebarOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className="w-12 h-12 flex items-center justify-center bg-white/70 dark:bg-gray-800/40 backdrop-blur-xl border border-gray-100 dark:border-gray-700/50 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all text-indigo-600 dark:text-indigo-400"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+          </button>
+        </div>
+
+        <div className={`transition-all duration-500 shrink-0 overflow-hidden ${isSidebarOpen ? 'w-full md:w-64 opacity-100' : 'w-0 opacity-0 invisible pointer-events-none'}`}>
+          <ExploreSidebar currentFilters={currentFilters} onFilterChange={handleFilterChange} isSidebarOpen={isSidebarOpen} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        </div>
+
+        <div className={`flex-1 min-w-0 transition-all duration-500 ${!isSidebarOpen ? 'md:pl-16' : ''}`}>
+          <div className="hidden md:flex bg-white/70 dark:bg-gray-800/40 backdrop-blur-md p-5 rounded-3xl border border-gray-200 dark:border-gray-700/50 mb-8 justify-between items-center shadow-sm gap-4">
+            <div className="flex items-center gap-4 shrink-0">
+              <div className="flex flex-col text-right">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Items</p>
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white">{totalItems} Found</h2>
+              </div>
+              <div className="flex items-center gap-1 bg-gray-100/50 dark:bg-gray-900/50 p-1 rounded-xl shadow-inner">
+                {[2, 3, 4, 5].map((val) => (
+                  <button key={val} onClick={() => setCols(val as any)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${val > 3 ? 'hidden lg:block' : ''} ${cols === val ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}>{val}x</button>
+                ))}
+              </div>
+            </div>
+            <div className="w-1/2 xl:w-1/3 relative group text-left">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div>
+              <input name="search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search products or services..." className="w-full pl-11 pr-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white transition-all outline-none font-medium" />
+            </div>
+          </div>
+
+          {loading ? (
+            <ItemsGridSkeleton count={12} cols={cols} />
+          ) : error ? (
+            <div className="bg-white/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-[3rem] p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm"><div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner"><svg className="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div><h3 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">Something went wrong</h3><p className="text-gray-500 dark:text-gray-400 mt-2 font-bold text-sm">We couldn''t load the items. Please check your internet.</p></div>
+          ) : items.length === 0 ? (
+            <div className="bg-white/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-[3rem] p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm"><div className="w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner"><svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div><h3 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">No Results Found</h3><p className="text-gray-500 dark:text-gray-400 mt-2 font-bold text-sm">Try using different filters or changing your search.</p></div>
+          ) : (
+            <>
+              <div className={`grid gap-4 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${cols === 2 ? 'sm:grid-cols-2' : cols === 3 ? 'sm:grid-cols-3' : cols === 4 ? 'sm:grid-cols-4' : 'sm:grid-cols-5'}`}>
+                {items.map((item) => (
+                  <div key={item._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {item.itemType === 'product' ? <ProductCard product={item} hideOwnerActions={true} /> : <ServiceCard service={item} hideOwnerActions={true} />}
+                  </div>
+                ))}
+              </div>
+              {totalPages > 1 && (
+                <div className="mt-20 flex justify-center items-center gap-3 pb-12">
+                  <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 text-gray-400 disabled:opacity-20 hover:text-indigo-600 transition-all active:scale-95"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg></button>
+                  <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 p-2 rounded-[2rem] border border-gray-100 dark:border-gray-700">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) pageNum = i + 1;
+                      else if (currentPage <= 3) pageNum = i + 1;
+                      else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                      else pageNum = currentPage - 2 + i;
+                      return (
+                        <button key={pageNum} onClick={() => handlePageChange(pageNum)} className={`w-12 h-12 rounded-xl text-xs font-black transition-all active:scale-90 ${currentPage === pageNum ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 dark:shadow-none' : 'text-gray-400 hover:text-indigo-600'}`}>{pageNum}</button>
+                      );
+                    })}
+                  </div>
+                  <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 text-gray-400 disabled:opacity-20 hover:text-indigo-600 transition-all active:scale-95"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg></button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -314,8 +266,8 @@ const MainAreaSkeleton = () => (
 
 export default function ExplorePage() {
   return (
-    <div className="min-h-screen bg-[#f5f6f9] dark:bg-gray-900 transition-all duration-500 overflow-x-hidden w-full max-w-[100vw]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-[#f5f6f9] dark:bg-gray-900 transition-all duration-500 w-full max-w-[100vw] overflow-x-clip">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
         <Suspense fallback={
             <div className="flex flex-col md:flex-row gap-8">
               <FilterSidebarSkeleton />
