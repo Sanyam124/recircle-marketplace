@@ -28,4 +28,26 @@ export const confirmAction = async ({
   return result.isConfirmed;
 };
 
+export const showError = async (title: string, text?: string) => {
+  await MySwal.fire({
+    title,
+    text,
+    icon: 'error',
+    confirmButtonColor: '#4f46e5',
+    background: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff',
+    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+  });
+};
+
+export const showSuccess = async (title: string, text?: string) => {
+  await MySwal.fire({
+    title,
+    text,
+    icon: 'success',
+    confirmButtonColor: '#4f46e5',
+    background: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff',
+    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+  });
+};
+
 export default confirmAction;

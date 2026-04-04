@@ -34,11 +34,12 @@ export async function middleware(request: NextRequest) {
     const origin = request.headers.get('origin');
     const host = request.headers.get('host');
     
-    // Validation: Origin must match Host in production
-    if (process.env.NODE_ENV === 'production' && origin) {
+    // Validation: Origin must match Host in production (lenient for tunnels)
+    if (process.env.NODE_ENV === 'production' && origin && host) {
       try {
-        const originHost = new URL(origin).host;
-        if (originHost !== host) {
+        const originHost = new URL(origin).hostname;
+        const currentHost = host.split(':')[0];
+        if (originHost !== currentHost && !originHost.endsWith('.loca.lt') && !originHost.endsWith('.ngrok-free.app')) {
           return NextResponse.json({ error: 'Security: Invalid Request Origin' }, { status: 403 });
         }
       } catch (e) {
@@ -49,11 +50,12 @@ export async function middleware(request: NextRequest) {
 
   // --- API Rate Limiting ---
   if (pathname.startsWith('/api')) {
-    const ip = (request as any).ip || request.headers.get('x-forwarded-for') || '127.0.0.1';
+    const forwarded = request.headers.get('x-forwarded-for');
+    const ip = forwarded ? forwarded.split(',')[0].trim() : (request as any).ip || '127.0.0.1';
     
-    let limit = 60;
+    let limit = 100;
     if (pathname.includes('/api/auth/login') || pathname.includes('/api/auth/register') || pathname.includes('/api/auth/otp')) {
-      limit = 10; 
+      limit = 30; // High enough to cover mobile retries on slow connections
     }
 
     const result = rateLimit(ip, { limit, windowMs: 60000 });

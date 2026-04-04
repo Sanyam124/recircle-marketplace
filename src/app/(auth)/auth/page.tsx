@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { showError, showSuccess } from '@/lib/confirm';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -167,7 +168,7 @@ export default function AuthPage() {
                 setStep(3); // Go to Registration
             }
         } catch (err: any) {
-            setError('Failed to check email. Please try again.');
+            showError('Error', 'Failed to check email. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -213,7 +214,7 @@ export default function AuthPage() {
             if (!res.ok) throw new Error(data.error);
   
             setEmailOtpSent(true);
-            alert(`OTP sent to ${email}`);
+            showSuccess('OTP Sent', `OTP sent to ${email}`);
         } catch (err: any) {
             setEmailError(err.message);
         } finally {
@@ -314,7 +315,7 @@ export default function AuthPage() {
             if (!res.ok) throw new Error(data.error);
 
             setStep(5);
-            alert(`Recovery OTP sent to ${email}`);
+            showSuccess('OTP Sent', `Recovery OTP sent to ${email}`);
         } catch (err: any) {
             setRecoveryError(err.message);
         } finally {
@@ -368,7 +369,7 @@ export default function AuthPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
 
-            alert(data.message);
+            showSuccess('Auth Notice', data.message);
             setUserAuthProvider('both'); // [FIX] Update local state to show password login next
             setError(''); // [FIX] Clear any previous error box (e.g., "No password set")
             setStep(2); // Go back to Login
