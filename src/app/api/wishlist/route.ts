@@ -69,15 +69,33 @@ export async function GET(req: NextRequest) {
         ]);
 
         // Map back to maintain the reversed order
-        const paginatedItems = paginatedIdsWithTypes.map(ref => {
+        const paginatedItems: any[] = [];
+        const orphanedProductIds: string[] = [];
+        const orphanedServiceIds: string[] = [];
+
+        paginatedIdsWithTypes.forEach(ref => {
             if (ref.type === 'product') {
                 const p = products.find(p => p._id.toString() === ref.id);
-                return p ? { ...p, itemType: 'product' } : null;
+                if (p) paginatedItems.push({ ...p, itemType: 'product' });
+                else orphanedProductIds.push(ref.id);
             } else {
                 const s = services.find(s => s._id.toString() === ref.id);
-                return s ? { ...s, itemType: 'service' } : null;
+                if (s) paginatedItems.push({ ...s, itemType: 'service' });
+                else orphanedServiceIds.push(ref.id);
             }
-        }).filter(item => item !== null);
+        });
+
+        // BACKGROUND CLEANUP: "Lazy Garbage Collection"
+        // Remove dead references from the user's wishlist arrays so they don't grow with 'zombie' IDs
+        if (orphanedProductIds.length > 0 || orphanedServiceIds.length > 0) {
+            const pullData: any = {};
+            if (orphanedProductIds.length > 0) pullData.wishlist = { $in: orphanedProductIds };
+            if (orphanedServiceIds.length > 0) pullData.wishlistedServices = { $in: orphanedServiceIds };
+            
+            User.findByIdAndUpdate(userData.userId, { $pull: pullData }).catch(e => 
+                console.error('Lazy Wishlist Cleanup Failed:', e)
+            );
+        }
 
         // Fetch ratings for paginated items
         const ownerIds = paginatedItems.map((item: any) => 

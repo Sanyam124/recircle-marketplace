@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { OrderRowSkeleton } from '@/components/Skeletons';
 import { useAuth } from '@/context/AuthContext';
 import NextImage from 'next/image';
-import { confirmAction } from '@/lib/confirm';
+import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 import ReviewModal from '@/components/ReviewModal';
 import useSWR from 'swr';
 
@@ -98,14 +98,16 @@ function OrdersPageContent() {
         mutateSeller();
         setOtpModalData(null);
         setOtpCode('');
+        showSuccess('Verification Successful', 'Transaction has been completed.');
       } else if (res.status === 429) {
-          alert('Too many attempts. Please wait a minute.');
+          showError('Rate Limited', 'Too many attempts. Please wait a minute.');
       } else {
           const errData = await res.json();
-          alert(errData.error || 'Verification failed');
+          showError('Verification Failed', errData.error || 'Check the code and try again.');
       }
     } catch (err) {
       console.error(err);
+      showError('System Error', 'Something went wrong during verification.');
     } finally {
       setSubmittingOTP(false);
     }
@@ -151,7 +153,7 @@ function OrdersPageContent() {
   if (authLoading || !user) return <div className="max-w-5xl mx-auto px-4 py-12"><OrderRowSkeleton /><OrderRowSkeleton /><OrderRowSkeleton /></div>;
 
   return (
-    <div className="min-h-screen bg-[#f5f6f9] dark:bg-gray-900 pt-8 pb-20 transition-all duration-300">
+    <div className="min-h-screen bg-[#f5f6f9] dark:bg-gray-900 pt-8 pb-20 transition-all duration-300 overflow-x-clip">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
@@ -316,16 +318,19 @@ function OrderRow({ order, role, onCancel, onOpenOtpModal, onOpenReview }: any) 
   const isProduct = order.orderType === 'Product';
   const otherParty = role === 'buyer' ? order.seller : order.buyer;
   const otherPartyLabel = role === 'buyer' ? (isProduct ? 'Seller' : 'Provider') : 'Buyer';
-  if (!item) return null;
+  
+  const itemLink = item ? `/${isProduct ? 'products' : 'services'}/${item._id}` : '#';
+  const itemTitle = item?.title || (isProduct ? 'Product Removed' : 'Service Removed');
+  
   return (
     <div id={`order-${order._id}`} className="group bg-white/70 dark:bg-gray-800/40 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/40 dark:border-gray-700/50 overflow-hidden flex flex-col md:flex-row transition-all hover:shadow-2xl hover:-translate-y-1 hover:border-indigo-200 dark:hover:border-indigo-900/50">
       <div className="p-4 sm:p-6 flex-1 flex flex-col sm:flex-row gap-5 min-w-0">
-        <Link href={`/${isProduct ? 'products' : 'services'}/${item._id}`} className="block w-full sm:w-28 h-28 sm:h-28 bg-gray-50 dark:bg-gray-900 rounded-2xl overflow-hidden shrink-0 relative shadow-inner border border-gray-100 dark:border-gray-800">
-          {item?.images?.[0] ? <NextImage src={item.images[0]} alt={item.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500" /> : <div className="flex h-full w-full items-center justify-center text-gray-300"><svg className="w-8 h-8 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>}
+        <Link href={itemLink} className="block w-full sm:w-28 h-28 sm:h-28 bg-gray-50 dark:bg-gray-900 rounded-2xl overflow-hidden shrink-0 relative shadow-inner border border-gray-100 dark:border-gray-800">
+          {item?.images?.[0] ? <NextImage src={item.images[0]} alt={itemTitle} fill className="object-cover group-hover:scale-110 transition-transform duration-500" /> : <div className="flex h-full w-full items-center justify-center text-gray-300 bg-gray-100 dark:bg-gray-800"><svg className="w-8 h-8 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>}
         </Link>
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
-            <Link href={`/${isProduct ? 'products' : 'services'}/${item._id}`} className="flex-1 font-black text-gray-900 dark:text-white text-lg sm:text-xl hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors line-clamp-1 tracking-tight min-w-0">{item.title}</Link>
+            <Link href={itemLink} className="flex-1 font-black text-gray-900 dark:text-white text-lg sm:text-xl hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors line-clamp-1 tracking-tight min-w-0">{itemTitle}</Link>
             <div className={`px-3 py-1 text-[10px] font-black rounded-full uppercase tracking-widest shrink-0 border mt-1 ${
               order.status === 'Completed' ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50' : 
               order.status === 'Cancelled' ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/50' : 
@@ -357,7 +362,7 @@ function OrderRow({ order, role, onCancel, onOpenOtpModal, onOpenReview }: any) 
                 <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 border-2 border-white dark:border-gray-800 text-indigo-700 dark:text-indigo-400 flex items-center justify-center text-[10px] font-black shrink-0 overflow-hidden shadow-sm group-hover/user:scale-110 transition-transform">{otherParty.profilePicture ? <NextImage src={otherParty.profilePicture} alt={otherParty.name} width={24} height={24} className="w-full h-full object-cover" /> : otherParty.name?.charAt(0)}</div>
                 <span className="truncate">{otherParty.name}</span>
               </Link>
-            ) : <span className="text-gray-400 font-bold italic">User Departed</span>}
+            ) : <span className="text-gray-400 font-bold italic py-1 px-2">User Departed</span>}
           </div>
         </div>
       </div>
@@ -381,7 +386,7 @@ function OrderRow({ order, role, onCancel, onOpenOtpModal, onOpenReview }: any) 
           )}
           
           <Link 
-            href={`/chat/${otherParty?._id}?${isProduct ? `productId=${item._id}` : `serviceId=${item._id}`}`} 
+            href={item ? `/chat/${otherParty?._id}?${isProduct ? `productId=${item._id}` : `serviceId=${item._id}`}` : `/chat/${otherParty?._id}`} 
             className="w-full py-3.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-black text-xs uppercase tracking-widest rounded-2xl text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
           >
             Message {otherPartyLabel}
@@ -403,7 +408,7 @@ function OrderRow({ order, role, onCancel, onOpenOtpModal, onOpenReview }: any) 
                 </button>
             )}
             <Link 
-                href={`/chat/${otherParty?._id}?${isProduct ? `productId=${item._id}` : `serviceId=${item._id}`}`} 
+                href={item ? `/chat/${otherParty?._id}?${isProduct ? `productId=${item._id}` : `serviceId=${item._id}`}` : `/chat/${otherParty?._id}`} 
                 className="w-full py-3.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-black text-xs uppercase tracking-widest rounded-2xl text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
             >
                 Message Again

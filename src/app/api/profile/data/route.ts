@@ -9,6 +9,8 @@ import Notification from '@/models/Notification';
 import Order from '@/models/Order';
 import Community from '@/models/Community';
 import VerificationRequest from '@/models/VerificationRequest';
+import BoardPost from '@/models/BoardPost';
+import Report from '@/models/Report';
 import { verifyToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
@@ -140,24 +142,59 @@ export async function PUT(req: NextRequest) {
         if (allowPhoneContact !== undefined) updateData.allowPhoneContact = allowPhoneContact;
         if (isOnVacation !== undefined) updateData.isOnVacation = isOnVacation;
 
-        // 6. Profile Picture with Garbage Collection
+        // 6. Profile Picture Auto-Upload & Garbage Collection
+        let newlyUploadedUrl: string | null = null;
+        let oldUrlToDelete: string | null = null;
+
         if (profilePicture !== undefined && profilePicture !== user.profilePicture) {
-            if (user.profilePicture) {
+            let finalUrl = profilePicture;
+
+            // If it's a NEW Base64 image, upload it NOW
+            if (profilePicture && profilePicture.startsWith('data:image')) {
                 try {
-                    const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-                    await deleteFromCloudinary(user.profilePicture);
+                    const { uploadToCloudinary } = await import('@/lib/cloudinary');
+                    finalUrl = await uploadToCloudinary(profilePicture, 'recircle/profiles');
+                    newlyUploadedUrl = finalUrl;
                 } catch (e) {
-                    console.error('Failed to garbage collect old profile pic:', e);
+                    console.error('Failed to upload new profile pic:', e);
+                    return NextResponse.json({ error: 'Failed to process image' }, { status: 500 });
                 }
             }
-            updateData.profilePicture = profilePicture;
+
+            // Flag the old URL to be deleted IF AND ONLY IF the DB update succeeds
+            if (user.profilePicture && (finalUrl !== user.profilePicture)) {
+                oldUrlToDelete = user.profilePicture;
+            }
+            updateData.profilePicture = finalUrl;
         }
 
-        const updatedUser = await User.findByIdAndUpdate(
-            decoded.userId,
-            { $set: updateData },
-            { new: true, runValidators: true }
-        ).populate('verifiedCommunities', 'name image isActive').select('-password');
+        let updatedUser;
+        try {
+            updatedUser = await User.findByIdAndUpdate(
+                decoded.userId,
+                { $set: updateData },
+                { new: true, runValidators: true }
+            ).populate('verifiedCommunities', 'name image isActive').select('-password');
+        } catch (dbError) {
+             // Rollback newly uploaded image if DB update failed
+             if (newlyUploadedUrl) {
+                 try {
+                     const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                     await deleteFromCloudinary(newlyUploadedUrl);
+                 } catch (e) {}
+             }
+             throw dbError;
+        }
+
+        // DB update successful, now garbage collect the old picture
+        if (oldUrlToDelete) {
+             try {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await deleteFromCloudinary(oldUrlToDelete);
+             } catch (e) {
+                console.error('Failed to garbage collect old profile pic:', e);
+             }
+        }
 
         if (!updatedUser) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -206,7 +243,13 @@ export async function DELETE(req: NextRequest) {
 
         const userId = decoded.userId;
 
-        // Step 1: Pre-fetch targets for Cloudinary garbage collection
+        await connectToDatabase();
+        
+        // --- PRE-FETCHING & AUDIT ---
+        // 1. Identify pending reports to determine Hard vs Shadow deletion
+        const pendingReportsAgainstUser = await Report.countDocuments({ targetUser: userId, status: 'Pending' });
+
+        // 2. Identify Cloudinary assets for garbage collection
         const [userProducts, userServices, userObj] = await Promise.all([
             Product.find({ seller: userId }).select('images'),
             Service.find({ provider: userId }).select('images'),
@@ -218,27 +261,79 @@ export async function DELETE(req: NextRequest) {
         userProducts.forEach(p => p.images?.forEach((img: string) => imagesToDelete.push(img)));
         userServices.forEach(s => s.images?.forEach((img: string) => imagesToDelete.push(img)));
 
-        // Step 2: Trigger Cloudinary Cleanup (Non-blocking but awaited)
-        if (imagesToDelete.length > 0) {
-            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-            await Promise.all(imagesToDelete.map(img => deleteFromCloudinary(img)));
-        }
-
-        // Step 3: Parallel Database Delete - Performance and Cleanliness
-        await Promise.all([
+        // Step 2: Parallel Database Delete - Intelligent Lifecycle Management
+        // Products and Services are OWNED content - delete them immediately for Zero-Retention
+        const dbOperations = [
             Product.deleteMany({ seller: userId }),
             Service.deleteMany({ provider: userId }),
-            Review.deleteMany({ $or: [{ reviewer: userId }, { target: userId }] }),
-            Order.deleteMany({ $or: [{ buyer: userId }, { seller: userId }] }),
-            // Handle Messages (both sides)
-            Message.deleteMany({ $or: [{ sender: userId }, { recipient: userId }] }),
-            // Handle Notifications
-            Notification.deleteMany({ recipient: userId }),
-            // Remove Pending Verification Requests
+            BoardPost.deleteMany({ author: userId }),
+            Notification.deleteMany({ $or: [{ recipient: userId }, { sender: userId }] }),
             VerificationRequest.deleteMany({ user: userId }),
-            // Finally the User
-            User.findByIdAndDelete(userId)
+            Review.deleteMany({ reviewer: userId }), 
+            Report.deleteMany({ reporter: userId })
+        ];
+
+        // Step 2.1: Conditional User Erasure (Shadow Deletion for Evidence)
+        if (pendingReportsAgainstUser > 0) {
+            dbOperations.push(User.findByIdAndUpdate(userId, {
+                $set: {
+                    status: 'Banned',
+                    isVerified: false,
+                    profilePicture: '',
+                    bio: 'Account self-deactivated while under moderation review.',
+                    otp: null,
+                    otpExpiry: null
+                }
+            }) as any);
+        } else {
+            dbOperations.push(User.findByIdAndDelete(userId) as any);
+            dbOperations.push(Report.deleteMany({ $or: [{ reporter: userId }, { targetUser: userId }] }) as any);
+        }
+
+        // Step 2.5: Shared Records (Orders/Messages) - Mutual Abandonment Cleanup
+        const [privateOrders, privateMessages] = await Promise.all([
+            Order.find({ $or: [{ buyer: userId }, { seller: userId }] }).lean(),
+            Message.find({ $or: [{ sender: userId }, { recipient: userId }] }).lean()
         ]);
+
+        const sharedRecordsToDelete = {
+            orders: [] as any[],
+            messages: [] as any[]
+        };
+
+        // For performance, we limit the check to a few samples or just do a bulk existence check if possible
+        // But for a Minor Project, a filtered promise.all is acceptable for a single user deletion
+        await Promise.all([
+            ...privateOrders.map(async (order: any) => {
+                const otherPartyId = order.buyer.toString() === userId.toString() ? order.seller : order.buyer;
+                const otherExists = await User.exists({ _id: otherPartyId });
+                if (!otherExists) sharedRecordsToDelete.orders.push(order._id);
+            }),
+            ...privateMessages.map(async (msg: any) => {
+                const otherPartyId = msg.sender.toString() === userId.toString() ? msg.recipient : msg.sender;
+                const otherExists = await User.exists({ _id: otherPartyId });
+                if (!otherExists) sharedRecordsToDelete.messages.push(msg._id);
+            })
+        ]);
+
+        if (sharedRecordsToDelete.orders.length > 0) {
+            dbOperations.push(Order.deleteMany({ _id: { $in: sharedRecordsToDelete.orders } }) as any);
+        }
+        if (sharedRecordsToDelete.messages.length > 0) {
+            dbOperations.push(Message.deleteMany({ _id: { $in: sharedRecordsToDelete.messages } }) as any);
+        }
+
+        await Promise.all(dbOperations);
+
+        // Step 3: Trigger Cloudinary Cleanup AFTER DB succeeds
+        if (imagesToDelete.length > 0) {
+            try {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await Promise.all(imagesToDelete.map(img => deleteFromCloudinary(img).catch(() => null)));
+            } catch (e) {
+                console.error("Cloudinary cleanup failed during account deletion", e);
+            }
+        }
 
         const response = NextResponse.json({ message: 'Account deleted successfully' }, { status: 200 });
 

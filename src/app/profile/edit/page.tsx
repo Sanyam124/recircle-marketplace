@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
 import ImageUpload from '@/components/ImageUpload';
+import { showError, showSuccess, confirmAction } from '@/lib/confirm';
 
 interface UserData {
     id: string;
@@ -29,6 +30,7 @@ export default function EditProfilePage() {
     const [user, setUser] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [imageUploading, setImageUploading] = useState(false);
     const [verifying, setVerifying] = useState(false);
     const [otpSent, setOtpSent] = useState(false);
     const [otpCode, setOtpCode] = useState('');
@@ -99,7 +101,7 @@ export default function EditProfilePage() {
 
     const handleSendOtp = async () => {
         if (!formData.phone || formData.phone.length < 10) {
-            alert('Please enter a valid phone number first');
+            showError('Invalid Phone', 'Please enter a valid phone number first');
             return;
         }
         setVerifying(true);
@@ -111,14 +113,14 @@ export default function EditProfilePage() {
             });
             if (res.ok) {
                 setOtpSent(true);
-                alert('OTP sent! Please check the server terminal.');
+                showSuccess('OTP Sent', 'Please check the server terminal.');
             } else {
                 const data = await res.json();
-                alert(data.error || 'Failed to send OTP');
+                showError('OTP Failed', data.error || 'Failed to send OTP');
             }
         } catch (error) {
             console.error(error);
-            alert('An error occurred');
+            showError('System Error', 'An error occurred while sending OTP.');
         } finally {
             setVerifying(false);
         }
@@ -126,7 +128,7 @@ export default function EditProfilePage() {
 
     const handleVerifyOtp = async () => {
         if (!otpCode || otpCode.length !== 6) {
-            alert('Please enter a valid 6-digit OTP');
+            showError('Invalid Code', 'Please enter a valid 6-digit OTP');
             return;
         }
         setVerifying(true);
@@ -137,18 +139,18 @@ export default function EditProfilePage() {
                 body: JSON.stringify({ phone: formData.phone, otp: otpCode })
             });
             if (res.ok) {
-                alert('Phone Verified Successfully!');
+                showSuccess('Phone Verified', 'Your number has been successfully verified!');
                 setOtpSent(false);
                 setOtpCode('');
                 await refreshUser(); // Update global auth state immediately
                 fetchUserData();
             } else {
                 const data = await res.json();
-                alert(data.error || 'Invalid OTP');
+                showError('Verification Failed', data.error || 'Invalid OTP');
             }
         } catch (error) {
             console.error(error);
-            alert('An error occurred');
+            showError('System Error', 'An error occurred during verification.');
         } finally {
             setVerifying(false);
         }
@@ -172,15 +174,15 @@ export default function EditProfilePage() {
             });
 
             if (res.ok) {
-                alert('Profile Updated Successfully');
+                showSuccess('Profile Updated', 'Your changes have been saved.');
                 router.push(`/profile/${user?.id || ''}`);
             } else {
                 const data = await res.json();
-                alert(data.error || 'Failed to update profile');
+                showError('Update Failed', data.error || 'Failed to update profile');
             }
         } catch (error) {
             console.error(error);
-            alert('An error occurred');
+            showError('System Error', 'An unexpected error occurred.');
             setSubmitting(false);
         }
     };
@@ -240,6 +242,7 @@ export default function EditProfilePage() {
                         folder="recircle/profiles"
                         currentImage={formData.profilePicture}
                         onUpload={(url) => setFormData(prev => ({ ...prev, profilePicture: url }))}
+                        onUploadingChange={setImageUploading}
                         imageClassName="w-32 h-32 rounded-full ring-4 ring-indigo-50 dark:ring-indigo-900/30"
                     />
                     <p className="mt-3 text-[10px] text-gray-400 font-medium">Clear photos build trust in the community</p>
@@ -444,16 +447,56 @@ export default function EditProfilePage() {
                         </button>
                         <button
                             type="submit"
-                            disabled={submitting || formData.name.trim().length < 3 || formData.name.trim().length > 30}
+                            disabled={submitting || imageUploading || formData.name.trim().length < 3 || formData.name.trim().length > 30}
                             className={`inline-flex justify-center rounded-md border border-transparent shadow-sm px-6 py-2 text-base font-medium text-white focus:outline-none sm:text-sm font-bold uppercase tracking-wide transition-all ${
-                                (submitting || formData.name.trim().length < 3 || formData.name.trim().length > 30) ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
+                                (submitting || imageUploading || formData.name.trim().length < 3 || formData.name.trim().length > 30) ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
                             }`}
                         >
-                            {submitting ? 'Saving...' : 'Save Improvements'}
+                            {imageUploading ? 'Uploading Photo...' : submitting ? 'Saving...' : 'Save Improvements'}
                         </button>
                     </div>
                 </div>
             </form>
+
+            <div className="mt-12 pt-8 border-t border-red-100 dark:border-red-900/30">
+                <div className="bg-red-50/50 dark:bg-red-900/10 rounded-2xl p-6 border border-red-100 dark:border-red-900/20">
+                    <h3 className="text-sm font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-2">Danger Zone</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 font-medium leading-relaxed">
+                        Deleting your account is permanent. All your listings, board posts, and profile data will be purged. 
+                        Messages and orders will only be kept if the other party is still active on the platform.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            const confirmed = await confirmAction({
+                                title: 'Delete Account?',
+                                text: 'This will permanently remove your marketplace presence and data. Are you absolutely sure?',
+                                dangerMode: true,
+                                confirmButtonText: 'Permanently Delete'
+                            });
+                            if (confirmed) {
+                                try {
+                                    const res = await fetch('/api/profile/data', { method: 'DELETE' });
+                                    const data = await res.json();
+                                    if (res.ok) {
+                                        showSuccess('Account Deleted', 'Proceeding to logout.');
+                                        setTimeout(() => {
+                                            window.location.href = '/auth';
+                                        }, 1500);
+                                    } else {
+                                        showError('Deletion Blocked', data.error || 'Failed to delete account');
+                                    }
+                                } catch (e) {
+                                    showError('System Error', 'Network error during account deletion.');
+                                }
+                            }
+                        }}
+                        className="px-6 py-3 bg-white dark:bg-gray-900 border-2 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-sm"
+                    >
+                        Delete My Account
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

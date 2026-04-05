@@ -138,7 +138,8 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [reportOpen, setReportOpen] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blocking, setBlocking] = useState(false);
-  const [cols, setCols] = useState<3 | 4 | 5>(4);
+  const [cols, setCols] = useState<2 | 3 | 4 | 5>(4);
+  const [mobileCols, setMobileCols] = useState<1 | 2>(2);
 
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') as TabKey;
@@ -288,7 +289,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const allPagination = pagination?.all;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors duration-300 overflow-x-hidden w-full">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-colors duration-300 overflow-x-clip w-full">
       {/* Profile Header */}
       <div className="bg-white/70 dark:bg-gray-800/40 backdrop-blur-xl rounded-[3rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-700/50 mb-10 overflow-hidden transition-all">
         <div className="p-8 sm:p-12 flex flex-col md:flex-row items-center md:items-start gap-10">
@@ -314,9 +315,9 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-5 gap-y-3 text-xs text-gray-500 dark:text-gray-400 mb-6">
               <span className="font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-lg">@{user.username || 'user'}</span>
-              <span className="flex items-center gap-2 font-black uppercase tracking-tight opacity-70">
+              <span className="flex items-center gap-2 font-black tracking-tight opacity-70">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                EST. {new Date(user.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()}
+                EST. {new Date(user.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
               </span>
             </div>
             
@@ -474,10 +475,20 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
             ))}
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 bg-gray-100/30 dark:bg-gray-800/30 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700">
-             {[3, 4, 5].map(v => (
-               <button key={v} onClick={() => setCols(v as 3 | 4 | 5)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-90 ${cols === v ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-100 dark:border-gray-700 italic' : 'text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>{v}x</button>
-             ))}
+          <div className="flex items-center gap-1.5 bg-gray-100/30 dark:bg-gray-800/30 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700">
+             {/* Mobile Toggles */}
+             <div className="flex sm:hidden items-center gap-1">
+                <button onClick={() => setMobileCols(1)} className={`w-10 h-10 flex items-center justify-center text-[10px] font-black rounded-xl transition-all ${mobileCols === 1 ? 'bg-white dark:bg-gray-700 text-indigo-600 shadow-sm border border-gray-100 dark:border-gray-700' : 'text-gray-400'}`}>1x</button>
+                <button onClick={() => setMobileCols(2)} className={`w-10 h-10 flex items-center justify-center text-[10px] font-black rounded-xl transition-all ${mobileCols === 2 ? 'bg-white dark:bg-gray-700 text-indigo-600 shadow-sm border border-gray-100 dark:border-gray-700' : 'text-gray-400'}`}>2x</button>
+             </div>
+             
+             {/* Tablet/Desktop Toggles */}
+             <div className="hidden sm:flex items-center gap-1.5">
+               <button onClick={() => setCols(2)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-90 ${cols === 2 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-100 dark:border-gray-700 italic' : 'text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>2x</button>
+               <button onClick={() => setCols(3)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-90 ${cols === 3 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-100 dark:border-gray-700 italic' : 'text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>3x</button>
+               <button onClick={() => setCols(4)} className={`hidden lg:block px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-90 ${cols === 4 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-100 dark:border-gray-700 italic' : 'text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>4x</button>
+               <button onClick={() => setCols(5)} className={`hidden lg:block px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-90 ${cols === 5 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-100 dark:border-gray-700 italic' : 'text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>5x</button>
+             </div>
           </div>
         </div>
 
@@ -486,7 +497,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
             {allItems.length === 0 ? (
               <div className="text-center py-16 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-800 transition-colors"><p className="text-gray-500 dark:text-gray-400 text-sm italic">No items found.</p></div>
             ) : (
-              <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6'}>
+              <div className={`grid gap-3 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${
+                cols === 2 ? 'sm:grid-cols-2' : 
+                cols === 3 ? 'sm:grid-cols-3' : 
+                cols === 4 ? 'sm:grid-cols-4' : 
+                'sm:grid-cols-5'
+              }`}>
                 {sectionLoading ? ([...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)) : (allItems.map((item: any) => (item.type === 'product' ? <ProductCard key={item._id} product={item} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} /> : <ServiceCard key={item._id} service={item} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} />)))}
               </div>
             )}
@@ -503,7 +519,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
             ) : (
               <>
-                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6'}>
+                <div className={`grid gap-3 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${
+                cols === 2 ? 'sm:grid-cols-2' : 
+                cols === 3 ? 'sm:grid-cols-3' : 
+                cols === 4 ? 'sm:grid-cols-4' : 
+                'sm:grid-cols-5'
+              }`}>
                   {sectionLoading ? ([...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)) : (products.map((product: any) => (<ProductCard key={product._id} product={product} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} />)))}
                 </div>
                 <PaginationControls page={productPage} totalPages={productPagination?.totalPages || 1} onPageChange={setProductPage} scrollTargetId="listings-top" />
@@ -521,7 +542,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
             ) : (
               <>
-                <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6'}>
+                <div className={`grid gap-3 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${
+                cols === 2 ? 'sm:grid-cols-2' : 
+                cols === 3 ? 'sm:grid-cols-3' : 
+                cols === 4 ? 'sm:grid-cols-4' : 
+                'sm:grid-cols-5'
+              }`}>
                   {sectionLoading ? ([...Array(cols * 2)].map((_, i) => <ItemCardSkeleton key={i} />)) : (services.map((service: any) => (<ServiceCard key={service._id} service={service} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} />)))}
                 </div>
                 <PaginationControls page={servicePage} totalPages={servicePagination?.totalPages || 1} onPageChange={setServicePage} scrollTargetId="listings-top" />

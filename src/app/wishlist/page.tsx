@@ -13,7 +13,8 @@ import { ItemCardSkeleton, WishlistPageSkeleton, ItemsGridSkeleton } from '@/com
 function WishlistPageContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [cols, setCols] = useState<3 | 4 | 5>(4);
+  const [cols, setCols] = useState<2 | 3 | 4 | 5>(4);
+  const [mobileCols, setMobileCols] = useState<1 | 2>(2);
 
   const { data, error, isLoading } = useSWR(user ? '/api/wishlist' : null);
   const wishlist = data?.wishlist || [];
@@ -46,7 +47,7 @@ function WishlistPageContent() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 transition-colors duration-500">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 transition-colors duration-500 overflow-x-clip">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12">
         <div className="flex flex-col gap-2">
             <h1 className="text-4xl sm:text-5xl font-black text-gray-950 dark:text-white tracking-tighter italic leading-none">
@@ -55,17 +56,31 @@ function WishlistPageContent() {
             <p className="text-gray-500 dark:text-gray-400 font-bold tracking-tight">Saved items and services for quick access.</p>
         </div>
         
-        <div className="hidden sm:flex items-center gap-1.5 p-1.5 bg-gray-200/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-[1.5rem] border border-white/50 dark:border-gray-700/50 shadow-inner overflow-hidden flex-shrink-0">
-           <button onClick={() => setCols(3)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${cols === 3 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5 italic' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent'}`}>3 Wide</button>
-           <button onClick={() => setCols(4)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${cols === 4 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5 italic' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent'}`}>4 Wide</button>
-           <button onClick={() => setCols(5)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${cols === 5 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5 italic' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent'}`}>5 Wide</button>
+        <div className="flex items-center gap-1.5 p-1.5 bg-gray-200/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-[1.5rem] border border-white/50 dark:border-gray-700/50 shadow-inner overflow-hidden flex-shrink-0">
+           {/* Mobile Controls */}
+           <div className="flex sm:hidden items-center gap-1">
+              <button onClick={() => setMobileCols(1)} className={`w-10 h-10 flex items-center justify-center text-[10px] font-black rounded-xl transition-all ${mobileCols === 1 ? 'bg-white dark:bg-gray-700 text-indigo-600 shadow-sm' : 'text-gray-400'}`}>1x</button>
+              <button onClick={() => setMobileCols(2)} className={`w-10 h-10 flex items-center justify-center text-[10px] font-black rounded-xl transition-all ${mobileCols === 2 ? 'bg-white dark:bg-gray-700 text-indigo-600 shadow-sm' : 'text-gray-400'}`}>2x</button>
+           </div>
+           
+           <div className="hidden sm:flex items-center gap-1">
+              <button onClick={() => setCols(2)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${cols === 2 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5 italic' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent'}`}>2 Wide</button>
+              <button onClick={() => setCols(3)} className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${cols === 3 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5 italic' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent'}`}>3 Wide</button>
+              <button onClick={() => setCols(4)} className={`hidden lg:block px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${cols === 4 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5 italic' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent'}`}>4 Wide</button>
+              <button onClick={() => setCols(5)} className={`hidden lg:block px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${cols === 5 ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5 italic' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent'}`}>5 Wide</button>
+           </div>
         </div>
       </div>
       
       {isLoading && wishlist.length === 0 ? (
         <ItemsGridSkeleton count={8} cols={cols} />
       ) : wishlist.length > 0 ? (
-        <div className={cols === 3 ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-6' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-6' : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6'}>
+        <div className={`grid gap-3 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${
+            cols === 2 ? 'sm:grid-cols-2' : 
+            cols === 3 ? 'sm:grid-cols-3' : 
+            cols === 4 ? 'sm:grid-cols-4' : 
+            'sm:grid-cols-5'
+          }`}>
           {wishlist.map((item: any) => (
             item.itemType === 'product' ? (
               <ProductCard key={item._id} product={item} />
