@@ -23,18 +23,24 @@ export async function POST(req: NextRequest) {
 
         const query: any = { 
             reporter: new mongoose.Types.ObjectId(decoded.userId), 
-            targetUser: new mongoose.Types.ObjectId(targetUserId) 
+            targetUser: new mongoose.Types.ObjectId(targetUserId),
+            itemType
         };
         
         if (itemType !== 'none' && itemId) {
             query.itemId = new mongoose.Types.ObjectId(itemId);
         } else {
-            query.itemId = { $exists: false }; // Specifically search for user-only reports
+            // For general user reports, ensure we only allow one per reporter-target pair
+            query.$or = [{ itemId: { $exists: false } }, { itemId: null }];
         }
+
+        // Only block if a report is currently 'Pending'. 
+        // This allows re-reporting if the previous report was 'Reviewed' or 'Dismissed'.
+        query.status = 'Pending';
 
         const existing = await Report.findOne(query);
         if (existing) {
-            return NextResponse.json({ error: 'You have already submitted this report.' }, { status: 409 });
+            return NextResponse.json({ error: 'You already have an active pending report for this. Please wait for our team to review it.' }, { status: 409 });
         }
 
         await Report.create({

@@ -100,6 +100,15 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             }, { status: 400 });
         }
 
+        // --- DELETION GUARD (REPORTS) ---
+        const Report = (await import('@/models/Report')).default;
+        const activeReport = await Report.findOne({ itemId: id, itemType: 'product', status: 'Pending' });
+        if (activeReport) {
+            return NextResponse.json({
+                error: 'Cannot delete this product because it has been reported and is currently under review by moderation.'
+            }, { status: 400 });
+        }
+
         // Cascade: Decline all pending offers and update their message bubbles
         const Offer = (await import('@/models/Offer')).default;
         const Message = (await import('@/models/Message')).default;
@@ -110,15 +119,20 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             await Message.updateMany({ 'offer.offerId': { $in: offerIds } }, { $set: { 'offer.status': 'Declined' } });
         }
 
-        // Cleanup Cloudinary Storage
+        // Delete from DB First to prevent broken UI if DB fails
+        await Product.findByIdAndDelete(id);
+
+        // Cleanup Cloudinary Storage only after DB delete is successful
         if (product.images && product.images.length > 0) {
-            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-            for (const img of product.images) {
-                await deleteFromCloudinary(img);
+            try {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                for (const img of product.images) {
+                    await deleteFromCloudinary(img).catch(() => null); // non-blocking error for individual images
+                }
+            } catch (e) {
+                console.error("Cloudinary cleanup failed after product deletion", e);
             }
         }
-
-        await Product.findByIdAndDelete(id);
         return NextResponse.json({ message: 'Product deleted' }, { status: 200 });
 
     } catch (error: any) {

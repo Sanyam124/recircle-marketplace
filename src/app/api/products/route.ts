@@ -46,12 +46,15 @@ export async function POST(req: NextRequest) {
         if (description.length > 2000) return NextResponse.json({ error: 'Description must be 2000 characters or less' }, { status: 400 });
 
         const imageUrls: string[] = [];
+        const newlyUploadedUrls: string[] = [];
+
         if (images && Array.isArray(images)) {
             for (const img of images) {
                 if (img.startsWith('data:image')) {
                     try {
                         const url = await uploadToCloudinary(img, 'recircle/products');
                         imageUrls.push(url);
+                        newlyUploadedUrls.push(url);
                     } catch (e) {
                         console.error('Image upload failed, falling back to base64', e);
                         imageUrls.push(img);
@@ -62,25 +65,36 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const product = await Product.create({
-            seller: user.userId,
-            title,
-            description,
-            forSell,
-            forRent,
-            price,
-            rentPrice,
-            rentUnit,
-            category,
-            condition,
-            images: imageUrls,
-            status: 'Available',
-            visibility: visibility === 'Community' ? 'Community' : 'Public',
-            community: communityId || (user.verifiedCommunities?.length > 0 ? user.verifiedCommunities[0] : undefined),
-            location: visibility === 'Public' ? location : undefined
-        });
+        try {
+            const product = await Product.create({
+                seller: user.userId,
+                title,
+                description,
+                forSell,
+                forRent,
+                price,
+                rentPrice,
+                rentUnit,
+                category,
+                condition,
+                images: imageUrls,
+                status: 'Available',
+                visibility: visibility === 'Community' ? 'Community' : 'Public',
+                community: communityId || (user.verifiedCommunities?.length > 0 ? user.verifiedCommunities[0] : undefined),
+                location: visibility === 'Public' ? location : undefined
+            });
 
-        return NextResponse.json({ product }, { status: 201 });
+            return NextResponse.json({ product }, { status: 201 });
+        } catch (dbError: any) {
+            // Rollback Cloudinary uploads if DB fails
+            if (newlyUploadedUrls.length > 0) {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                for (const url of newlyUploadedUrls) {
+                    await deleteFromCloudinary(url).catch(() => null);
+                }
+            }
+            throw dbError; // propagate to outer catch
+        }
 
     } catch (error: any) {
         console.error('Create Product Error:', error);

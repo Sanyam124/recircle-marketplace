@@ -98,6 +98,15 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             }, { status: 400 });
         }
         
+        // --- DELETION GUARD (REPORTS) ---
+        const Report = (await import('@/models/Report')).default;
+        const activeReport = await Report.findOne({ itemId: id, itemType: 'service', status: 'Pending' });
+        if (activeReport) {
+            return NextResponse.json({
+                error: 'Cannot delete this service because it has been reported and is currently under review by moderation.'
+            }, { status: 400 });
+        }
+        
         // Cascade: Decline all pending offers and update their message bubbles
         const Offer = (await import('@/models/Offer')).default;
         const Message = (await import('@/models/Message')).default;
@@ -108,15 +117,20 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             await Message.updateMany({ 'offer.offerId': { $in: offerIds } }, { $set: { 'offer.status': 'Declined' } });
         }
 
-        // Cleanup Cloudinary Storage
+        // DB Delete First
+        await Service.findByIdAndDelete(id);
+
+        // Cleanup Cloudinary Storage after DB delete
         if (service.images && service.images.length > 0) {
-            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-            for (const img of service.images) {
-                await deleteFromCloudinary(img);
+            try {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                for (const img of service.images) {
+                    await deleteFromCloudinary(img).catch(() => null);
+                }
+            } catch(e) {
+                console.error("Cloudinary cleanup failed after service deletion", e);
             }
         }
-
-        await Service.findByIdAndDelete(id);
 
         return NextResponse.json({ message: 'Service deleted' }, { status: 200 });
 

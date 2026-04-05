@@ -23,8 +23,8 @@ const ReportSchema: Schema<IReport> = new Schema(
     { timestamps: true }
 );
 
-// Prevent double-reporting same user-item combination by same user
-ReportSchema.index({ reporter: 1, targetUser: 1, itemId: 1 }, { unique: true });
+// Add index for faster queries (no unique constraint to allow reporting again when closed)
+ReportSchema.index({ reporter: 1, targetUser: 1, itemId: 1 });
 
 const Report: Model<IReport> =
     mongoose.models.Report || mongoose.model<IReport>('Report', ReportSchema);
