@@ -8,6 +8,7 @@ interface ImageUploadProps {
   label?: string;
   folder?: string;
   onUpload: (url: string) => void;
+  onUploadingChange?: (uploading: boolean) => void;
   currentImage?: string;
   className?: string; // Container style
   imageClassName?: string; // Preview image style
@@ -22,6 +23,7 @@ export default function ImageUpload({
   label = 'Upload Image',
   folder = 'recircle/general',
   onUpload,
+  onUploadingChange,
   currentImage,
   className = '',
   imageClassName = 'w-32 h-32 rounded-full',
@@ -38,6 +40,7 @@ export default function ImageUpload({
 
     try {
       setIsUploading(true);
+      onUploadingChange?.(true);
 
       // 1. Compress Image
       const compressedFile = await imageCompression(file, {
@@ -54,7 +57,7 @@ export default function ImageUpload({
         const base64data = reader.result as string;
         setPreview(base64data); // Show local preview instantly
 
-        // 3. Send to API
+        // Upload to Cloudinary immediately for fast saves
         const res = await fetch('/api/upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -63,19 +66,20 @@ export default function ImageUpload({
 
         if (res.ok) {
           const { url } = await res.json();
-          setPreview(url); // Update to final Cloudinary URL
-          onUpload(url); // Notify parent
+          setPreview(url);
+          onUpload(url);
         } else {
-          console.error('Failed to upload via API');
-          // Fallback: reset preview if upload failed
+          console.error('Upload failed');
           setPreview(currentImage);
         }
         setIsUploading(false);
+        onUploadingChange?.(false);
       };
 
     } catch (error) {
       console.error('Image compression failed', error);
       setIsUploading(false);
+      onUploadingChange?.(false);
     }
   };
 

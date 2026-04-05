@@ -84,14 +84,16 @@ export default function Navbar() {
           <div className="flex">
             <Link href="/" className="flex-shrink-0 flex items-center gap-2 group">
               <Image 
-                src="/logo_nav.png" 
+                src="/logo_main.png" 
                 alt="ReCircle" 
-                width={140} 
+                width={40} 
                 height={40} 
                 priority
-                className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
-                style={{ height: 'auto', width: '140px' }}
+                className="h-9 w-auto object-contain transition-transform group-hover:scale-110"
               />
+              <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-white font-outfit">
+                ReCircle
+              </span>
             </Link>
             <div className="hidden md:ml-6 md:flex md:space-x-8">
               <Link href="/explore" className="text-gray-900 dark:text-gray-300 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-indigo-500 dark:hover:text-white text-sm font-medium transition-colors">

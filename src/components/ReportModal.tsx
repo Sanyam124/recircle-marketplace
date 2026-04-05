@@ -36,7 +36,12 @@ export default function ReportModal({ targetUserId, itemType, itemId, onClose }:
       const res = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUserId, itemType, itemId, reason: finalReason }),
+        body: JSON.stringify({ 
+          targetUserId, 
+          itemType: itemType || 'none', 
+          itemId: itemId || null, 
+          reason: finalReason 
+        }),
       });
       const data = await res.json();
       if (res.ok) { setDone(true); }

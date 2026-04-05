@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { showError, showSuccess } from '@/lib/confirm';
 import { useAuth } from '@/context/AuthContext';
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -48,7 +49,7 @@ export default function PushNotificationManager() {
 
   const subscribeToPush = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      alert('Push notifications require HTTPS or localhost.\n\nOn mobile over local WiFi (HTTP), push notifications are blocked by the browser. They will work once deployed to a real HTTPS domain.\n\nOn desktop, use http://localhost:3000');
+      showError('Security Block', 'Push notifications require HTTPS or localhost.\n\nOn mobile over local WiFi (HTTP), push notifications are blocked by the browser. They will work once deployed to a real HTTPS domain.');
       return;
     }
 
@@ -56,7 +57,7 @@ export default function PushNotificationManager() {
       // Step 1: Ask permission
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        alert('Notification permission denied.\n\nClick the lock icon in the address bar → Site settings → Notifications → Allow');
+        showError('Permission Denied', 'Notification permission denied.\n\nClick the lock icon in the address bar → Site settings → Notifications → Allow');
         return;
       }
 
@@ -119,14 +120,14 @@ export default function PushNotificationManager() {
       }
 
       if (!registration || !registration.active) {
-         alert('Browser failed to activate the Service Worker. Please press Ctrl+Shift+R to hard refresh.');
+         showError('Service Worker Error', 'Browser failed to activate the Service Worker. Please press Ctrl+Shift+R to hard refresh.');
          return;
       }
 
       // Step 3: Subscribe
       const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!vapidKey) {
-        alert('VAPID key is missing. Please rebuild the app.');
+        showError('Config Error', 'VAPID key is missing. Please rebuild the app.');
         return;
       }
 
@@ -169,11 +170,11 @@ export default function PushNotificationManager() {
 
       if (!res.ok) throw new Error('Server failed to save subscription');
 
-      alert('✅ Desktop notifications enabled!');
+      showSuccess('Enabled', 'Desktop notifications enabled!');
 
     } catch (err: any) {
       console.error('Push subscription failed:', err);
-      alert('Notification Error: ' + (err.message || 'Unknown error'));
+      showError('Notification Error', err.message || 'Unknown error');
     }
   }, []);
 
@@ -183,7 +184,7 @@ export default function PushNotificationManager() {
         await subscriptionRef.current.unsubscribe();
         setSubscription(null);
         await fetch('/api/notifications/subscribe', { method: 'DELETE' });
-        alert('Desktop notifications disabled.');
+        showSuccess('Disabled', 'Desktop notifications disabled.');
       }
     } catch (err: any) {
       console.error('Unsubscribe failed:', err);

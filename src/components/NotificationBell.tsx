@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { showError, showSuccess } from '@/lib/confirm';
 import useSWR, { useSWRConfig } from 'swr';
 
 interface NotificationItem {
@@ -152,12 +153,12 @@ export default function NotificationBell() {
                                         if ((window as any).subscribeToPush) {
                                             await (window as any).subscribeToPush();
                                         } else {
-                                            alert('Push notifications are not available. Please refresh the page or use Chrome/Edge.');
+                                            showError('Desktop Notifications Not Available', 'Push notifications are not available. Please refresh the page or use Chrome/Edge.');
                                         }
                                     }
                                 } catch (err: any) {
                                     console.error('Push toggle error:', err);
-                                    alert('Error: ' + (err.message || 'Unknown error'));
+                                    showError('Notification Error', err.message || 'Unknown error');
                                 }
                                 setIsOpen(false);
                                 setTimeout(() => setIsOpen(true), 100);
