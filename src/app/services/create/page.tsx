@@ -41,6 +41,7 @@ export default function CreateServicePage() {
   const [fetchingLocation, setFetchingLocation] = useState(false);
 
   const [images, setImages] = useState<string[]>([]);
+  const [imageProcessing, setImageProcessing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -87,6 +88,7 @@ export default function CreateServicePage() {
         return;
       }
 
+      setImageProcessing(true);
       const options = {
         maxSizeMB: 0.8,
         maxWidthOrHeight: 1080,
@@ -106,6 +108,7 @@ export default function CreateServicePage() {
           setError('Failed to process one or more images');
         }
       }
+      setImageProcessing(false);
     }
   };
 
@@ -190,28 +193,28 @@ export default function CreateServicePage() {
             <div className="sm:col-span-2">
               <label htmlFor="price" className="block text-sm font-medium text-gray-700">Price (₹)</label>
               <div className="relative mt-1 rounded-md shadow-sm">
-                <input
-                  type="number"
-                  name="price"
-                  id="price"
-                  required
-                  min="0"
-                  max="100000"
-                  step="1"
-                  className={`block w-full rounded-md pr-12 sm:text-sm h-10 px-3 border text-gray-900 bg-white ${
-                    formData.price && Number(formData.price) > 100000 ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
-                  }`}
-                  value={formData.price}
-                  onInput={(e: React.FormEvent<HTMLInputElement>) => {
-                    const val = e.currentTarget.value;
-                    if (val.length > 6) e.currentTarget.value = val.slice(0, 6);
-                  }}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (!/^\d*$/.test(val)) return;
-                    setFormData({ ...formData, price: val });
-                  }}
-                />
+                  <input
+                    type="number"
+                    name="price"
+                    id="price"
+                    required
+                    min="0"
+                    max="100000"
+                    step="1"
+                    className={`block w-full rounded-md pr-12 sm:text-sm h-10 px-3 border text-gray-900 bg-white ${
+                      formData.price && Number(formData.price) > 100000 ? 'border-red-500 focus:border-red-500 ' : 'border-gray-300 focus:border-indigo-500 '
+                    }`}
+                    value={formData.price}
+                    onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
+                    onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                      const val = e.currentTarget.value;
+                      if (val.length > 6) e.currentTarget.value = val.slice(0, 6);
+                    }}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setFormData({ ...formData, price: val });
+                    }}
+                  />
               </div>
               <p className="mt-1 text-[10px] text-gray-500">Max limit: ₹100,000</p>
               {formData.price && Number(formData.price) > 100000 && (
@@ -430,10 +433,10 @@ export default function CreateServicePage() {
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.price || !formData.availability || Number(formData.price) < 0 || Number(formData.price) > 100000}
+              disabled={loading || imageProcessing || !formData.price || !formData.availability || Number(formData.price) < 0 || Number(formData.price) > 100000}
               className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'List Service'}
+              {imageProcessing ? 'Processing Images...' : loading ? 'Creating...' : 'List Service'}
             </button>
           </div>
         </form>

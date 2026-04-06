@@ -53,7 +53,7 @@ export default function Home() {
   };
 
     return (
-      <div className="bg-white dark:bg-gray-900 transition-colors duration-300 min-h-screen">
+      <div className="bg-white dark:bg-gray-900 transition-colors duration-300 min-h-screen overflow-x-clip">
         {/* 
           HERO SECTION 
           - Centered, Symmetrical, Modern Gradient

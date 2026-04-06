@@ -39,15 +39,39 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Name and email domains array are required' }, { status: 400 });
         }
 
-        const community = await Community.create({
-            name,
-            emailDomains: emailDomains.map(d => d.toLowerCase().trim()),
-            description,
-            image,
-            isActive: true
-        });
+        let finalImageUrl = image;
+        let imageUploaded = false;
+        if (image && image.startsWith('data:image')) {
+            try {
+                const { uploadToCloudinary } = await import('@/lib/cloudinary');
+                finalImageUrl = await uploadToCloudinary(image, 'recircle/communities');
+                imageUploaded = true;
+            } catch (e) {
+                console.error('Failed to upload community image:', e);
+                return NextResponse.json({ error: 'Failed to process image' }, { status: 500 });
+            }
+        }
 
-        return NextResponse.json({ community }, { status: 201 });
+        try {
+            const community = await Community.create({
+                name,
+                emailDomains: emailDomains.map(d => d.toLowerCase().trim()),
+                description,
+                image: finalImageUrl,
+                isActive: true
+            });
+
+            return NextResponse.json({ community }, { status: 201 });
+        } catch (dbError: any) {
+             if (imageUploaded && finalImageUrl) {
+                 try {
+                     const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                     await deleteFromCloudinary(finalImageUrl);
+                 } catch (e) {}
+             }
+             throw dbError;
+        }
+
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -63,8 +87,35 @@ export async function DELETE(req: NextRequest) {
 
         if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-        await Community.findByIdAndDelete(id);
-        return NextResponse.json({ message: 'Community deleted successfully' });
+        const community = await Community.findById(id);
+        if (community && community.image) {
+            try {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await deleteFromCloudinary(community.image);
+            } catch (e) {
+                console.error('Failed to cleanup community image:', e);
+            }
+        }
+
+        // --- CASCADE CLEANUP ---
+        const Product = (await import('@/models/Product')).default;
+        const Service = (await import('@/models/Service')).default;
+
+        await Promise.all([
+            // 1. Pull community from all Users' verified profiles
+            User.updateMany(
+                { verifiedCommunities: id },
+                { $pull: { verifiedCommunities: id } }
+            ),
+            // 2. Delete all products and services in this community (as they can no longer be reached)
+            // Note: In a production app, we might just mark them as 'inactive', but for Zero-Retention we purge.
+            Product.deleteMany({ community: id }),
+            Service.deleteMany({ community: id }),
+            // 3. Finally delete the community
+            Community.findByIdAndDelete(id)
+        ]);
+
+        return NextResponse.json({ message: 'Community and its listings deleted successfully' });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

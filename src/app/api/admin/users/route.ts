@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
+import Product from '@/models/Product';
+import Service from '@/models/Service';
+import BoardPost from '@/models/BoardPost';
+import Order from '@/models/Order';
+import Review from '@/models/Review';
+import Message from '@/models/Message';
+import Notification from '@/models/Notification';
+import Report from '@/models/Report';
+import VerificationRequest from '@/models/VerificationRequest';
+import Offer from '@/models/Offer';
 import { verifyToken } from '@/lib/auth';
 
 // Helper to check if user is admin
@@ -54,8 +64,6 @@ export async function GET(req: NextRequest) {
 
         // Batch-count listings per user
         const userIds = users.map((u: any) => u._id);
-        const Product = (await import('@/models/Product')).default;
-        const Service = (await import('@/models/Service')).default;
 
         const [productCounts, serviceCounts] = await Promise.all([
             Product.aggregate([
@@ -207,121 +215,84 @@ export async function DELETE(req: NextRequest) {
             console.log('User already blacklisted or duplicate found during erasure.');
         }
 
-        // 1. Delete user's products and their Cloudinary images
-        try {
-            const Product = (await import('@/models/Product')).default;
-            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-            const products = await Product.find({ seller: userId });
-            for (const p of products) {
-                if (p.images?.length) {
-                    for (const img of p.images) {
-                        try { await deleteFromCloudinary(img); } catch {}
-                    }
-                }
-            }
-            await Product.deleteMany({ seller: userId });
-        } catch (e) { console.error('Product cleanup failed:', e); }
+        // Step 1: Collect ALL targets for Cloudinary cleanup BEFORE database deletion
+        const productsFetched = await Product.find({ seller: userId }).select('images');
+        const servicesFetched = await Service.find({ provider: userId }).select('images');
+        
+        const imagesToDelete: string[] = [];
+        if (user.profilePicture) imagesToDelete.push(user.profilePicture);
+        productsFetched.forEach(p => p.images?.forEach((img: string) => imagesToDelete.push(img)));
+        servicesFetched.forEach(s => s.images?.forEach((img: string) => imagesToDelete.push(img)));
 
-        // 2. Delete user's services and their Cloudinary images
-        try {
-            const Service = (await import('@/models/Service')).default;
-            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-            const services = await Service.find({ provider: userId });
-            for (const s of services) {
-                if (s.images?.length) {
-                    for (const img of s.images) {
-                        try { await deleteFromCloudinary(img); } catch {}
-                    }
-                }
-            }
-            await Service.deleteMany({ provider: userId });
-        } catch (e) { console.error('Service cleanup failed:', e); }
+        // Step 2: Perform Shared Records Lifecycle Checks (Orders/Messages)
+        // Only delete if the OTHER participant is also gone
+        const [privateOrders, privateMessages] = await Promise.all([
+            Order.find({ $or: [{ buyer: userId }, { seller: userId }] }).lean(),
+            Message.find({ $or: [{ sender: userId }, { recipient: userId }] }).lean()
+        ]);
 
-        // 3. Delete user's Board Posts
+        const sharedRecordsToDelete = {
+            orders: [] as any[],
+            messages: [] as any[]
+        };
+
+        await Promise.all([
+            ...privateOrders.map(async (order: any) => {
+                const otherPartyId = order.buyer.toString() === userId.toString() ? order.seller : order.buyer;
+                const otherExists = await User.exists({ _id: otherPartyId });
+                if (!otherExists) sharedRecordsToDelete.orders.push(order._id);
+            }),
+            ...privateMessages.map(async (msg: any) => {
+                const recipientId = msg.sender.toString() === userId.toString() ? msg.recipient : msg.sender;
+                const otherExists = await User.exists({ _id: recipientId });
+                if (!otherExists) sharedRecordsToDelete.messages.push(msg._id);
+            })
+        ]);
+
+        // Step 3: Perform ALL Database Deletions (DB FIRST)
+        const dbOperations = [
+            Product.deleteMany({ seller: userId }),
+            Service.deleteMany({ provider: userId }),
+            BoardPost.deleteMany({ author: userId }),
+            Offer.deleteMany({ $or: [{ buyer: userId }, { seller: userId }] }),
+            Review.deleteMany({ reviewer: userId }), // Remove reviews they WROTE
+            Notification.deleteMany({ $or: [{ recipient: userId }, { sender: userId }] }),
+            Report.deleteMany({ $or: [{ reporter: userId }, { targetUser: userId }] }),
+            VerificationRequest.deleteMany({ user: userId }),
+            User.findByIdAndDelete(userId)
+        ];
+
+        if (sharedRecordsToDelete.orders.length > 0) {
+            dbOperations.push(Order.deleteMany({ _id: { $in: sharedRecordsToDelete.orders } }) as any);
+        }
+        if (sharedRecordsToDelete.messages.length > 0) {
+            dbOperations.push(Message.deleteMany({ _id: { $in: sharedRecordsToDelete.messages } }) as any);
+        }
+
+        await Promise.all(dbOperations);
+
+        // Step 3: Global Board Post Cleanup (Pulling references)
         try {
-            const BoardPost = (await import('@/models/BoardPost')).default;
-            // First, delete posts written by the user
-            await BoardPost.deleteMany({ author: userId });
-            
-            // Second, remove their replies from other people's posts
             await BoardPost.updateMany(
                 { 'replies.author': userId },
                 { $pull: { replies: { author: userId } } }
             );
-            
-            // Third, remove their upvotes from other people's posts
             await BoardPost.updateMany(
                 { upvotes: userId },
                 { $pull: { upvotes: userId } }
             );
-        } catch (e) { console.error('BoardPost cleanup failed:', e); }
+        } catch (e) {}
 
-        // 4. Handle Active Orders Cleanup 
-        try {
-            const Order = (await import('@/models/Order')).default;
-            const Product = (await import('@/models/Product')).default;
-            const activeOrders = await Order.find({
-                $or: [{ buyer: userId }, { seller: userId }],
-                status: 'Scheduled'
-            });
-            for (const order of activeOrders) {
-                // Return someone else's product if THIS user was the buyer
-                if (order.buyer.toString() === userId.toString() && order.product) {
-                    await Product.updateOne(
-                        { _id: order.product, status: 'Reserved' },
-                        { $set: { status: 'Available' } }
-                    );
-                }
-            }
-            await Order.deleteMany({ $or: [{ buyer: userId }, { seller: userId }] });
-        } catch (e) { console.error('Order cleanup failed:', e); }
-
-        // 5. Cleanup Offers (Sent and Received)
-        try {
-            const Offer = (await import('@/models/Offer')).default;
-            await Offer.deleteMany({ $or: [{ buyer: userId }, { seller: userId }] });
-        } catch (e) { console.error('Offer cleanup failed:', e); }
-
-        // 6. Cleanup Reviews (Written and Received)
-        try {
-            const Review = (await import('@/models/Review')).default;
-            await Review.deleteMany({ $or: [{ reviewer: userId }, { target: userId }] });
-        } catch (e) { console.error('Review cleanup failed:', e); }
-
-        // 7. Cleanup Messages
-        try {
-            const Message = (await import('@/models/Message')).default;
-            await Message.deleteMany({ $or: [{ sender: userId }, { receiver: userId }] });
-        } catch (e) { console.error('Message cleanup failed:', e); }
-
-        // 8. Cleanup Notifications
-        try {
-            const Notification = (await import('@/models/Notification')).default;
-            await Notification.deleteMany({ $or: [{ userId: userId }, { senderId: userId }] });
-        } catch (e) { console.error('Notification cleanup failed:', e); }
-
-        // 9. Cleanup Reports (Filed by the user or against them)
-        try {
-            const Report = (await import('@/models/Report')).default;
-            await Report.deleteMany({ $or: [{ reporter: userId }, { targetUser: userId }] });
-        } catch (e) { console.error('Report cleanup failed:', e); }
-
-        // 10. Cleanup Verification Requests
-        try {
-            const VerificationRequest = (await import('@/models/VerificationRequest')).default;
-            await VerificationRequest.deleteMany({ user: userId });
-        } catch (e) { console.error('VerificationRequest cleanup failed:', e); }
-
-        // 11. Delete user's profile picture from cloudinary
-        if (user.profilePicture) {
+        // Step 4: Trigger Cloudinary Cleanup AFTER successful DB removal
+        if (imagesToDelete.length > 0) {
             try {
                 const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-                await deleteFromCloudinary(user.profilePicture);
-            } catch {}
+                // Use Promise.all with catch to ensure we attempt to delete all images even if some fail
+                await Promise.all(imagesToDelete.map(img => deleteFromCloudinary(img).catch(() => null)));
+            } catch (e) {
+                console.error('Admin deletion Cloudinary cleanup failed:', e);
+            }
         }
-
-        // 12. Finally delete the user account
-        await User.findByIdAndDelete(userId);
 
         return NextResponse.json({ success: true }, { status: 200 });
 

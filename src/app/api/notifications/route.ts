@@ -29,13 +29,26 @@ export async function GET(req: NextRequest) {
             .populate('sender', 'name')
             .lean();
 
+        // BACKGROUND CLEANUP: "Lazy Garbage Collection" for orphaned notifications
+        const currentNotifications = notifications.filter((n: any) => n.sender !== null);
+        const orphanedNotificationIds = notifications
+            .filter((n: any) => n.sender === null)
+            .map((n: any) => n._id);
+
+        if (orphanedNotificationIds.length > 0) {
+            // Silently prune dead notifications from the DB
+            Notification.deleteMany({ _id: { $in: orphanedNotificationIds } }).catch(e => 
+                console.error('Lazy Notification Cleanup Failed:', e)
+            );
+        }
+
         return NextResponse.json({
-            notifications,
-            unreadCount,
+            notifications: currentNotifications,
+            unreadCount: unreadCount - orphanedNotificationIds.length,
             pagination: {
                 currentPage: page,
                 totalPages,
-                totalNotifications: unreadCount,
+                totalNotifications: unreadCount - orphanedNotificationIds.length,
                 hasMore: page < totalPages
             }
         }, { status: 200 });

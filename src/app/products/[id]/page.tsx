@@ -11,7 +11,7 @@ import ReportModal from '@/components/ReportModal';
 import ReviewSection from '@/components/ReviewSection';
 import ExpandableText from '@/components/ExpandableText';
 import Image from 'next/image';
-import { confirmAction } from '@/lib/confirm';
+import { confirmAction, showError } from '@/lib/confirm';
 import { formatTimeAgo } from '@/lib/utils';
 
 interface Product {
@@ -106,6 +106,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         setProduct(data.product);
       } else if (res.status === 403) {
         setIsBlocked(true);
+      } else {
+        setProduct(null);
       }
     } catch (error) {
       console.error('Failed to fetch product', error);
@@ -147,9 +149,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       });
       if (res.ok) {
         router.push('/explore');
+      } else {
+        const errorData = await res.json();
+        showError('Deletion Blocked', errorData.error || 'Failed to delete listing.');
+        setIsDeleting(false);
       }
     } catch (error) {
       console.error('Failed to delete product', error);
+      showError('System Error', 'An unexpected error occurred. Please try again.');
       setIsDeleting(false);
     }
   };
@@ -168,15 +175,44 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0-6V9m0 12a9 9 0 110-18 9 9 0 010 18z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4">Access Denied</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg mb-8">You are blocked from viewing this listing.</p>
-          <button onClick={() => router.back()} className="px-8 py-3 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg active:scale-95">Go Back</button>
+          <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4 uppercase tracking-tight">Access Restricted</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto leading-relaxed">
+            Due to privacy settings, you cannot view this product or its creator at this time.
+          </p>
+          <button 
+            onClick={() => router.push('/explore')}
+            className="px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-500/20 active:scale-95"
+          >
+            Explore Marketplace
+          </button>
         </div>
       </div>
     );
   }
 
-  if (!product) return <div className="text-center py-20">Listing not found</div>;
+  if (!product) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+        <div className="bg-gray-50 dark:bg-gray-900/30 rounded-3xl p-12 border-2 border-dashed border-gray-200 dark:border-gray-800 text-center">
+          <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4 uppercase tracking-tight">Item Not Found</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto leading-relaxed">
+            This product may have been deleted by the seller or removed from the marketplace.
+          </p>
+          <button 
+            onClick={() => router.push('/explore')}
+            className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+          >
+            Return to Explore
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-all duration-300 overflow-x-hidden">
