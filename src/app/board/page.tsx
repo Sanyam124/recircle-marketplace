@@ -219,7 +219,7 @@ function BoardPageContent() {
     const selectedCommunity = (user?.verifiedCommunities || []).find((c: any) => (c._id || c.id || c) === selectedCommunityId);
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors overflow-x-clip">
             {/* Board Header & Switcher */}
             <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 sticky top-[65px] z-30 transition-colors">
                 <div className="max-w-3xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">

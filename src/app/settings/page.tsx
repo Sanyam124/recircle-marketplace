@@ -9,7 +9,7 @@ import NextImage from 'next/image';
 import Loader from '@/components/Loader';
 import CommunityManager from '@/components/CommunityManager';
 import { siteConfig } from '@/lib/config';
-import { confirmAction } from '@/lib/confirm';
+import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -81,13 +81,16 @@ export default function SettingsPage() {
       setSaving(true);
       const res = await fetch('/api/profile/data', { method: 'DELETE' });
       if (res.ok) {
-        alert('Account deleted.');
+        showSuccess('Account Deleted', 'Your account and data have been removed.');
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 1500);
         // Clear local auth state before redirecting
         const auth = document.getElementById('auth-context-provider'); // No, let's just use what's available
         window.location.href = '/'; // Using window.location is safer to force a full context reset
       } else {
         const err = await res.json();
-        alert(err.error || 'Failed to delete account');
+        showError('Deletion Failed', err.error || 'Failed to delete account');
         setSaving(false);
       }
     } catch { setSaving(false); }

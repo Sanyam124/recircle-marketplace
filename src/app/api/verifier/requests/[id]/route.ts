@@ -36,28 +36,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             return NextResponse.json({ error: 'Unauthorized to manage this community' }, { status: 403 });
         }
 
-        request.status = status;
-        request.feedback = feedback;
-        await request.save({ validateBeforeSave: false });
-
-        // Zero-Retention Policy: Incinerate the ID proof from Cloudinary immediately upon decision. 
-        if (request.idProof && request.idProof.includes('cloudinary.com')) {
-            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-            await deleteFromCloudinary(request.idProof);
-            
-            // We can optionally nullify it in the database for extra cleanliness
-            request.idProof = 'DELETED_FOR_PRIVACY';
-            await request.save({ validateBeforeSave: false });
-        }
-
-        // If approved, add the community to the user's verifiedCommunities
         let communityObj = await Community.findById(request.community);
         let communityName = communityObj ? communityObj.name : 'Your Community';
 
+        // Decision logic
         if (status === 'Approved') {
             const userToUpdate = await User.findById(request.user);
             if (userToUpdate) {
-                if (!userToUpdate.verifiedCommunities.includes(request.community)) {
+                if (!userToUpdate.verifiedCommunities.some(id => id.toString() === request.community.toString())) {
                     userToUpdate.verifiedCommunities.push(request.community);
                 }
                 userToUpdate.isVerified = true;
@@ -65,18 +51,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             }
         }
 
-        // Emit Notification to User
+        // Emit Notification to User before deleting the request record
+        // (So we can include feedback if it's a rejection)
         await NotificationModel.create({
             recipient: request.user,
             sender: decoded.userId,
             type: 'VERIFICATION_UPDATE',
             message: status === 'Approved' 
                 ? `Welcome to ${communityName}! Your ID verification has been approved.` 
-                : `Your verification request for ${communityName} was not approved. ${feedback ? `Reason: ${feedback}` : 'Please re-upload a clear ID.'}`,
+                : `Your verification request for ${communityName} was rejected. ${feedback ? `Reason: ${feedback}` : 'Please re-upload a clear ID.'}`,
             link: '/settings'
         });
 
-        return NextResponse.json({ success: true, request }, { status: 200 });
+        // Zero-Retention & Privacy: Burn the ID proof from Cloudinary and wipe the entire request record.
+        if (request.idProof && request.idProof.startsWith('http')) {
+            try {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await deleteFromCloudinary(request.idProof).catch(() => null);
+            } catch (e) {
+                console.error('Cloudinary cleanup failed during verification processing:', e);
+            }
+        }
+
+        // Final step: Delete the request record entirely
+        await VerificationRequest.findByIdAndDelete(id);
+
+        return NextResponse.json({ success: true, message: `Request ${status} and record purged.` }, { status: 200 });
 
     } catch (error) {
         console.error('Update Verification Request Error:', error);
