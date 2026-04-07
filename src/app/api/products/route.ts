@@ -66,6 +66,20 @@ export async function POST(req: NextRequest) {
         }
 
         try {
+            let sanitizedLocation = undefined;
+            if (location) {
+                sanitizedLocation = {
+                    city: location.city,
+                    state: location.state,
+                    pincode: location.pincode,
+                    coordinates: location.coordinates,
+                    isPrecise: location.isPrecise,
+                    hostel: location.hostel,
+                    room: location.room,
+                    bed: location.bed
+                };
+            }
+
             const product = await Product.create({
                 seller: user.userId,
                 title,
@@ -80,8 +94,8 @@ export async function POST(req: NextRequest) {
                 images: imageUrls,
                 status: 'Available',
                 visibility: visibility === 'Community' ? 'Community' : 'Public',
-                community: communityId || (user.verifiedCommunities?.length > 0 ? user.verifiedCommunities[0] : undefined),
-                location: visibility === 'Public' ? location : undefined
+                community: visibility === 'Community' ? (communityId || (user.verifiedCommunities?.length > 0 ? user.verifiedCommunities[0] : undefined)) : undefined,
+                location: sanitizedLocation
             });
 
             return NextResponse.json({ product }, { status: 201 });
@@ -208,7 +222,7 @@ export async function GET(req: NextRequest) {
 
         const products = await Product.find(query)
             .populate('seller', 'name profilePicture gender')
-            .populate('community', 'name')
+            .populate('community', 'name location')
             .sort(sortOptions)
             .skip(skip)
             .limit(limit)

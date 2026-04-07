@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mongoose from 'mongoose';
+import { Types, isValidObjectId } from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import Product from '@/models/Product';
 import Service from '@/models/Service';
 import User from '@/models/User';
-import Review from '@/models/Review';
 import { verifyToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
     try {
         await connectToDatabase();
-
         const { searchParams } = new URL(req.url);
         const search = searchParams.get('search');
+        const lat = searchParams.get('lat');
+        const lng = searchParams.get('lng');
         const targetId = searchParams.get('targetId'); // If filtering by specific owner
         const type = searchParams.get('type') || 'all'; // 'all', 'products', 'services'
 
-        if (targetId && !mongoose.Types.ObjectId.isValid(targetId)) {
+        if (targetId && !isValidObjectId(targetId)) {
             return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
         }
         const sort = searchParams.get('sort') || 'newest';
@@ -26,8 +26,10 @@ export async function GET(req: NextRequest) {
         const conditions = searchParams.getAll('conditions[]');
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '12');
-        const communityFilter = searchParams.get('communityFilter'); // 'All', 'Public', or specific ID
+        const communityFilter = searchParams.get('communityFilter') || 'All'; // 'All', 'Public', or specific ID
+        const stateFilter = searchParams.get('state');
         const cityFilter = searchParams.get('city');
+        const hostelFilter = searchParams.get('hostel');
         const listingType = searchParams.get('listingType') || 'All'; // 'Buy', 'Rent', 'All'
 
         const skip = (page - 1) * limit;
@@ -36,11 +38,11 @@ export async function GET(req: NextRequest) {
         const productQuery: any = { status: 'Available' };
         const serviceQuery: any = { status: 'Active' };
 
-        // [VACATION MODE] & [BLOCKED USERS]
-        // Hide listings from users who are on vacation or have been blocked/blocked by the current user
+        // [VACATION MODE] & [BLOCKED USERS] & [BAN CHECK]
+        // Hide listings from users who are on vacation, banned, or have been blocked/blocked by the current user
         if (!targetId) {
             const token = req.cookies.get('token')?.value;
-            const decoded = token ? verifyToken(token) : null;
+            const decodedToken = token ? verifyToken(token) : null;
             let hiddenIds: any[] = [];
 
             // 1. Vacation Mode
@@ -53,15 +55,15 @@ export async function GET(req: NextRequest) {
             hiddenIds = [...hiddenIds, ...bannedUsersIds];
 
             // 2. Blocked Users (Two-Way)
-            if (decoded?.userId) {
+            if (decodedToken?.userId) {
                 // Users I blocked
-                const currentUser = await User.findById(decoded.userId).select('blockedUsers').lean();
+                const currentUser = await User.findById(decodedToken.userId).select('blockedUsers').lean();
                 if (currentUser && (currentUser as any).blockedUsers) {
                     hiddenIds = [...hiddenIds, ...(currentUser as any).blockedUsers];
                 }
 
                 // Users who blocked me
-                const usersWhoBlockedMe = await User.find({ blockedUsers: decoded.userId }).select('_id').lean();
+                const usersWhoBlockedMe = await User.find({ blockedUsers: decodedToken.userId }).select('_id').lean();
                 const usersWhoBlockedMeIds = usersWhoBlockedMe.map((u: any) => u._id);
                 hiddenIds = [...hiddenIds, ...usersWhoBlockedMeIds];
             }
@@ -80,32 +82,30 @@ export async function GET(req: NextRequest) {
             user = await User.findById(decoded.userId).select('verifiedCommunities').lean();
         }
 
-        const visibilityFilter: any = { $or: [] };
-
-        // 1. Specific Community Filter (ID)
-        if (communityFilter && communityFilter !== 'All' && communityFilter !== 'Public' && mongoose.Types.ObjectId.isValid(communityFilter)) {
-            productQuery.community = new mongoose.Types.ObjectId(communityFilter);
-            serviceQuery.community = new mongoose.Types.ObjectId(communityFilter);
-            // Items must have a community and matches the ID
+        // 1. Specific Community Filter (ID) — show only that campus's listings
+        if (communityFilter !== 'All' && communityFilter !== 'Public' && isValidObjectId(communityFilter)) {
+            productQuery.community = new Types.ObjectId(communityFilter);
+            productQuery.visibility = 'Community';
+            serviceQuery.community = new Types.ObjectId(communityFilter);
+            serviceQuery.visibility = 'Community';
         } 
-        // 2. Public Only Filter
+        // 2. Public Only Filter — show only public (non-community) listings
         else if (communityFilter === 'Public') {
-            productQuery.visibility = 'Public';
-            serviceQuery.visibility = 'Public';
+            productQuery.visibility = { $ne: 'Community' };
+            serviceQuery.visibility = { $ne: 'Community' };
         }
         // 3. Default "All" Filter (Show Public + Items from User's Verified Communities)
         else {
             const allowedCommunityIds = user?.verifiedCommunities || [];
-            productQuery.$or = [
-                { visibility: 'Public' },
+            const visibilityOr = [
+                { visibility: { $ne: 'Community' } },
                 { visibility: { $exists: false } },
-                { community: { $in: allowedCommunityIds } }
+                { visibility: 'Community', community: { $in: allowedCommunityIds } }
             ];
-            serviceQuery.$or = [
-                { visibility: 'Public' },
-                { visibility: { $exists: false } },
-                { community: { $in: allowedCommunityIds } }
-            ];
+            if (!productQuery.$and) productQuery.$and = [];
+            if (!serviceQuery.$and) serviceQuery.$and = [];
+            productQuery.$and.push({ $or: visibilityOr });
+            serviceQuery.$and.push({ $or: visibilityOr });
         }
 
         // Search logic
@@ -129,8 +129,10 @@ export async function GET(req: NextRequest) {
                         { category: { $regex: coreTerm, $options: 'i' } }
                     ];
                 });
-                productQuery.$or = orGroup;
-                serviceQuery.$or = orGroup;
+                if (!productQuery.$and) productQuery.$and = [];
+                if (!serviceQuery.$and) serviceQuery.$and = [];
+                productQuery.$and.push({ $or: orGroup });
+                serviceQuery.$and.push({ $or: orGroup });
             }
         }
 
@@ -165,42 +167,83 @@ export async function GET(req: NextRequest) {
             productQuery.condition = { $in: conditions };
         }
 
+        // State logic
+        if (stateFilter) {
+            productQuery['location.state'] = stateFilter;
+            serviceQuery['location.state'] = stateFilter;
+        }
+
         // City logic
         if (cityFilter) {
             productQuery['location.city'] = cityFilter;
             serviceQuery['location.city'] = cityFilter;
         }
 
+        // Hostel logic
+        if (hostelFilter) {
+            productQuery['location.hostel'] = hostelFilter;
+            serviceQuery['location.hostel'] = hostelFilter;
+        }
+
         // Listing Type Logic (Products only)
         if (listingType === 'Buy') {
-            productQuery.$or = [{ forSell: true }, { forSell: { $exists: false } }];
+            if (!productQuery.$and) productQuery.$and = [];
+            productQuery.$and.push({ $or: [{ forSell: true }, { forSell: { $exists: false } }] });
         } else if (listingType === 'Rent') {
             productQuery.forRent = true;
         }
 
-        // Fetch Results using Aggregation for unified sorting/pagination
+        // --- GEO SEARCH ---
         const pipeline: any[] = [];
+        const hasGeo = lat && lng;
+        let latNum = 0, lngNum = 0;
+        
+        if (hasGeo) {
+            latNum = parseFloat(lat as string);
+            lngNum = parseFloat(lng as string);
+        }
 
         // 1. Build Product match
         if (type === 'services') {
             pipeline.push({ $match: { _id: { $exists: false } } });
         } else {
-            pipeline.push({ $match: productQuery });
+            if (hasGeo) {
+                pipeline.push({
+                    $geoNear: {
+                        near: { type: 'Point', coordinates: [lngNum, latNum] },
+                        distanceField: 'calculatedDistance',
+                        spherical: true,
+                        query: productQuery
+                    }
+                });
+            } else {
+                pipeline.push({ $match: productQuery });
+            }
         }
         pipeline.push({ $addFields: { itemType: 'product' } });
 
         // 2. Union with Services
         if (type === 'all' || type === 'services') {
-            const serviceMatch = { ...serviceQuery };
+            const servicePipeline: any[] = [];
+            if (hasGeo) {
+                servicePipeline.push({
+                    $geoNear: {
+                        near: { type: 'Point', coordinates: [lngNum, latNum] },
+                        distanceField: 'calculatedDistance',
+                        spherical: true,
+                        query: serviceQuery
+                    }
+                });
+            } else {
+                servicePipeline.push({ $match: serviceQuery });
+            }
+            servicePipeline.push({ $addFields: { itemType: 'service' } });
+            servicePipeline.push({ $project: { community: 1, visibility: 1, title: 1, price: 1, images: 1, category: 1, description: 1, status: 1, createdAt: 1, priceUnit: 1, provider: 1, location: 1, availability: 1, calculatedDistance: 1 } });
+            
             const serviceUnion: any = {
                 coll: 'services',
-                pipeline: [
-                    { $match: serviceMatch },
-                    { $addFields: { itemType: 'service' } },
-                    { $project: { community: 1, visibility: 1, title: 1, price: 1, images: 1, category: 1, description: 1, status: 1, createdAt: 1, priceUnit: 1, provider: 1, location: 1, availability: 1 } }
-                ]
+                pipeline: servicePipeline
             };
-
             pipeline.push({ $unionWith: serviceUnion });
         }
 
@@ -226,19 +269,19 @@ export async function GET(req: NextRequest) {
                 community: 1,
                 visibility: 1,
                 location: 1,
-                availability: 1
+                availability: 1,
+                calculatedDistance: 1
             }
         });
 
         // 4. Global Sort
         const sortStage: any = {};
-        if (sort === 'rating') {
-            // Rating needs calculated ownerRating (from a different collection)
-            // We'll handle rating sort by joining reviews in aggregation
-        } else if (sort === 'price_asc') {
+        if (sort === 'price_asc') {
             sortStage.price = 1;
         } else if (sort === 'price_desc') {
             sortStage.price = -1;
+        } else if (sort === 'distance' && hasGeo) {
+            sortStage.calculatedDistance = 1;
         } else {
             sortStage.createdAt = -1;
             sortStage._id = -1;
