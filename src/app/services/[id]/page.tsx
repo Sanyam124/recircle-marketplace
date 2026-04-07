@@ -11,6 +11,7 @@ import ShareButton from '@/components/ShareButton';
 import ReportModal from '@/components/ReportModal';
 import ReviewSection from '@/components/ReviewSection';
 import ExpandableText from '@/components/ExpandableText';
+import LocationViewer from '@/components/LocationViewer';
 import Image from 'next/image';
 import { confirmAction, showError } from '@/lib/confirm';
 
@@ -23,9 +24,15 @@ interface Service {
   images: string[];
   category: string;
   availability: string;
+  visibility: 'Public' | 'Community';
   location?: {
     city?: string;
     state?: string;
+    pincode?: string;
+    coordinates?: [number, number];
+    hostel?: string;
+    room?: number;
+    bed?: number;
   };
   community?: {
     _id: string;
@@ -250,7 +257,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                     title={service.title}
                     className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                   />
-                  {user && !isOwner && (
+                  {user && !isOwner && service.status === 'Active' && (
                     <button
                       onClick={() => setReportOpen(true)}
                       className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold text-xs"
@@ -278,9 +285,11 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   Posted {formatTimeAgo(service.createdAt)}
                </span>
-               <span className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wide">
+                              <span className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wide">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
-                  {service.location?.city || 'Location unavailable'}
+                  {service.visibility === 'Community' || (!service.visibility && service.community)
+                    ? (service.community?.name || 'Campus Listing')
+                    : (service.location ? [service.location.city, service.location.state].filter(Boolean).join(', ') || 'Location unknown' : 'Location unknown')}
                </span>
             </div>
           </div>
@@ -305,7 +314,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                      </div>
                    ) : null}
                 </div>
-                {service.community && (
+                {(service.visibility === 'Community' || (!service.visibility && service.community)) && service.community && (
                    <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center shrink-0">
                       <span className="text-[10px] font-bold text-gray-500 uppercase mb-0.5 tracking-wide">Campus</span>
                       <span className="text-sm font-bold text-gray-800 dark:text-gray-300 whitespace-nowrap">{service.community.name}</span>
@@ -331,6 +340,11 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
             <div className="text-base text-gray-600 dark:text-gray-300 leading-relaxed font-normal pt-1">
               <ExpandableText text={service.description} maxLines={8} className="whitespace-pre-wrap" showReadMore={true} />
             </div>
+            
+            <LocationViewer 
+               visibility={service.visibility} 
+               location={service.location} 
+            />
           </div>
 
           {/* Action Hub */}
