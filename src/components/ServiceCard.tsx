@@ -6,7 +6,7 @@ import Link from 'next/link';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { optimizeCloudinaryUrl } from '@/lib/cloudinary-client';
-import { formatTimeAgo } from '@/lib/utils';
+import { formatTimeAgo, calculateDistance, formatDistance } from '@/lib/utils';
 
 interface ServiceCardProps {
   service: any;
@@ -25,7 +25,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   onToggleStatus,
   hideOwnerActions = false
 }) => {
-  const { user } = useAuth();
+  const { user, userLocation } = useAuth();
   const [liked, setLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
 
@@ -33,8 +33,35 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   const sellerId = typeof service.provider === 'object' ? service.provider._id : service.provider;
   const isActualOwner = !hideOwnerActions && (isOwner || (user && user.id === sellerId));
 
-  const isCampusOwned = service.communityFilter !== 'All';
-  const communityName = service.communityName;
+  let communityId: string | undefined;
+  if (service.community) {
+    if (typeof service.community === 'object') {
+      communityId = service.community._id?.toString();
+    } else {
+      communityId = service.community.toString();
+    }
+  }
+  // Robust check: explicitly check visibility first to handle buggy older data
+  const isCampusOwned = service.visibility === 'Community' || (!service.visibility && !!communityId);
+  const communityName = typeof service.community === 'object' ? service.community?.name : undefined;
+
+  let distanceBadge = null;
+  // Fallback: use community location if service location doesn't have coordinates (typical for campus listings)
+  const coords = service.location?.coordinates || (typeof service.community === 'object' ? service.community?.location?.coordinates : null);
+  
+  if (userLocation && coords && Array.isArray(coords) && coords.length === 2) {
+      const [lng, lat] = coords;
+      const d = calculateDistance(userLocation.lat, userLocation.lng, lat, lng);
+      distanceBadge = (
+          <div className="flex items-center gap-1 px-2 py-1 bg-indigo-600/90 dark:bg-indigo-500/95 backdrop-blur-md text-white rounded-lg text-[9px] font-black tracking-tighter shadow-sm border border-white/20">
+              <svg className="w-3 h-3 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {formatDistance(d)}
+          </div>
+      );
+  }
 
   useEffect(() => {
     if (user && service.wishlistedBy) {
@@ -68,7 +95,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
       </Link>
 
       {/* Image Section - Compacted for mobile */}
-      <div className="relative h-28 sm:h-48 w-full overflow-hidden bg-gray-50 dark:bg-gray-900 border-b border-gray-100/50 dark:border-gray-800/50">
+      <div className="relative h-28 sm:h-48 w-full overflow-hidden bg-gray-50 dark:bg-gray-900 border-b border-gray-100/50 dark:border-gray-800/50 pointer-events-none">
         {service.status === 'Inactive' && (
             <div className="absolute inset-0 z-10 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-500">
                 <div className="bg-gray-500 text-white px-5 py-2 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] shadow-2xl border-2 border-white/20 transform -rotate-6 scale-110">
@@ -90,8 +117,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
             <svg className="w-12 h-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
           </div>
         )}
-        <div className="absolute top-2 right-2 flex gap-1.5 z-20">
-            <div className="hidden sm:flex bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider text-gray-900 dark:text-white pointer-events-none shadow-sm ring-1 ring-black/5 dark:ring-white/5 border border-white/20">
+        <div className="absolute top-2 right-2 flex items-center gap-1.5 z-20 pointer-events-auto">
+            <div className="hidden sm:flex items-center justify-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider text-gray-900 dark:text-white pointer-events-none shadow-sm ring-1 ring-black/5 dark:ring-white/5 border border-white/20">
                 {service.category}
             </div>
             <button 
@@ -102,6 +129,15 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
             </button>
+        </div>
+        <div className="absolute bottom-2 right-2 z-20 pointer-events-none">
+            {isCampusOwned ? (
+                <div className="flex items-center gap-1 px-2 py-1 bg-emerald-600/90 dark:bg-emerald-500/90 backdrop-blur-md text-white rounded-lg text-[9px] font-black uppercase tracking-tighter shadow-sm border border-white/20">
+                    Campus
+                </div>
+            ) : (
+                distanceBadge
+            )}
         </div>
       </div>
       
@@ -132,15 +168,13 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 </span>
             </div>
             
-            {/* Title - Synced weight with ProductCard */}
             <div className="flex flex-col gap-0.5">
-                <h3 className="text-[10px] sm:text-[15px] font-black text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1 leading-none tracking-tight">{service.title}</h3>
-                <p className="text-[9px] sm:text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2 leading-tight opacity-70 min-h-[2.4em]">
+                <h3 className="text-xs sm:text-base font-black text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1 leading-none tracking-tight">{service.title}</h3>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-tight opacity-70 min-h-[2.4em]">
                     {service.description}
                 </p>
             </div>
             
-            {/* Mobile Only: Rating & Timeago */}
             <div className="flex sm:hidden items-center gap-1 min-h-[1.5em]">
                 <div className="flex items-center shrink-0">
                     {[...Array(5)].map((_, i) => (
@@ -159,7 +193,6 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
         </div>
         
         <div className="flex flex-col mt-auto shrink-0 pt-2">
-            {/* Desktop Only: Rating & Availability */}
             <div className="hidden sm:flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1">
                     <div className="flex items-center shrink-0">
@@ -179,76 +212,67 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                     </span>
                 )}
             </div>
-          <div className="flex items-end justify-between gap-1 w-full overflow-hidden pt-4 border-t border-gray-50 dark:border-gray-700/50">
-           <div className="flex flex-col min-w-0 flex-1">
-                <div className="flex items-baseline gap-1">
-                    <span className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{service.price}</span>
-                    <span className="text-[9px] font-black text-indigo-600/50 uppercase tracking-tighter italic">/{service.priceUnit?.split(' ')[0] || 'hr'}</span>
+            <div className="flex items-end justify-between gap-1 w-full overflow-hidden pt-4 border-t border-gray-50 dark:border-gray-700/50">
+                <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{service.price}</span>
+                        <span className="text-[9px] font-black text-indigo-600/50 uppercase tracking-tighter italic">
+                            /{ ({
+                            'per hour': 'hr',
+                            'per project': 'proj',
+                            'per session': 'sess',
+                            'per day': 'day'
+                            } as any)[service.priceUnit?.toLowerCase()] || service.priceUnit?.split(' ').pop() || 'hr' }
+                        </span>
+                    </div>
                 </div>
-           </div>
-          </div>
 
-        {/* Action tags footer - Synced structure with ProductCard */}
-        <div className="mt-3 flex flex-col gap-2 overflow-hidden w-full">
-          <div className="flex items-center justify-between w-full gap-2">
-            <div className="flex items-center gap-2">
-                {isCampusOwned ? (
-                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-md border border-emerald-100 dark:border-emerald-800/50 text-[9px] font-black uppercase tracking-tighter">
-                        Campus-Only
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-md border border-gray-100 dark:border-gray-700 text-[9px] font-black uppercase tracking-tighter">
-                        Public List
-                    </div>
-                )}
-                
-                {/* Availability label mobile only beside campus/public tag */}
                 {service.availability && (
-                    <div className="sm:hidden">
-                        <span className="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-800 italic">
+                    <div className="sm:hidden mb-1">
+                        <span className="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-800 italic">
                             {service.availability.split(' ')[0]}
                         </span>
                     </div>
                 )}
             </div>
-            
-            {/* Desktop Location Name */}
-            <div className="hidden sm:block ml-auto text-[10px] font-black uppercase tracking-widest text-gray-300 dark:text-gray-600 italic truncate min-w-0 flex-1 text-right">
-                {isCampusOwned ? (communityName || 'Campus') : (service.location?.city || 'Public')}
-            </div>
-          </div>
-          
-          {/* Mobile Location Name (Below tags) */}
-          <div className="sm:hidden text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 italic truncate w-full opacity-60">
-                {isCampusOwned ? (communityName || 'Campus') : (service.location?.city || 'Public')}
-          </div>
-        </div>
 
-        {/* Owner actions */}
-        {isActualOwner && (
-          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex gap-2 relative z-20 pointer-events-auto">
-            <button
-              onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onToggleStatus?.(service._id, service.status === 'Active' ? 'Inactive' : 'Active', 'services');
-              }}
-              className={`text-[10px] font-black uppercase tracking-widest px-3 py-2 flex-[2] rounded-xl transition-all border active:scale-95 shadow-sm ${
-                service.status === 'Active' 
-                  ? 'text-indigo-600 bg-indigo-50 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-900/50' 
-                  : 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-900/50'
-              }`}
-            >
-              {service.status === 'Active' ? 'Deactivate' : 'Activate'}
-            </button>
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete?.(service._id, 'services'); }}
-              className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-3 py-2 flex-1 rounded-xl transition-all border border-rose-100 hover:bg-rose-100 active:scale-95"
-            >
-              Delete
-            </button>
-          </div>
-        )}
+            <div className="mt-3 flex items-center justify-between w-full gap-2 border-t border-gray-50 dark:border-gray-800/50 pt-2.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center justify-center w-5 h-5 rounded-md bg-gray-50 dark:bg-white/5 text-gray-400 shrink-0">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate tracking-tight">
+                        {isCampusOwned 
+                            ? [communityName, service.location?.hostel].filter(Boolean).join(', ') || 'Campus'
+                            : (service.location ? [service.location.city, service.location.state].filter(Boolean).join(', ') || 'Unknown' : 'Unknown')}
+                    </span>
+                </div>
+            </div>
+
+            {isActualOwner && (
+                <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex gap-2 relative z-20 pointer-events-auto">
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onToggleStatus?.(service._id, service.status === 'Active' ? 'Inactive' : 'Active', 'services');
+                        }}
+                        className={`text-[10px] font-black uppercase tracking-widest px-3 py-2 flex-[2] rounded-xl transition-all border active:scale-95 shadow-sm ${
+                            service.status === 'Active' 
+                            ? 'text-indigo-600 bg-indigo-50 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-900/50' 
+                            : 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-indigo-900/50'
+                        }`}
+                    >
+                        {service.status === 'Active' ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete?.(service._id, 'services'); }}
+                        className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-3 py-2 flex-1 rounded-xl transition-all border border-rose-100 hover:bg-rose-100 active:scale-95"
+                    >
+                        Delete
+                    </button>
+                </div>
+            )}
         </div>
       </div>
     </div>

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ExpandableText from './ExpandableText';
 
-import { formatTimeAgo } from '@/lib/utils';
+import { formatTimeAgo, calculateDistance, formatDistance } from '@/lib/utils';
 import { optimizeCloudinaryUrl } from '@/lib/cloudinary-client';
 
 interface Product {
@@ -32,7 +32,7 @@ interface Product {
   reviewCount?: number;
   visibility?: 'Public' | 'Community';
   community?: { _id: string; name: string } | string | any;
-  location?: { pincode: string; city: string; state: string };
+  location?: { pincode: string; city: string; state: string; hostel?: string; coordinates?: [number, number] };
   status?: string;
 }
 
@@ -51,7 +51,7 @@ export default function ProductCard({
   onToggleStatus,
   hideOwnerActions = false
 }: ProductCardProps) {
-  const { user, setUser } = useAuth();
+  const { user, setUser, userLocation } = useAuth();
   
   const isActualOwner = !hideOwnerActions && (isOwner || (user && product.seller && (user.id === product.seller._id || user.id === String(product.seller._id) || user.id === (product.seller as any).id)));
 
@@ -70,7 +70,26 @@ export default function ProductCard({
     }
   }
   const isInternal = communityId ? userCommunityIds.includes(communityId) : false;
-  const isCampusOwned = !!communityId || product.visibility === 'Community';
+  // Robust check: explicitly check visibility first to handle buggy older data
+  const isCampusOwned = product.visibility === 'Community' || (!product.visibility && !!communityId);
+
+  let distanceBadge = null;
+  // Fallback: use community location if product location doesn't have coordinates (typical for campus listings)
+  const coords = product.location?.coordinates || (typeof product.community === 'object' ? product.community?.location?.coordinates : null);
+  
+  if (userLocation && coords && Array.isArray(coords) && coords.length === 2) {
+      const [lng, lat] = coords;
+      const d = calculateDistance(userLocation.lat, userLocation.lng, lat, lng);
+      distanceBadge = (
+          <div className="flex items-center gap-1 px-2 py-1 bg-indigo-600/90 dark:bg-indigo-500/95 backdrop-blur-md text-white rounded-lg text-[9px] font-black tracking-tighter shadow-sm border border-white/20">
+              <svg className="w-3 h-3 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {formatDistance(d)}
+          </div>
+      );
+  }
 
   useEffect(() => {
     if (user && user.wishlist) {
@@ -120,7 +139,7 @@ export default function ProductCard({
       </Link>
 
       {/* Image Section - Compacted for mobile */}
-      <div className="relative h-28 sm:h-48 w-full overflow-hidden bg-gray-50 dark:bg-gray-900 border-b border-gray-100/50 dark:border-gray-800/50">
+      <div className="relative h-28 sm:h-48 w-full overflow-hidden bg-gray-50 dark:bg-gray-900 border-b border-gray-100/50 dark:border-gray-800/50 pointer-events-none">
         {(product.status === 'Sold' || product.status === 'Completed' || product.status === 'Rented') && (
             <div className="absolute inset-0 z-10 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-500">
                 <div className={`${(product.status === 'Rented' || product.status === 'Completed') ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'} text-white px-5 py-2 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] shadow-2xl border-2 border-white/20 transform -rotate-6 scale-110`}>
@@ -141,8 +160,8 @@ export default function ProductCard({
             <svg className="w-10 h-10 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
           </div>
         )}
-        <div className="absolute top-2 right-2 flex gap-1.5 z-20">
-            <div className="hidden sm:flex bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider text-gray-900 dark:text-white pointer-events-none shadow-sm ring-1 ring-black/5 dark:ring-white/5 border border-white/20">
+        <div className="absolute top-2 right-2 flex items-center gap-1.5 z-20 pointer-events-auto">
+            <div className="hidden sm:flex items-center justify-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider text-gray-900 dark:text-white pointer-events-none shadow-sm ring-1 ring-black/5 dark:ring-white/5 border border-white/20">
                 {product.category}
             </div>
             <button 
@@ -153,6 +172,15 @@ export default function ProductCard({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
             </button>
+        </div>
+        <div className="absolute bottom-2 right-2 z-20 pointer-events-none">
+            {isCampusOwned ? (
+                <div className="flex items-center gap-1 px-2 py-1 bg-emerald-600/90 dark:bg-emerald-500/90 backdrop-blur-md text-white rounded-lg text-[9px] font-black uppercase tracking-tighter shadow-sm border border-white/20">
+                    Campus
+                </div>
+            ) : (
+                distanceBadge
+            )}
         </div>
       </div>
       
@@ -183,13 +211,13 @@ export default function ProductCard({
                 </span>
             </div>
             <div className="flex flex-col gap-0.5">
-                <h3 className="text-[10px] sm:text-[15px] font-black text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1 leading-none tracking-tight">{product.title}</h3>
-                <p className="text-[9px] sm:text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2 leading-tight opacity-70 min-h-[2.4em]">
+                <h3 className="text-xs sm:text-base font-black text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1 leading-none tracking-tight">{product.title}</h3>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-tight opacity-70 min-h-[2.4em]">
                     {product.description}
                 </p>
             </div>
             
-            {/* Mobile Only: Rating & Timeago (Shifted beside stars as per previous req) */}
+            {/* Mobile Only: Rating & Timeago */}
             <div className="flex sm:hidden items-center gap-1 min-h-[1.5em]">
                 <div className="flex items-center shrink-0">
                     {[...Array(5)].map((_, i) => (
@@ -208,7 +236,7 @@ export default function ProductCard({
         </div>
         
         <div className="flex flex-col mt-auto shrink-0 pt-2">
-            {/* Desktop Only: Rating & Condition (Grouped with Price) */}
+            {/* Desktop Only: Rating & Condition */}
             <div className="hidden sm:flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1">
                     <div className="flex items-center shrink-0">
@@ -226,100 +254,87 @@ export default function ProductCard({
                     {product.condition}
                 </span>
             </div>
-          <div className="flex items-end justify-between gap-1 w-full overflow-hidden pt-4 border-t border-gray-50 dark:border-gray-700/50">
-           <div className="flex flex-col min-w-0 flex-1">
-               {product.forSell !== false && product.forRent ? (
-                 <div className="flex flex-col gap-0.5">
-                   <div className="flex items-baseline gap-1">
-                        <span className="text-base sm:text-xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{product.price}</span>
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest opacity-50">Buy</span>
-                   </div>
-                   <div className="flex items-baseline gap-1">
-                        <span className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 italic tracking-tighter leading-none">₹{product.rentPrice}</span>
-                        <span className="text-[8px] font-black text-emerald-600/50 uppercase tracking-tighter italic">/{product.rentUnit}</span>
-                   </div>
-                 </div>
-               ) : product.forRent ? (
-                 <div className="flex items-baseline gap-1">
-                    <span className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 italic tracking-tighter leading-none">₹{product.rentPrice}</span>
-                    <span className="text-[9px] font-black text-emerald-600/50 uppercase tracking-tighter italic">/{product.rentUnit}</span>
-                 </div>
-               ) : (
-                 <span className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{product.price}</span>
-               )}
-           </div>
-        </div>
+            
+            <div className="flex items-end justify-between gap-1 w-full overflow-hidden pt-4 border-t border-gray-50 dark:border-gray-700/50">
+                <div className="flex flex-col min-w-0">
+                    {product.forSell !== false && product.forRent ? (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-baseline gap-1">
+                             <span className="text-base sm:text-xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{product.price}</span>
+                             <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest opacity-50">Buy</span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                             <span className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 italic tracking-tighter leading-none">₹{product.rentPrice}</span>
+                             <span className="text-[8px] font-black text-emerald-600/50 uppercase tracking-tighter italic">/{product.rentUnit}</span>
+                        </div>
+                      </div>
+                    ) : product.forRent ? (
+                      <div className="flex items-baseline gap-1">
+                         <span className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 italic tracking-tighter leading-none">₹{product.rentPrice}</span>
+                         <span className="text-[9px] font-black text-emerald-600/50 uppercase tracking-tighter italic">/{product.rentUnit}</span>
+                      </div>
+                    ) : (
+                      <span className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{product.price}</span>
+                    )}
+                </div>
 
-        {/* Action tags footer */}
-        <div className="mt-3 flex flex-col gap-2 overflow-hidden w-full">
-          <div className="flex items-center justify-between w-full gap-2">
-            <div className="flex items-center gap-2">
-                {isCampusOwned ? (
-                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-md border border-emerald-100 dark:border-emerald-800/50 text-[9px] font-black uppercase tracking-tighter">
-                        Campus-Only
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-md border border-gray-100 dark:border-gray-700 text-[9px] font-black uppercase tracking-tighter">
-                        Public List
-                    </div>
-                )}
-                
-                {/* Condition label mobile only beside campus/public tag */}
-                <div className="sm:hidden">
-                    <span className="inline-flex items-center rounded-md bg-gray-50 dark:bg-gray-700/50 px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 ring-1 ring-inset ring-gray-200 dark:ring-gray-700 whitespace-nowrap italic">
+                {/* Mobile Only: Condition Label beside price */}
+                <div className="sm:hidden mb-1">
+                    <span className="inline-flex items-center rounded-md bg-gray-50 dark:bg-gray-700/50 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 ring-1 ring-inset ring-gray-200 dark:ring-gray-700 whitespace-nowrap italic">
                         {product.condition}
                     </span>
                 </div>
             </div>
-            
-            {/* Desktop Location Name */}
-            <div className="hidden sm:block ml-auto text-[10px] font-black uppercase tracking-widest text-gray-300 dark:text-gray-600 italic truncate min-w-0 flex-1 text-right">
-                {isCampusOwned ? (communityName || 'Campus') : (product.location?.city || 'Public')}
-            </div>
-          </div>
-          
-          {/* Mobile Location Name (Below tags) */}
-          <div className="sm:hidden text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 italic truncate w-full opacity-60">
-                {isCampusOwned ? (communityName || 'Campus') : (product.location?.city || 'Public')}
-          </div>
-        </div>
 
-        {/* Owner actions */}
-        {isActualOwner && (
-          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex gap-2 relative z-20 pointer-events-auto">
-            {product.status === 'Rented' ? (
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleStatus?.(product._id, 'Available', 'products'); }}
-                className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 flex-[2] rounded-xl transition-all border border-emerald-100 hover:bg-emerald-100 active:scale-95 shadow-sm"
-              >
-                Make Available
-              </button>
-            ) : (product.status !== 'Sold' && product.status !== 'Completed') ? (
-                <button
-                  onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onToggleStatus?.(product._id, product.status === 'Available' ? 'Inactive' : 'Available', 'products');
-                  }}
-                  className={`text-[10px] font-black uppercase tracking-widest px-3 py-2 flex-[2] rounded-xl transition-all border active:scale-95 shadow-sm ${
-                    product.status === 'Available' 
-                      ? 'text-indigo-600 bg-indigo-50 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-900/50' 
-                      : 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-900/50'
-                  }`}
-                >
-                  {product.status === 'Available' ? 'Hide Listing' : 'Show Listing'}
-                </button>
-            ) : null}
-            {(product.status !== 'Sold' && product.status !== 'Completed') && (
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete?.(product._id, 'products'); }}
-                className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-3 py-2 flex-1 rounded-xl transition-all border border-rose-100 hover:bg-rose-100 active:scale-95"
-              >
-                Delete
-              </button>
+            <div className="mt-3 flex items-center justify-between w-full gap-2 border-t border-gray-50 dark:border-gray-800/50 pt-2.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center justify-center w-5 h-5 rounded-md bg-gray-50 dark:bg-white/5 text-gray-400 shrink-0">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate tracking-tight">
+                        {isCampusOwned
+                            ? [communityName, product.location?.hostel].filter(Boolean).join(', ') || 'Campus'
+                            : (product.location ? [product.location.city, product.location.state].filter(Boolean).join(', ') || 'Unknown' : 'Unknown')}
+                    </span>
+                </div>
+            </div>
+
+            {/* Owner actions */}
+            {isActualOwner && (
+              <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex gap-2 relative z-20 pointer-events-auto">
+                {product.status === 'Rented' ? (
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleStatus?.(product._id, 'Available', 'products'); }}
+                    className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 flex-[2] rounded-xl transition-all border border-emerald-100 hover:bg-emerald-100 active:scale-95 shadow-sm"
+                  >
+                    Make Available
+                  </button>
+                ) : (product.status !== 'Sold' && product.status !== 'Completed') ? (
+                    <button
+                      onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onToggleStatus?.(product._id, product.status === 'Available' ? 'Inactive' : 'Available', 'products');
+                      }}
+                      className={`text-[10px] font-black uppercase tracking-widest px-3 py-2 flex-[2] rounded-xl transition-all border active:scale-95 shadow-sm ${
+                        product.status === 'Available' 
+                          ? 'text-indigo-600 bg-indigo-50 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-900/50' 
+                          : 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-900/50'
+                      }`}
+                    >
+                      {product.status === 'Available' ? 'Hide Listing' : 'Show Listing'}
+                    </button>
+                ) : null}
+                {(product.status !== 'Sold' && product.status !== 'Completed') && (
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete?.(product._id, 'products'); }}
+                    className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-3 py-2 flex-1 rounded-xl transition-all border border-rose-100 hover:bg-rose-100 active:scale-95"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             )}
-          </div>
-        )}
         </div>
       </div>
     </div>
