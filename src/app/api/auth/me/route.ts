@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
         require('@/models/Community');
 
         const user = await User.findById(decoded.userId)
-            .populate('verifiedCommunities', 'name image isActive')
+            .populate('verifiedCommunities', 'name image isActive hostels')
             .select('-password');
 
         if (!user) {

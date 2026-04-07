@@ -31,3 +31,23 @@ input::-webkit-inner-spin-button {
 input[type=number] {
   -moz-appearance: textfield;
 }
+
+/* Fix for browser select dropdowns (options) in dark mode */
+.dark select {
+  background-color: #111827; /* gray-900 */
+  color: #f3f4f6; /* gray-100 */
+}
+
+.dark option {
+  background-color: #111827;
+  color: #f3f4f6;
+}
+
+/* Ensure global dropdown text is visible */
+.dark .dropdown-content, 
+.dark select, 
+.dark option {
+  color-scheme: dark;
+  background-color: #111827;
+  color: #d1d5db;
+}
