@@ -17,33 +17,38 @@ const protectedPaths = [
 ];
 
 export async function middleware(request: NextRequest) {
+  // 0. Skip Middleware for internal system requests to avoid loops
+  if (request.headers.get('x-internal-request') === 'true') {
+    return NextResponse.next();
+  }
+
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('token')?.value;
   const method = request.method;
-
-  // Log API requests for visibility
-  if (pathname.startsWith('/api')) {
-    console.log(`\x1b[36m[API Request]\x1b[0m ${method} ${pathname}${request.nextUrl.search}`);
-  }
 
   // 1. Initial Response Object
   let response = NextResponse.next();
 
   // --- CSRF Protection for state-changing API requests ---
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && pathname.startsWith('/api')) {
-    const origin = request.headers.get('origin');
-    const host = request.headers.get('host');
+    // Skip CSRF for Google redirect callback (Google POSTs from their own domain; has its own CSRF via g_csrf_token)
+    const isGoogleRedirect = pathname === '/api/auth/google-redirect';
     
-    // Validation: Origin must match Host in production (lenient for tunnels)
-    if (process.env.NODE_ENV === 'production' && origin && host) {
-      try {
-        const originHost = new URL(origin).hostname;
-        const currentHost = host.split(':')[0];
-        if (originHost !== currentHost && !originHost.endsWith('.loca.lt') && !originHost.endsWith('.ngrok-free.app')) {
-          return NextResponse.json({ error: 'Security: Invalid Request Origin' }, { status: 403 });
+    if (!isGoogleRedirect) {
+      const origin = request.headers.get('origin');
+      const host = request.headers.get('host');
+      
+      // Validation: Origin must match Host in production (lenient for tunnels)
+      if (process.env.NODE_ENV === 'production' && origin && host) {
+        try {
+          const originHost = new URL(origin).hostname;
+          const currentHost = host.split(':')[0];
+          if (originHost !== currentHost && !originHost.endsWith('.loca.lt') && !originHost.endsWith('.ngrok-free.app')) {
+            return NextResponse.json({ error: 'Security: Invalid Request Origin' }, { status: 403 });
+          }
+        } catch (e) {
+          return NextResponse.json({ error: 'Security: Malformed Origin' }, { status: 403 });
         }
-      } catch (e) {
-        return NextResponse.json({ error: 'Security: Malformed Origin' }, { status: 403 });
       }
     }
   }
@@ -52,22 +57,94 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/api')) {
     const forwarded = request.headers.get('x-forwarded-for');
     const ip = forwarded ? forwarded.split(',')[0].trim() : (request as any).ip || '127.0.0.1';
+
+    // 1. Determine Identifier (Use Token-based ID if logged in to prevent IP-only bypass)
+    let identifier = ip;
+    if (token) {
+      try {
+        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        if (decoded?.userId) {
+          identifier = `user_${decoded.userId}`;
+        }
+      } catch (e) {
+        // Fallback to IP if token is malformed
+      }
+    }
     
-    let limit = 100;
-    if (pathname.includes('/api/auth/login') || pathname.includes('/api/auth/register') || pathname.includes('/api/auth/otp')) {
-      limit = 30; // High enough to cover mobile retries on slow connections
+    // 2. Suspect/Bot Detection (Fixed to avoid false positives on legitimate routes)
+    const isBotSuspect = pathname.includes('wp-admin') || 
+                         pathname.includes('.env') || 
+                         pathname.endsWith('/.config') || 
+                         pathname.includes('/config.php') ||
+                         pathname.includes('/xmlrpc.php');
+
+    // --- Dynamic Settings Fetching (Cached for performance) ---
+    // We store settings in memory for 10 seconds to avoid overloading the API
+    let dynamicLimitGeneral = 100;
+    let dynamicLimitAuth = 30;
+    let isMaintenance = false;
+
+    try {
+        // Simple internal cache logic (global scope doesn't work well in middleware, but local for the session does)
+        const configRes = await fetch(`${request.nextUrl.origin}/api/site-config`, {
+            headers: { 'x-internal-request': 'true' },
+            next: { revalidate: 10 } // Use Next.js fetch cache if available
+        });
+        
+        if (configRes.ok) {
+            const configData = await configRes.json();
+            dynamicLimitGeneral = configData.apiRateLimitGeneral || 100;
+            dynamicLimitAuth = configData.apiRateLimitAuth || 30;
+            isMaintenance = configData.maintenanceMode || false;
+        }
+    } catch (err) {
+        // Fallback to defaults
     }
 
-    const result = rateLimit(ip, { limit, windowMs: 60000 });
+    // 3. Maintenance Mode Enforcement
+    // If maintenance is ON, block all API requests except from Admins or the site-config itself
+    if (isMaintenance && pathname.startsWith('/api') && 
+        pathname !== '/api/site-config' && 
+        !pathname.includes('/api/auth/me') && 
+        !pathname.includes('/api/auth/login')) {
+        if (token) {
+            try {
+                const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+                if (decoded?.role !== 'admin') {
+                    return NextResponse.json({ error: 'System is under maintenance. Please try again later.' }, { status: 503 });
+                }
+            } catch (e) {
+                return NextResponse.json({ error: 'System is under maintenance.' }, { status: 503 });
+            }
+        } else {
+            return NextResponse.json({ error: 'System is under maintenance.' }, { status: 503 });
+        }
+    }
+    
+    // 4. Determine Dynamic Limits
+    let limit = dynamicLimitGeneral; 
+    if (pathname.includes('/api/auth/login') || 
+        pathname.includes('/api/auth/register') || 
+        pathname.includes('/api/auth/otp') || 
+        pathname.includes('/api/auth/reset-password')) {
+      limit = dynamicLimitAuth;
+    }
 
-    if (!result.success) {
+    const result = rateLimit(identifier, { limit, windowMs: 60000 });
+
+    if (!result.success || isBotSuspect) {
+      const reason = isBotSuspect ? 'Malicious Path' : 'Rate Limit Exceeded';
+      const label = isBotSuspect ? '\x1b[41m[SUSPECT]\x1b[0m' : '\x1b[31m[BLOCKED]\x1b[0m';
+      
+      console.log(`${label} ${method} ${pathname} (${reason})`);
+      
       return NextResponse.json(
         { 
-          error: 'Too many requests. Please try again later.',
-          retryAfter: Math.ceil((result.reset - Date.now()) / 1000)
+          error: isBotSuspect ? 'Access Denied' : 'Too many requests. Please try again later.',
+          retryAfter: isBotSuspect ? 3600 : Math.ceil((result.reset - Date.now()) / 1000)
         },
         { 
-          status: 429,
+          status: isBotSuspect ? 403 : 429,
           headers: {
             'X-RateLimit-Limit': limit.toString(),
             'X-RateLimit-Remaining': result.remaining.toString(),
@@ -77,6 +154,11 @@ export async function middleware(request: NextRequest) {
       );
     }
     
+    // Log successful requests (Cleaner version)
+    if (pathname.startsWith('/api') && !pathname.includes('/api/upload')) {
+        console.log(`[API Request] ${method} ${pathname}`);
+    }
+
     response.headers.set('X-RateLimit-Limit', limit.toString());
     response.headers.set('X-RateLimit-Remaining', result.remaining.toString());
     response.headers.set('X-RateLimit-Reset', result.reset.toString());
@@ -106,6 +188,11 @@ export async function middleware(request: NextRequest) {
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // New Enterprise-Grade Security Headers
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=()');
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
   
   if (process.env.NODE_ENV === 'production') {
     response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
