@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
         const decoded = token ? verifyToken(token) : null;
         let user: any = null;
         if (decoded?.userId) {
-            user = await User.findById(decoded.userId).select('verifiedCommunities').lean();
+            user = await User.findById(decoded.userId).select('verifiedCommunities role').lean();
         }
 
         // 1. Specific Community Filter (ID) — show only that campus's listings
@@ -91,17 +91,31 @@ export async function GET(req: NextRequest) {
         } 
         // 2. Public Only Filter — show only public (non-community) listings
         else if (communityFilter === 'Public') {
-            productQuery.visibility = { $ne: 'Community' };
-            serviceQuery.visibility = { $ne: 'Community' };
+            const publicOr = [
+                { visibility: 'Public' },
+                { visibility: { $exists: false } },
+                { visibility: null }
+            ];
+            productQuery.$or = publicOr;
+            serviceQuery.$or = publicOr;
         }
         // 3. Default "All" Filter (Show Public + Items from User's Verified Communities)
         else {
             const allowedCommunityIds = user?.verifiedCommunities || [];
-            const visibilityOr = [
-                { visibility: { $ne: 'Community' } },
+            const isAdmin = user?.role === 'admin';
+
+            const visibilityOr: any[] = [
+                { visibility: 'Public' },
                 { visibility: { $exists: false } },
-                { visibility: 'Community', community: { $in: allowedCommunityIds } }
+                { visibility: null }
             ];
+
+            if (isAdmin) {
+                visibilityOr.push({ visibility: 'Community' });
+            } else {
+                visibilityOr.push({ visibility: 'Community', community: { $in: allowedCommunityIds } });
+            }
+
             if (!productQuery.$and) productQuery.$and = [];
             if (!serviceQuery.$and) serviceQuery.$and = [];
             productQuery.$and.push({ $or: visibilityOr });

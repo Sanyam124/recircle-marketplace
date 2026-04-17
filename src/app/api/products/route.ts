@@ -154,27 +154,42 @@ export async function GET(req: NextRequest) {
         const query: any = { status: { $in: ['Available', 'Rented'] } };
 
         if (decoded && !seller) {
-             const currentUser = await User.findById(decoded.userId).select('blockedUsers verifiedCommunities').lean();
+             const currentUser = await User.findById(decoded.userId).select('blockedUsers verifiedCommunities role').lean();
              if (currentUser && currentUser.blockedUsers) {
                   blockedUserIds = currentUser.blockedUsers.map((id: any) => id.toString());
              }
 
              if (communityFilter === 'Public') {
-                 query.visibility = 'Public';
+                 query.$or = [
+                     { visibility: 'Public' },
+                     { visibility: { $exists: false } },
+                     { visibility: null }
+                 ];
              } else if (communityFilter !== 'All' && communityFilter !== 'Public') {
                  query.community = communityFilter;
              } else {
-                 const verifiedCommunityIds = (currentUser as any)?.verifiedCommunities || [];
-                  query.$or = [
+                  const verifiedCommunityIds = (currentUser as any)?.verifiedCommunities || [];
+                  const isAdmin = (currentUser as any)?.role === 'admin';
+                  
+                  const visibilityOr: any[] = [
                       { visibility: 'Public' },
                       { visibility: { $exists: false } },
-                      { visibility: 'Community', community: { $in: verifiedCommunityIds } }
+                      { visibility: null }
                   ];
+
+                  if (isAdmin) {
+                      visibilityOr.push({ visibility: 'Community' });
+                  } else {
+                      visibilityOr.push({ visibility: 'Community', community: { $in: verifiedCommunityIds } });
+                  }
+                  
+                  query.$or = visibilityOr;
              }
         } else if (!seller) {
              query.$or = [
                  { visibility: 'Public' },
-                 { visibility: { $exists: false } }
+                 { visibility: { $exists: false } },
+                 { visibility: null }
              ];
         }
 

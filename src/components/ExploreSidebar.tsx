@@ -381,15 +381,15 @@ function FilterElements({
             </div>
         </div>
         <div className="mt-4" onClick={(e) => !user && triggerGuestToast(e)}>
-            <label className={`text-[10px] font-black uppercase tracking-widest italic ml-1 mb-1.5 block ${filters.communityFilter === 'Public' ? 'text-gray-300 dark:text-gray-700' : 'text-gray-400'}`}>Building/Hostel</label>
-            <div className={`relative group transition-opacity duration-300 ${(filters.communityFilter === 'Public' || !user) ? 'opacity-50 pointer-events-none' : ''}`}>
+            <label className={`text-[10px] font-black uppercase tracking-widest italic ml-1 mb-1.5 block ${ (filters.communityFilter === 'Public' || filters.communityFilter === 'All') ? 'text-gray-300 dark:text-gray-700' : 'text-gray-400'}`}>Building/Hostel</label>
+            <div className={`relative group transition-opacity duration-300 ${(filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user) ? 'opacity-50 pointer-events-none' : ''}`}>
                 <select 
                   name="hostel" 
                   value={filters.hostel || ''} 
                   onChange={handleChange} 
-                  disabled={filters.communityFilter === 'Public' || !user}
+                  disabled={filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user}
                   className={`w-full py-3.5 pl-4 pr-10 text-[11px] border font-bold appearance-none outline-none transition-all rounded-2xl ${
-                    filters.communityFilter === 'Public' || !user
+                    filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user
                     ? 'bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 border-gray-100 dark:border-gray-800 pointer-events-none'
                     : 'bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50 focus:ring-4 focus:ring-emerald-100 border-dashed cursor-pointer'
                   }`}
@@ -401,7 +401,7 @@ function FilterElements({
                     </option>
                   ))}
                 </select>
-                <div className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none ${filters.communityFilter === 'Public' ? 'text-gray-300' : 'text-emerald-400'}`}>
+                <div className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none ${ (filters.communityFilter === 'Public' || filters.communityFilter === 'All') ? 'text-gray-300' : 'text-emerald-400'}`}>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
                 </div>
             </div>

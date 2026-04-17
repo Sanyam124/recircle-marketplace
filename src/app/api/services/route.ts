@@ -137,31 +137,46 @@ export async function GET(req: NextRequest) {
         const query: any = { status: 'Active' };
 
         if (decoded && !provider) {
-             const currentUser = await User.findById(decoded.userId).select('blockedUsers verifiedCommunities').lean();
+             const currentUser = await User.findById(decoded.userId).select('blockedUsers verifiedCommunities role').lean();
              if (currentUser && currentUser.blockedUsers) {
                   blockedUserIds = currentUser.blockedUsers.map((id: any) => id.toString());
              }
 
              if (communityFilter === 'Public') {
-                 // Only show globally public items
-                 query.visibility = 'Public';
+                 // Only show globally public items (including legacy)
+                 query.$or = [
+                     { visibility: 'Public' },
+                     { visibility: { $exists: false } },
+                     { visibility: null }
+                 ];
              } else if (communityFilter !== 'All' && communityFilter !== 'Public') {
                  // Exact community filter
                  query.community = communityFilter;
              } else {
-                 // 'All' filter rule: Must be 'Public' OR belong to one of the user's verified communities
-                 const verifiedCommunityIds = (currentUser as any)?.verifiedCommunities || [];
-                  query.$or = [
+                  // 'All' filter rule: Must be 'Public' OR belong to one of the user's verified communities (Admins see everything)
+                  const verifiedCommunityIds = (currentUser as any)?.verifiedCommunities || [];
+                  const isAdmin = (currentUser as any)?.role === 'admin';
+                  
+                  const visibilityOr: any[] = [
                       { visibility: 'Public' },
                       { visibility: { $exists: false } },
-                      { visibility: 'Community', community: { $in: verifiedCommunityIds } }
+                      { visibility: null }
                   ];
+
+                  if (isAdmin) {
+                      visibilityOr.push({ visibility: 'Community' });
+                  } else {
+                      visibilityOr.push({ visibility: 'Community', community: { $in: verifiedCommunityIds } });
+                  }
+                  
+                  query.$or = visibilityOr;
              }
         } else if (!provider) {
              // Unauthenticated users ONLY see Public things when looking at 'All'
              query.$or = [
                  { visibility: 'Public' },
-                 { visibility: { $exists: false } }
+                 { visibility: { $exists: false } },
+                 { visibility: null }
              ];
         }
 
