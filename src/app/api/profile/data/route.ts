@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
                 email: user.email,
                 role: user.role,
                 profilePicture: user.profilePicture,
+                bannerImage: user.bannerImage,
                 bio: user.bio,
                 phone: user.phone,
                 isPhoneVerified: user.isPhoneVerified,
@@ -52,6 +53,15 @@ export async function GET(req: NextRequest) {
                 wishlistedServices: user.wishlistedServices || [],
                 isVerified: user.isVerified,
                 isOnVacation: user.isOnVacation || false,
+                notifyOffers: user.notifyOffers ?? true,
+                notifyMessages: user.notifyMessages ?? true,
+                notifyNewsletter: user.notifyNewsletter ?? true,
+                notifyCommunity: user.notifyCommunity ?? true,
+                notifySecurity: user.notifySecurity ?? true,
+                showOnlineStatus: user.showOnlineStatus ?? true,
+                compactView: user.compactView ?? false,
+                defaultCommunity: user.defaultCommunity,
+                defaultHostel: user.defaultHostel,
                 authProvider: user.authProvider,
                 usernameChangeCount: user.usernameChangeCount || 0,
                 verifiedCommunities: user.verifiedCommunities || []
@@ -74,7 +84,13 @@ export async function PUT(req: NextRequest) {
         await connectToDatabase();
         require('@/models/Community');
         const body = await req.json();
-        const { name, username, gender, address, bio, allowEmailContact, allowPhoneContact, isOnVacation, profilePicture } = body;
+        const { 
+            name, username, gender, address, bio, phone,
+            allowEmailContact, allowPhoneContact, isOnVacation, 
+            profilePicture, bannerImage, notifyOffers, notifyMessages,
+            notifyNewsletter, notifyCommunity, notifySecurity,
+            showOnlineStatus, compactView, defaultCommunity, defaultHostel
+        } = body;
 
         const user = await User.findById(decoded.userId);
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -128,6 +144,10 @@ export async function PUT(req: NextRequest) {
             }
             updateData.address = address;
         }
+        if (phone !== undefined) {
+            // Basic number check
+            updateData.phone = phone.replace(/\D/g, '').slice(0, 15);
+        }
 
         // 4. Bio with length check
         if (bio !== undefined) {
@@ -137,10 +157,21 @@ export async function PUT(req: NextRequest) {
             updateData.bio = bio;
         }
 
-        // 5. Privacy Toggles
+        // 5. Toggles (Privacy, Notifications, UI)
         if (allowEmailContact !== undefined) updateData.allowEmailContact = allowEmailContact;
         if (allowPhoneContact !== undefined) updateData.allowPhoneContact = allowPhoneContact;
         if (isOnVacation !== undefined) updateData.isOnVacation = isOnVacation;
+        if (notifyOffers !== undefined) updateData.notifyOffers = notifyOffers;
+        if (notifyMessages !== undefined) updateData.notifyMessages = notifyMessages;
+        if (notifyNewsletter !== undefined) updateData.notifyNewsletter = notifyNewsletter;
+        if (notifyCommunity !== undefined) updateData.notifyCommunity = notifyCommunity;
+        if (notifySecurity !== undefined) updateData.notifySecurity = notifySecurity;
+        if (showOnlineStatus !== undefined) updateData.showOnlineStatus = showOnlineStatus;
+        if (compactView !== undefined) updateData.compactView = compactView;
+        if (defaultCommunity !== undefined) {
+            updateData.defaultCommunity = defaultCommunity === "" ? null : defaultCommunity;
+        }
+        if (defaultHostel !== undefined) updateData.defaultHostel = defaultHostel;
 
         // 6. Profile Picture Auto-Upload & Garbage Collection
         let newlyUploadedUrl: string | null = null;
@@ -168,6 +199,30 @@ export async function PUT(req: NextRequest) {
             updateData.profilePicture = finalUrl;
         }
 
+        // 7. Banner Image Auto-Upload & Garbage Collection
+        let newlyUploadedBannerUrl: string | null = null;
+        let oldBannerUrlToDelete: string | null = null;
+
+        if (bannerImage !== undefined && bannerImage !== user.bannerImage) {
+            let finalUrl = bannerImage;
+
+            if (bannerImage && bannerImage.startsWith('data:image')) {
+                try {
+                    const { uploadToCloudinary } = await import('@/lib/cloudinary');
+                    finalUrl = await uploadToCloudinary(bannerImage, 'recircle/profiles');
+                    newlyUploadedBannerUrl = finalUrl;
+                } catch (e) {
+                    console.error('Failed to upload new banner:', e);
+                    return NextResponse.json({ error: 'Failed to process banner image' }, { status: 500 });
+                }
+            }
+
+            if (user.bannerImage && (finalUrl !== user.bannerImage)) {
+                oldBannerUrlToDelete = user.bannerImage;
+            }
+            updateData.bannerImage = finalUrl;
+        }
+
         let updatedUser;
         try {
             updatedUser = await User.findByIdAndUpdate(
@@ -176,11 +231,17 @@ export async function PUT(req: NextRequest) {
                 { new: true, runValidators: true }
             ).populate('verifiedCommunities', 'name image isActive').select('-password');
         } catch (dbError) {
-             // Rollback newly uploaded image if DB update failed
+             // Rollback newly uploaded images if DB update failed
              if (newlyUploadedUrl) {
                  try {
                      const { deleteFromCloudinary } = await import('@/lib/cloudinary');
                      await deleteFromCloudinary(newlyUploadedUrl);
+                 } catch (e) {}
+             }
+             if (newlyUploadedBannerUrl) {
+                 try {
+                     const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                     await deleteFromCloudinary(newlyUploadedBannerUrl);
                  } catch (e) {}
              }
              throw dbError;
@@ -193,6 +254,14 @@ export async function PUT(req: NextRequest) {
                 await deleteFromCloudinary(oldUrlToDelete);
              } catch (e) {
                 console.error('Failed to garbage collect old profile pic:', e);
+             }
+        }
+        if (oldBannerUrlToDelete) {
+             try {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await deleteFromCloudinary(oldBannerUrlToDelete);
+             } catch (e) {
+                console.error('Failed to garbage collect old banner pic:', e);
              }
         }
 
@@ -209,6 +278,7 @@ export async function PUT(req: NextRequest) {
                 email: updatedUser.email,
                 role: updatedUser.role,
                 profilePicture: updatedUser.profilePicture,
+                bannerImage: updatedUser.bannerImage,
                 bio: updatedUser.bio,
                 phone: updatedUser.phone,
                 isPhoneVerified: updatedUser.isPhoneVerified,
@@ -220,6 +290,15 @@ export async function PUT(req: NextRequest) {
                 wishlistedServices: updatedUser.wishlistedServices || [],
                 isVerified: updatedUser.isVerified,
                 isOnVacation: updatedUser.isOnVacation || false,
+                notifyOffers: updatedUser.notifyOffers ?? true,
+                notifyMessages: updatedUser.notifyMessages ?? true,
+                notifyNewsletter: updatedUser.notifyNewsletter ?? true,
+                notifyCommunity: updatedUser.notifyCommunity ?? true,
+                notifySecurity: updatedUser.notifySecurity ?? true,
+                showOnlineStatus: updatedUser.showOnlineStatus ?? true,
+                compactView: updatedUser.compactView ?? false,
+                defaultCommunity: updatedUser.defaultCommunity,
+                defaultHostel: updatedUser.defaultHostel,
                 authProvider: updatedUser.authProvider,
                 usernameChangeCount: updatedUser.usernameChangeCount || 0,
                 verifiedCommunities: updatedUser.verifiedCommunities || []
@@ -258,6 +337,7 @@ export async function DELETE(req: NextRequest) {
 
         const imagesToDelete: string[] = [];
         if (userObj?.profilePicture) imagesToDelete.push(userObj.profilePicture);
+        if (userObj?.bannerImage) imagesToDelete.push(userObj.bannerImage);
         userProducts.forEach(p => p.images?.forEach((img: string) => imagesToDelete.push(img)));
         userServices.forEach(s => s.images?.forEach((img: string) => imagesToDelete.push(img)));
 
