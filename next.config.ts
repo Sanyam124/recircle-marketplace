@@ -42,8 +42,15 @@ const nextConfig = {
       {
           protocol: 'https',
           hostname: 't3.ftcdn.net',
+      },
+      {
+          protocol: 'https',
+          hostname: 'api.dicebear.com',
       }
     ],
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   async redirects() {
     return [
