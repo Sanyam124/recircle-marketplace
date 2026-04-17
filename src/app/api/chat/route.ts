@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Types, isValidObjectId } from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import Message from '@/models/Message';
 import Notification from '@/models/Notification';
@@ -7,7 +8,6 @@ import Order from '@/models/Order';
 import Product from '@/models/Product';
 import Service from '@/models/Service';
 import { verifyToken } from '@/lib/auth';
-import mongoose from 'mongoose';
 
 // GET history between two users
 export async function GET(req: NextRequest) {
@@ -22,6 +22,18 @@ export async function GET(req: NextRequest) {
         const recipientId = searchParams.get('userId');
         const productId = searchParams.get('productId');
         const serviceId = searchParams.get('serviceId');
+
+        // [CAST ERROR FIX]: Validate IDs before querying database
+        if (recipientId && !isValidObjectId(recipientId)) {
+            return NextResponse.json({ error: 'Invalid User ID' }, { status: 400 });
+        }
+        if (productId && !isValidObjectId(productId)) {
+            return NextResponse.json({ error: 'Invalid Product ID' }, { status: 400 });
+        }
+        if (serviceId && !isValidObjectId(serviceId)) {
+            return NextResponse.json({ error: 'Invalid Service ID' }, { status: 400 });
+        }
+
         const before = searchParams.get('before'); // Fetch messages before this timestamp
         const limit = parseInt(searchParams.get('limit') || '20');
 
@@ -133,6 +145,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing recipient or content' }, { status: 400 });
         }
 
+        // [CAST ERROR FIX]: Validate IDs before querying database
+        if (recipientId && !isValidObjectId(recipientId)) {
+            return NextResponse.json({ error: 'Invalid Recipient ID' }, { status: 400 });
+        }
+        if (productId && !isValidObjectId(productId)) {
+            return NextResponse.json({ error: 'Invalid Product ID' }, { status: 400 });
+        }
+        if (serviceId && !isValidObjectId(serviceId)) {
+            return NextResponse.json({ error: 'Invalid Service ID' }, { status: 400 });
+        }
+
         if (content.length > 2000) {
             return NextResponse.json({ error: 'Message must be 2000 characters or less' }, { status: 400 });
         }
@@ -151,6 +174,11 @@ export async function POST(req: NextRequest) {
 
         if (!sender || !receiver) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        // [BAN CHECK] Prevent banned users from sending messages
+        if (sender.status === 'Banned') {
+            return NextResponse.json({ error: 'Your account is banned. You cannot send messages.' }, { status: 403 });
         }
 
         const isBlockedBySender = sender.blockedUsers?.some((id: any) => id.toString() === recipientId.toString());
@@ -236,3 +264,4 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
+

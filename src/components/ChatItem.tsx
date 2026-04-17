@@ -52,13 +52,16 @@ export const ChatItem = React.memo(({
             <Link
                 href={`/chat/${currentRawUserId || 'deleted'}${currentRawProductId ? `?productId=${currentRawProductId}` : (currentRawServiceId ? `?serviceId=${currentRawServiceId}` : '')}`}
                 onClick={onItemClick}
-                className={`block p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800 ${
-                    isActive ? 'bg-indigo-50 dark:bg-indigo-900/30 border-r-4 border-r-indigo-600 dark:border-r-indigo-400' : ''
+                className={`block p-4 transition-all border-b border-gray-100 dark:border-gray-800 relative group overflow-hidden ${
+                    isActive ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
             >
+                {isActive && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-600 dark:bg-indigo-400 shadow-[2px_0_10px_rgba(79,70,229,0.3)] animate-in slide-in-from-left duration-300" />
+                )}
                 <div className="flex items-start gap-4 mx-1">
                     <div className="relative shrink-0 flex items-center justify-center w-14 h-14 mt-1">
-                        <div className="absolute top-0 left-0 right-2 bottom-2 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform group-hover:scale-105">
+                        <div className="absolute top-0 left-0 right-2 bottom-2 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform group-hover:scale-105">
                             {itemImage ? (
                                 <Image src={itemImage} alt={itemTitle} fill sizes="56px" className="object-cover" />
                             ) : (
@@ -167,7 +170,7 @@ export const ChatItem = React.memo(({
             </button>
 
             {activeMenu === menuKey && (
-                <div className="absolute right-3 top-12 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1.5 z-[100] animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute right-3 top-12 w-48 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 z-[100] animate-in fade-in zoom-in-95 duration-200">
                     <button
                         onClick={(e) => handleDeleteChat(e, conv)}
                         className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium flex items-center gap-2 transition-colors"
@@ -179,22 +182,28 @@ export const ChatItem = React.memo(({
                     </button>
                     <button 
                         onClick={(e) => handleBlockClick(e, conv)}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium flex items-center gap-2 transition-colors"
+                        className={`w-full text-left px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors ${
+                            user?.blockedUsers?.some((id: any) => id.toString() === currentRawUserId?.toString())
+                                ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10'
+                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        }`}
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
                         </svg>
-                        Block User
+                        {user?.blockedUsers?.some((id: any) => id.toString() === currentRawUserId?.toString()) ? 'Unblock User' : 'Block User'}
                     </button>
-                    <button 
-                        onClick={(e) => handleReportClick(e, conv)}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium flex items-center gap-2 transition-colors"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        Report Listing
-                    </button>
+                    {(conv.product || conv.service) && (
+                        <button 
+                            onClick={(e) => handleReportClick(e, conv)}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium flex items-center gap-2 transition-colors"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            Report Listing
+                        </button>
+                    )}
                     <button 
                         onClick={(e) => handleReportUserClick(e, conv)}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium flex items-center gap-2 transition-colors"

@@ -68,32 +68,28 @@ export default function LocationViewer({ visibility, location }: LocationViewerP
 
     return (
         <div className="flex flex-col gap-6 mt-6">
-            {/* 1. General Location Text - Prominent on mobile */}
-            <div className="flex items-center gap-3 p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
-                <div className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                </div>
-                <div>
-                    <p className="text-[10px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-widest leading-none mb-1">Official Location</p>
-                    <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
-                        {[location.city, location.state, location.pincode].filter(Boolean).join(', ') || 'Location details restricted'}
-                    </h4>
-                </div>
-            </div>
-
-            {/* 2. Map Display - ONLY for Public listings */}
+            {/* Map Display with Official Location - ONLY for Public listings */}
             {visibility === 'Public' && hasMapSettings && (
                 <div className="p-6 sm:p-8 rounded-[2.5rem] bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/30">
                     <div className="flex items-center gap-4 mb-2 sm:mb-6">
                         <div className="w-12 h-12 bg-indigo-600 dark:bg-indigo-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
                              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                             <p className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.2em] leading-none mb-1.5">Public Setup</p>
-                            <h4 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Meeting Point</h4>
+                            <h4 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight break-words">Meeting Point</h4>
                         </div>
-                        {distanceBadge}
+                        <div className="shrink-0 flex items-center">
+                            {distanceBadge}
+                        </div>
                     </div>
+
+                    {/* Official Location - simple text above the map */}
+                    {(location.city || location.state || location.pincode) && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            <span className="font-bold text-gray-800 dark:text-gray-200">Location:</span> {[location.city, location.state, location.pincode].filter(Boolean).join(', ')}
+                        </p>
+                    )}
 
                     <div className="rounded-[2.5rem] overflow-hidden border-4 border-white dark:border-white/5 shadow-2xl bg-gray-50 dark:bg-black/20 h-[300px] sm:h-[350px] relative group z-0">
                         <MapSection 
@@ -137,15 +133,15 @@ export default function LocationViewer({ visibility, location }: LocationViewerP
                         </div>
                         <div>
                             <p className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.2em] leading-none mb-1.5">Campus Delivery</p>
-                            <h4 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Trade-off Point</h4>
+                            <h4 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Exchange Point</h4>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {location.hostel && (
-                            <div className="p-4 bg-white dark:bg-white/5 rounded-2xl border border-indigo-100/30 dark:border-white/5 shadow-sm">
+                            <div className="p-4 bg-white dark:bg-white/5 rounded-2xl border border-indigo-100/30 dark:border-white/5 shadow-sm overflow-hidden min-w-0">
                                 <span className="text-[10px] font-black text-gray-400 dark:text-indigo-400/50 uppercase block mb-1 tracking-widest">Hostel</span>
-                                <span className="text-lg font-black text-gray-900 dark:text-indigo-300">{location.hostel}</span>
+                                <span className="text-lg font-black text-gray-900 dark:text-indigo-300 break-all">{location.hostel}</span>
                             </div>
                         )}
                         {location.room !== undefined && (

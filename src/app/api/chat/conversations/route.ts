@@ -75,6 +75,7 @@ export async function GET(req: NextRequest) {
                 }
             },
             { $unwind: "$lastMessage" },
+            { $match: { "lastMessage": { $ne: null } } }, // Safety: Discard any incomplete groups
             { $sort: { "lastMessage.createdAt": -1, "lastMessage._id": -1 } }
         ];
 
@@ -188,11 +189,8 @@ export async function GET(req: NextRequest) {
             };
         }));
 
-        // Maintain conversations even if user or item is missing (for history)
-        const finalConversations = conversations;
-
         return NextResponse.json({
-            conversations: finalConversations,
+            conversations,
             pagination: {
                 currentPage: page,
                 totalPages,

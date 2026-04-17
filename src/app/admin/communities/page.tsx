@@ -13,6 +13,9 @@ export default function AdminCommunitiesPage() {
     const [isAdding, setIsAdding] = useState(false);
     const [formData, setFormData] = useState({ name: '', emailDomains: '', description: '', image: '' });
     const [imageUploading, setImageUploading] = useState(false);
+    const [selectedCommForHostels, setSelectedCommForHostels] = useState<any>(null);
+    const [hostelsInput, setHostelsInput] = useState('');
+    const [isUpdatingHostels, setIsUpdatingHostels] = useState(false);
 
     const [totalCount, setTotalCount] = useState(0);
 
@@ -78,6 +81,72 @@ export default function AdminCommunitiesPage() {
         } catch (error) {
             console.error('Failed to delete', error);
         }
+    };
+
+    const handleUpdateHostels = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedCommForHostels) return;
+
+        const newHostels = hostelsInput
+            .split(',')
+            .map(h => h.trim())
+            .filter(Boolean);
+
+        if (newHostels.length === 0) {
+            return showError('Error', 'Please enter at least one hostel name.');
+        }
+
+        const updatedHostels = [...(selectedCommForHostels.hostels || []), ...newHostels];
+        // Deduplicate using Set
+        const uniqueHostels = Array.from(new Set(updatedHostels));
+
+        setIsUpdatingHostels(true);
+        try {
+            const res = await fetch(`/api/admin/communities/${selectedCommForHostels._id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'add_hostels', hostels: uniqueHostels })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setCommunities(communities.map(c => c._id === selectedCommForHostels._id ? data.community : c));
+                setSelectedCommForHostels(data.community);
+                setHostelsInput('');
+                showSuccess('Hostels Updated', 'The requested hostels have been added.');
+            } else {
+                const err = await res.json();
+                showError('Update Failed', err.error || 'Failed to add hostels');
+            }
+        } catch (error) {
+            showError('System Error', 'Failed to update hostels');
+        } finally {
+            setIsUpdatingHostels(false);
+        }
+    };
+
+    const handleRemoveHostel = async (hostelToRemove: string) => {
+         if (!selectedCommForHostels) return;
+         const confirmed = await confirmAction({title: 'Remove Hostel', text: `Remove ${hostelToRemove}?`, dangerMode: true});
+         if (!confirmed) return;
+
+         const updatedHostels = selectedCommForHostels.hostels.filter((h: string) => h !== hostelToRemove);
+
+         try {
+            const res = await fetch(`/api/admin/communities/${selectedCommForHostels._id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update_hostels', hostels: updatedHostels })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setCommunities(communities.map(c => c._id === selectedCommForHostels._id ? data.community : c));
+                setSelectedCommForHostels(data.community);
+            }
+         } catch (error) {
+             showError('Error', 'Failed to remove hostel');
+         }
     };
 
     return (
@@ -157,7 +226,7 @@ export default function AdminCommunitiesPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {communities.map((comm) => (
-                        <div key={comm._id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
+                        <div key={comm._id} onClick={() => setSelectedCommForHostels(comm)} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm hover:shadow-lg transition-all group overflow-hidden relative cursor-pointer ring-2 ring-transparent hover:ring-indigo-500/30">
                             {comm.image && (
                                 <div className="absolute inset-0 z-0 h-full w-full opacity-10 blur-[2px]">
                                     <NextImage src={comm.image} alt="" fill className="object-cover" />
@@ -182,6 +251,7 @@ export default function AdminCommunitiesPage() {
                                     </button>
                                 </div>
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{comm.name}</h3>
+                                <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mb-3">{comm.hostels?.length || 0} Hostels Added</p>
                                 <div className="flex flex-wrap gap-2 mb-4">
                                     {comm.emailDomains.map((domain: string) => (
                                         <span key={domain} className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-[10px] font-mono border border-gray-200 dark:border-gray-600">
@@ -199,6 +269,63 @@ export default function AdminCommunitiesPage() {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Hostel Management Modal */}
+            {selectedCommForHostels && (
+                <div onClick={() => setSelectedCommForHostels(null)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300">
+                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300 max-h-[90vh] flex flex-col">
+                        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Manage Hostels for {selectedCommForHostels.name}</h3>
+                                <p className="text-xs text-gray-500 mt-1">These will appear as dropdown options for users when listing items.</p>
+                            </div>
+                            <button onClick={() => setSelectedCommForHostels(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 bg-white dark:bg-gray-800 p-2 rounded-full shadow-sm">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 overflow-y-auto flex-1">
+                            <form onSubmit={handleUpdateHostels} className="mb-8 p-5 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl">
+                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Bulk Add Hostels</label>
+                                <textarea
+                                    className="w-full rounded-xl border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm p-4 focus:ring-2 focus:ring-indigo-500"
+                                    rows={3}
+                                    placeholder="Enter hostel names separated by commas (e.g. Tagore Hostel, Ramanujan Block, Girls Wing A)"
+                                    value={hostelsInput}
+                                    onChange={(e) => setHostelsInput(e.target.value)}
+                                ></textarea>
+                                <div className="mt-3 flex justify-end">
+                                    <button type="submit" disabled={isUpdatingHostels || !hostelsInput} className="px-5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm">
+                                        {isUpdatingHostels ? 'Adding...' : '+ Add Hostels'}
+                                    </button>
+                                </div>
+                            </form>
+
+                            <h4 className="text-sm font-bold text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 pb-3 mb-4 flex justify-between">
+                                Existing Hostels
+                                <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-lg text-gray-500">{selectedCommForHostels.hostels?.length || 0} Total</span>
+                            </h4>
+                            
+                            {selectedCommForHostels.hostels && selectedCommForHostels.hostels.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                    {selectedCommForHostels.hostels.map((hostel: string, index: number) => (
+                                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 group">
+                                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300 truncate pr-2">{hostel}</span>
+                                            <button onClick={() => handleRemoveHostel(hostel)} className="text-red-400 hover:text-red-600 p-1.5 opacity-50 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-900 rounded-lg shadow-sm">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-10">
+                                    <p className="text-gray-400 text-sm italic">No hostels have been added to this community yet.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

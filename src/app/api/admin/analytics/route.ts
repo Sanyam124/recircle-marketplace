@@ -84,6 +84,51 @@ export async function GET(req: NextRequest) {
             .limit(5)
             .select('buyer seller product service status totalAmount orderType _id createdAt');
 
+        // 8. Registration Timeseries Graph Data
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+        const dailySignups = await User.aggregate([
+            { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+            { $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                count: { $sum: 1 },
+                emailCount: { $sum: { $cond: [{ $eq: ["$authProvider", "email"] }, 1, 0] } },
+                googleCount: { $sum: { $cond: [{ $in: ["$authProvider", ["google", "both"]] }, 1, 0] } }
+            }},
+            { $sort: { _id: 1 } }
+        ]);
+
+        const twelveMonthsAgo = new Date();
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
+        twelveMonthsAgo.setDate(1);
+        const monthlySignups = await User.aggregate([
+             { $match: { createdAt: { $gte: twelveMonthsAgo } } },
+             { $group: {
+                 _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+                 count: { $sum: 1 },
+                 emailCount: { $sum: { $cond: [{ $eq: ["$authProvider", "email"] }, 1, 0] } },
+                 googleCount: { $sum: { $cond: [{ $in: ["$authProvider", ["google", "both"]] }, 1, 0] } }
+             }},
+             { $sort: { _id: 1 } }
+        ]);
+
+        // 9. SMTP Timeseries Data
+        const SmtpUsage = (await import('@/models/SmtpUsage')).default;
+        
+        const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+        const dailySmtp = await SmtpUsage.find({ dateId: { $gte: thirtyDaysAgoStr } }).sort({ dateId: 1 }).lean();
+
+        const monthlySmtp = await SmtpUsage.aggregate([
+             { $match: { dateId: { $gte: twelveMonthsAgo.toISOString().split('T')[0] } } },
+             { $group: {
+                 _id: { $substr: ["$dateId", 0, 7] }, // gets YYYY-MM
+                 smtp1: { $sum: "$smtp1" },
+                 smtp2: { $sum: "$smtp2" },
+                 smtp3: { $sum: "$smtp3" }
+             }},
+             { $sort: { _id: 1 } }
+        ]);
+
         // Compile Final Payload
         const analyticsData = {
             users: {
@@ -126,6 +171,12 @@ export async function GET(req: NextRequest) {
             activityStream: {
                 latestUsers,
                 latestOrders
+            },
+            graphs: {
+                dailySignups,
+                monthlySignups,
+                dailySmtp,
+                monthlySmtp
             }
         };
 

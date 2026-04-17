@@ -135,6 +135,31 @@ export default function AdminUsersPage() {
         finally { setActionLoading(null); }
     };
 
+    const executeUnban = async (userId: string) => {
+        const confirmed = await confirmAction({
+            title: 'Unban User?',
+            text: 'This will restore their account access. Are you sure?',
+            confirmButtonText: 'Yes, Unban'
+        });
+        if (!confirmed) return;
+
+        setActionLoading(userId);
+        try {
+            const res = await fetch('/api/admin/users', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, action: 'unban' }),
+            });
+            if (res.ok) {
+                setUsers(prev => prev.map(u => u._id === userId ? { ...u, status: 'Active', bannedUntil: null } : u));
+                showSuccess('User Unbanned', 'Account access has been restored.');
+            } else {
+                showError('Action Failed', 'Failed to unban user');
+            }
+        } catch { console.error('Unban failed'); }
+        finally { setActionLoading(null); }
+    };
+
     const handleDeleteUser = async (userId: string, name: string) => {
         const confirmed1 = await confirmAction({
             title: `Delete ${name}?`,
@@ -213,6 +238,7 @@ export default function AdminUsersPage() {
                                     <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">Username</th>
                                     <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">Status</th>
                                     <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">Role</th>
+                                    <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">Reports</th>
                                     <th className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">Listings</th>
                                     <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 font-black uppercase tracking-wider whitespace-nowrap">Actions</th>
                                 </tr>
@@ -287,6 +313,13 @@ export default function AdminUsersPage() {
                                             </select>
                                         </td>
 
+                                        {/* Reports count */}
+                                        <td className="px-3 py-4 transition-colors whitespace-nowrap">
+                                            <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold border ${user.reportCount >= 10 ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-100 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'}`}>
+                                                🏁 {user.reportCount || 0}
+                                            </span>
+                                        </td>
+
                                         {/* Listings count */}
                                         <td className="px-3 py-4">
                                             <div className="flex items-center gap-1.5">
@@ -322,9 +355,14 @@ export default function AdminUsersPage() {
                                                         Ban
                                                     </button>
                                                 ) : (
-                                                    <span className="inline-flex items-center text-xs font-bold text-red-400 dark:text-red-500 px-3 py-1.5">
-                                                        Banned
-                                                    </span>
+                                                    <button
+                                                        onClick={() => executeUnban(user._id)}
+                                                        disabled={actionLoading === user._id}
+                                                        className="inline-flex items-center gap-1 text-xs font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 border border-green-100 dark:border-green-800 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                        Unban
+                                                    </button>
                                                 )}
 
                                                 <button

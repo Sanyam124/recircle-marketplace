@@ -7,6 +7,7 @@ export interface IUser extends Document {
     email: string;
     password?: string;
     profilePicture?: string;
+    bannerImage?: string;
     bio?: string;
     role: 'user' | 'admin' | 'verifier';
     address?: string;
@@ -31,8 +32,17 @@ export interface IUser extends Document {
     usernameChangeCount: number;
     usernameLastChanged?: Date;
     pushSubscription?: string; // Store as JSON string 
+    failedLoginAttempts: number;
+    lockUntil?: Date;
     notifyOffers: boolean;
     notifyMessages: boolean;
+    notifyNewsletter: boolean; // [NEW] Newsletter toggle
+    notifyCommunity: boolean; // [NEW] Community Board toggle
+    notifySecurity: boolean; // [NEW] Security alerts toggle
+    showOnlineStatus: boolean;
+    compactView: boolean;
+    defaultCommunity?: mongoose.Types.ObjectId;
+    defaultHostel?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -53,6 +63,7 @@ const UserSchema: Schema<IUser> = new Schema(
         email: { type: String, required: true, unique: true, trim: true, lowercase: true },
         password: { type: String, select: false },
         profilePicture: { type: String },
+        bannerImage: { type: String },
         bio: { type: String, trim: true, maxlength: 500, default: '' },
         gender: { type: String, enum: ['male', 'female', 'other', 'none'], default: 'none' },
         allowEmailContact: { type: Boolean, default: false },
@@ -79,6 +90,15 @@ const UserSchema: Schema<IUser> = new Schema(
         pushSubscription: { type: String }, // Store the JSON stringified PushSubscription object
         notifyOffers: { type: Boolean, default: true },
         notifyMessages: { type: Boolean, default: true },
+        notifyNewsletter: { type: Boolean, default: true },
+        notifyCommunity: { type: Boolean, default: true },
+        notifySecurity: { type: Boolean, default: true },
+        showOnlineStatus: { type: Boolean, default: true },
+        compactView: { type: Boolean, default: false },
+        defaultCommunity: { type: mongoose.Schema.Types.ObjectId, ref: 'Community' },
+        defaultHostel: { type: String },
+        failedLoginAttempts: { type: Number, default: 0, select: false },
+        lockUntil: { type: Date, select: false },
     },
     { timestamps: true }
 );
@@ -86,7 +106,7 @@ const UserSchema: Schema<IUser> = new Schema(
 // Workaround for Next.js HMR: Delete cached model if it lacks the new fields or has old constraints
 if (mongoose.models.User) {
     const currentSchema = mongoose.models.User.schema;
-    if (!currentSchema.path('pushSubscription') || !currentSchema.path('notifyOffers') || !currentSchema.path('notifyMessages') || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('status') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || !currentSchema.path('isOnVacation')) {
+    if (!currentSchema.path('pushSubscription') || !currentSchema.path('bannerImage') || !currentSchema.path('notifyNewsletter') || !currentSchema.path('notifySecurity') || !currentSchema.path('notifyOffers') || !currentSchema.path('notifyCommunity') || !currentSchema.path('notifyMessages') || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('status') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || !currentSchema.path('isOnVacation') || !currentSchema.path('showOnlineStatus') || !currentSchema.path('compactView') || !currentSchema.path('defaultCommunity') || !currentSchema.path('defaultHostel')) {
         delete mongoose.models.User;
     }
 }

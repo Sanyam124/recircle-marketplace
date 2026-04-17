@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isValidObjectId } from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import Service from '@/models/Service';
 import User from '@/models/User';
@@ -10,6 +11,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     try {
         await connectToDatabase();
         const { id } = await params;
+
+        if (!isValidObjectId(id)) {
+            return NextResponse.json({ error: 'Invalid Service ID' }, { status: 400 });
+        }
 
         const service = await Service.findById(id).populate('provider', 'name username profilePicture email').populate('community', 'name');
 
@@ -42,20 +47,36 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         }).select('buyer').sort({ createdAt: -1 });
         buyerId = lastOrder?.buyer;
 
-        // Fetch Provider Review Stats
-        const reviewStats = await Review.aggregate([
-            { $match: { target: service.provider._id } },
-            { $group: { _id: null, average: { $avg: '$rating' }, count: { $sum: 1 } } }
+        // 1. Fetch Provider Trust Stats (Unique Reviewer Compressed)
+        const providerTrustStats = await Review.aggregate([
+            { $match: { target: service.provider._id, rating: { $exists: true, $ne: null } } },
+            { $group: { _id: { target: '$target', reviewer: '$reviewer' }, reviewerAvgRating: { $avg: '$rating' } } },
+            { $group: { _id: '$_id.target', average: { $avg: '$reviewerAvgRating' }, count: { $sum: 1 } } }
         ]);
 
-        const averageRating = reviewStats.length > 0 ? Number(reviewStats[0].average.toFixed(1)) : 0;
-        const reviewCount = reviewStats.length > 0 ? reviewStats[0].count : 0;
+        // 2. Fetch Listing-Specific Stats
+        const itemStats = await Review.aggregate([
+            { $match: { service: service._id, rating: { $exists: true, $ne: null } } },
+            { $group: { _id: '$service', average: { $avg: '$rating' }, count: { $sum: 1 } } }
+        ]);
+
+        const providerStats = providerTrustStats[0] || { average: 0, count: 0 };
+        const specificStats = itemStats[0] || { average: 0, count: 0 };
+
+        const isOccupied = !!(await Order.findOne({ service: id, status: { $in: ['Scheduled', 'Paid', 'Reserved'] } }));
 
         return NextResponse.json({
             service: {
                 ...service.toObject(),
-                averageRating,
-                reviewCount
+                // Unified Bulletproof Schema
+                sellerTrustRating: providerStats.average,
+                sellerTrustCount: providerStats.count,
+                itemSpecificRating: specificStats.average,
+                itemSpecificCount: specificStats.count,
+                // Legacy fields for backward compatibility
+                averageRating: providerStats.average,
+                reviewCount: specificStats.count, 
+                isOccupied
             },
             buyerId
         }, { status: 200 });
@@ -74,6 +95,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
         await connectToDatabase();
         const { id } = await params;
+
+        if (!isValidObjectId(id)) {
+            return NextResponse.json({ error: 'Invalid Service ID' }, { status: 400 });
+        }
 
         const service = await Service.findById(id);
 
@@ -148,6 +173,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
         await connectToDatabase();
         const { id } = await params;
+
+        if (!isValidObjectId(id)) {
+            return NextResponse.json({ error: 'Invalid Service ID' }, { status: 400 });
+        }
+
         const body = await req.json();
 
         let service = await Service.findById(id);

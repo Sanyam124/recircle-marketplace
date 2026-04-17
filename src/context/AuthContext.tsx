@@ -21,15 +21,25 @@ interface User {
   blockedUsers?: string[];
   verifiedCommunities?: any[];
   status?: string;
+  notifyOffers?: boolean;
+  notifyMessages?: boolean;
+  showOnlineStatus?: boolean;
+  compactView?: boolean;
+  defaultCommunity?: string;
+  defaultHostel?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (userData: User) => void;
+  userLocation: { lat: number; lng: number } | null;
+  login: (userData: User, newCommunities?: string[]) => void;
   logout: () => void;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   refreshUser: () => Promise<void>;
+  refreshLocation: () => void;
+  celebratingCommunities: string[] | null;
+  triggerCelebration: (names: string[]) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,18 +47,97 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [celebratingCommunities, setCelebratingCommunities] = useState<string[] | null>(null);
+  const [rateLimited, setRateLimited] = useState<number | null>(null); // cooldown in seconds
   const router = useRouter();
+
+  // Handle global rate limit event
+  useEffect(() => {
+    const handleRateLimit = (e: any) => {
+      setRateLimited(e.detail?.retryAfter || 30);
+    };
+    window.addEventListener('app-rate-limit', handleRateLimit);
+    return () => window.removeEventListener('app-rate-limit', handleRateLimit);
+  }, []);
+
+  // Cooldown timer and Body Lock
+  useEffect(() => {
+    if (rateLimited !== null && rateLimited > 0) {
+      document.body.style.overflow = 'hidden';
+      const timer = setInterval(() => {
+        setRateLimited(prev => (prev && prev > 0) ? prev - 1 : 0);
+      }, 1000);
+      return () => {
+        clearInterval(timer);
+        document.body.style.overflow = 'auto';
+      };
+    } else {
+      if (rateLimited === 0) setRateLimited(null);
+      document.body.style.overflow = 'auto';
+    }
+  }, [rateLimited]);
+
+  const refreshLocation = () => {
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
+          setUserLocation(loc);
+          sessionStorage.setItem('recircle_location', JSON.stringify(loc));
+        },
+        (error) => {
+          console.warn('Geolocation error:', error);
+        },
+        { timeout: 10000, maximumAge: 60000 }
+      );
+    }
+  };
+
+  // Improved fetch with rate limit detection
+  const authFetch = async (url: string, options?: RequestInit) => {
+    const res = await fetch(url, options);
+    if (res.status === 429) {
+      const data = await res.json().catch(() => ({}));
+      const retryAfter = data.retryAfter || 30;
+      window.dispatchEvent(new CustomEvent('app-rate-limit', { detail: { retryAfter } }));
+    }
+    return res;
+  };
 
   // Load from cache or API on mount
   useEffect(() => {
-    // Safety timeout to prevent infinite loading screen (e.g. if fetch hangs)
+    // Try to restore location from session storage
+    if (typeof window !== 'undefined') {
+      const storedLoc = sessionStorage.getItem('recircle_location');
+      if (storedLoc) {
+        try {
+          setUserLocation(JSON.parse(storedLoc));
+        } catch (e) {
+          // ignore
+        }
+      } else {
+        refreshLocation(); // Fetch if not in session
+      }
+    }
+    
+    // Safety timeout
     const timeoutId = setTimeout(() => {
       setLoading(false);
     }, 8000); 
 
     async function loadUser() {
+      if (typeof window !== 'undefined') {
+        const cachedUser = localStorage.getItem('recircle_user');
+        if (cachedUser) {
+          try {
+            setUser(JSON.parse(cachedUser));
+          } catch (e) {}
+        }
+      }
+
       try {
-        const res = await fetch('/api/auth/me');
+        const res = await authFetch('/api/auth/me');
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
@@ -69,15 +158,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timeoutId);
   }, []);
 
-  const login = (userData: User) => {
+  const triggerCelebration = (names: string[]) => {
+    setCelebratingCommunities(names);
+    // Auto-clear after 5.5s (slightly longer than component duration)
+    setTimeout(() => {
+      setCelebratingCommunities(null);
+    }, 5500);
+  };
+
+  const login = (userData: User, newCommunities?: string[]) => {
     setUser(userData);
     localStorage.setItem('recircle_user', JSON.stringify(userData));
-    window.location.href = '/explore'; 
+    if (newCommunities && newCommunities.length > 0) {
+      triggerCelebration(newCommunities);
+    }
+    // Always redirect to explore
+    router.push('/explore');
   };
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await authFetch('/api/auth/logout', { method: 'POST' });
     } catch (error) {
       console.error('Logout failed', error);
     } finally {
@@ -89,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      const res = await fetch('/api/auth/me');
+      const res = await authFetch('/api/auth/me');
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
@@ -106,15 +207,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authContextValue = useMemo(() => ({ 
     user, 
     loading, 
+    userLocation,
     login, 
     logout, 
     setUser, 
-    refreshUser 
-  }), [user, loading]);
+    refreshUser,
+    refreshLocation,
+    celebratingCommunities,
+    triggerCelebration
+  }), [user, loading, userLocation, celebratingCommunities]);
 
   return (
     <AuthContext.Provider value={authContextValue}>
       {children}
+      
+      {/* Rate Limit Blurry Modal Overlay */}
+      {rateLimited !== null && (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 overflow-hidden pointer-events-auto">
+          {/* Blur Backdrop */}
+          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-xl animate-in fade-in duration-500" />
+          
+          {/* Modal Content */}
+          <div className="relative bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-2xl p-10 max-w-md w-full text-center border border-white/20 dark:border-gray-700 animate-in zoom-in-95 duration-300">
+             <div className="text-7xl mb-6 block animate-bounce drop-shadow-lg">🐢</div>
+             <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-3 uppercase italic tracking-tighter leading-none">
+                Whoa, slow down!
+             </h2>
+             <p className="text-gray-500 dark:text-gray-400 mb-8 font-semibold italic text-sm leading-relaxed">
+                You're moving faster than we can keep up with. Please take a quick break before refreshing.
+             </p>
+             
+             <div className="space-y-4">
+                <div className="w-full py-5 px-8 rounded-[2rem] font-black bg-gray-50 dark:bg-gray-900/50 text-gray-400 shadow-inner border border-gray-100 dark:border-gray-700 flex flex-col items-center">
+                  <span className="text-[10px] uppercase tracking-[0.2em] opacity-40 mb-2 font-black">Cooldown Remaining</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-5xl tabular-nums text-indigo-600 dark:text-indigo-400 drop-shadow-sm">{rateLimited}</span>
+                    <span className="text-lg text-indigo-400/50">s</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                   <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
+                     Anti-Spam Shield Active
+                   </p>
+                   <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 }

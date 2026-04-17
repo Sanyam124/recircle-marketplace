@@ -45,8 +45,10 @@ interface Service {
     email: string;
     profilePicture?: string;
   };
-  averageRating?: number;
-  reviewCount?: number;
+  sellerTrustRating?: number;
+  sellerTrustCount?: number;
+  itemSpecificRating?: number;
+  itemSpecificCount?: number;
   status: 'Active' | 'Inactive';
   createdAt: string;
 }
@@ -219,11 +221,11 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-all duration-300 overflow-x-hidden">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-all duration-300 overflow-x-hidden w-full min-w-0">
       <div className="lg:grid lg:grid-cols-2 lg:gap-x-12 lg:items-start">
         {/* Left Column: Image Carousel */}
-        <div className="w-full max-w-2xl mx-auto lg:max-w-none mb-10 lg:mb-0">
-          <div className="relative group rounded-3xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="w-full max-w-2xl mx-auto lg:max-w-none mb-6 lg:mb-0">
+          <div className="relative group rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 bg-white dark:bg-gray-900 transition-all duration-500 hover:shadow-indigo-500/10">
             <ImageCarousel images={service.images || []} alt={service.title} />
           </div>
         </div>
@@ -234,10 +236,10 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-3">
-                 <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-md">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">{service.category}</span>
+                 <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest">{service.category}</span>
                  </div>
-                 <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border ${
+                 <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border ${
                    service.status === 'Active' 
                      ? 'bg-green-50 dark:bg-green-900/20 text-green-600 border-green-200 dark:border-green-800/50' 
                      : 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800/50'
@@ -248,7 +250,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
               </div>
 
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 w-full min-w-0">
-                <h1 className="flex-1 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight break-all max-w-full leading-tight min-w-0">
+                <h1 className="flex-1 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight break-all overflow-wrap-anywhere max-w-full leading-tight min-w-0">
                   {service.title}
                 </h1>
                 
@@ -271,8 +273,8 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
 
             {/* Pricing Section */}
             <div className="grid grid-cols-1 gap-4 mt-2">
-                <div className="p-5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 flex flex-col items-start transition-all w-full">
-                  <span className="text-xs font-bold uppercase tracking-widest text-indigo-800/70 dark:text-indigo-400 mb-1 block">Service Rate</span>
+                <div className="p-5 rounded-[2rem] bg-indigo-50/70 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 flex flex-col items-start transition-all hover:shadow-md hover:-translate-y-1 w-full group">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-800/70 dark:text-indigo-400 mb-1 block group-hover:text-indigo-600 transition-colors">Service Rate</span>
                   <div className="flex items-baseline gap-1 mt-auto">
                     <span className="text-3xl font-black text-indigo-900 dark:text-indigo-300">₹{service.price?.toLocaleString()}</span>
                     <span className="text-sm font-bold text-indigo-700/60 ml-1 block">/ {service.priceUnit}</span>
@@ -305,12 +307,12 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                    )}
                 </Link>
                 <div className="text-center sm:text-left flex-1 min-w-0 flex flex-col justify-center">
-                   <Link href={`/profile/${service.provider._id}`} className="text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">{service.provider.name}</Link>
-                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-1">Provider • {service.reviewCount || 0} reviews</p>
-                   {service.averageRating && service.averageRating > 0 ? (
+                   <Link href={`/profile/${service.provider._id}`} className="text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors break-all">{service.provider.name}</Link>
+                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-1">Provider • {service.sellerTrustCount || 0} reviews</p>
+                   {service.sellerTrustRating && service.sellerTrustRating > 0 ? (
                      <div className="flex items-center justify-center sm:justify-start gap-1 mt-2">
                         <span className="text-yellow-400 text-sm">★</span>
-                        <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{service.averageRating}</span>
+                        <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{Number(service.sellerTrustRating).toFixed(1)}</span>
                      </div>
                    ) : null}
                 </div>
@@ -323,13 +325,13 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
              </div>
 
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0">
-                <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-transparent dark:border-gray-800">
-                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Category</span>
-                   <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 capitalize block truncate">{service.category}</span>
+                <div className="p-3.5 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-transparent dark:border-gray-800 overflow-hidden min-w-0">
+                   <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1 block">Category</span>
+                   <span className="text-sm font-black text-gray-800 dark:text-gray-200 capitalize block break-all">{service.category}</span>
                 </div>
-                <div className="p-3 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100/50 dark:border-indigo-800/30">
-                   <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1 block">Availability</span>
-                   <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300 capitalize block truncate">{service.availability}</span>
+                <div className="p-3.5 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100/50 dark:border-indigo-800/30 overflow-hidden min-w-0">
+                   <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 block">Availability</span>
+                   <span className="text-sm font-black text-indigo-700 dark:text-indigo-300 capitalize block break-all">{service.availability}</span>
                 </div>
              </div>
           </div>
@@ -337,7 +339,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
           {/* Description */}
           <div className="flex flex-col gap-3">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-2">Description</h3>
-            <div className="text-base text-gray-600 dark:text-gray-300 leading-relaxed font-normal pt-1">
+            <div className="text-base text-gray-600 dark:text-gray-300 leading-relaxed font-normal pt-1 break-all overflow-hidden">
               <ExpandableText text={service.description} maxLines={8} className="whitespace-pre-wrap" showReadMore={true} />
             </div>
             
@@ -347,8 +349,8 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
             />
           </div>
 
-          {/* Action Hub */}
-          <div className="bg-gray-50 dark:bg-gray-900/50 rounded-[2rem] p-6 sm:p-8 border border-gray-200 dark:border-gray-800 shadow-sm transition-all focus-within:ring-4 focus-within:ring-indigo-100">
+          {/* Action Hub - Hidden on mobile */}
+          <div className="hidden sm:block bg-gray-50 dark:bg-gray-900/50 rounded-[2rem] p-6 sm:p-8 border border-gray-200 dark:border-gray-800 shadow-sm transition-all focus-within:ring-4 focus-within:ring-indigo-100">
              <div className="flex flex-col gap-6">
                 <div className="flex flex-col gap-1">
                    <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Need this service?</h3>
@@ -373,7 +375,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                             service.status !== 'Active' ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm active:scale-95'
                           }`}
                         >
-                          {service.status !== 'Active' ? 'Unavailable' : 'Chat with Provider'}
+                          {service.status !== 'Active' ? 'Unavailable' : 'Message Provider'}
                         </button>
                         <button
                           onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${service.provider._id}?serviceId=${service._id}&tab=action&autoMsg=true`); }}
@@ -407,11 +409,45 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
               />
           </div>
 
-          {reportOpen && (
-            <ReportModal targetUserId={service.provider._id} itemType="service" itemId={service._id} onClose={() => setReportOpen(false)} />
-          )}
+          {/* Sticky Mobile Action Bar */}
+          <div className="fixed bottom-0 left-0 right-0 sm:hidden z-[150] p-4 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl border-t border-gray-100 dark:border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] animate-in slide-in-from-bottom-full duration-500">
+             <div className="flex gap-3 max-w-lg mx-auto">
+                {!isOwner && (
+                   <>
+                      <button
+                        onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${service.provider._id}?serviceId=${service._id}`); }}
+                        className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                      >
+                        Message
+                      </button>
+                      <button
+                        onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${service.provider._id}?serviceId=${service._id}&tab=action&autoMsg=true`); }}
+                        className="flex-1 py-4 bg-white dark:bg-white/5 text-indigo-600 dark:text-indigo-400 border-2 border-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all"
+                      >
+                        Make Offer
+                      </button>
+                   </>
+                )}
+                {isOwner && (
+                    <button onClick={handleDelete} className="w-full py-4 bg-rose-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-rose-500/20">
+                       Delete Service
+                    </button>
+                )}
+             </div>
+          </div>
+          
+          <div className="sm:hidden h-24" /> {/* Spacer for sticky bar */}
         </div>
       </div>
+      
+      {reportOpen && (
+        <ReportModal 
+          targetUserId={service.provider._id} 
+          itemType="service" 
+          itemId={service._id} 
+          onClose={() => setReportOpen(false)} 
+        />
+      )}
     </div>
   );
 }

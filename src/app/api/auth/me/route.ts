@@ -32,10 +32,13 @@ export async function GET(req: NextRequest) {
             .select('-password');
 
         if (!user) {
-            return NextResponse.json(
+            // Clear stale cookie so middleware stops blocking /auth access
+            const res = NextResponse.json(
                 { error: 'User not found' },
                 { status: 404 }
             );
+            res.cookies.set('token', '', { maxAge: 0, path: '/' });
+            return res;
         }
 
         // Force-logout banned users by destroying their session (auto-unban if expired)
@@ -70,7 +73,14 @@ export async function GET(req: NextRequest) {
                     authProvider: user.authProvider,
                     blockedUsers: user.blockedUsers || [],
                     verifiedCommunities: user.verifiedCommunities || [],
-                    status: user.status
+                    status: user.status,
+                    isOnVacation: user.isOnVacation,
+                    notifyOffers: user.notifyOffers ?? true,
+                    notifyMessages: user.notifyMessages ?? true,
+                    showOnlineStatus: user.showOnlineStatus ?? true,
+                    compactView: user.compactView ?? false,
+                    defaultCommunity: user.defaultCommunity,
+                    defaultHostel: user.defaultHostel
                 }
             },
             { status: 200 }

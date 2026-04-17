@@ -8,6 +8,8 @@ import Footer from "@/components/Footer";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SWRProvider } from "@/components/SWRProvider";
 import PushNotificationManager from "@/components/PushNotificationManager";
+import CelebrationContainer from "@/components/CelebrationContainer";
+import MaintenanceGuard from "@/components/MaintenanceGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -77,15 +79,18 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <SWRProvider>
             <AuthProvider>
               <PushNotificationManager />
-              <Navbar />
-              <main className="min-h-screen pt-16 flex flex-col bg-[#f5f6f9] dark:bg-gray-900 transition-colors duration-500">
-                {children}
-              </main>
-              <Footer />
+              <CelebrationContainer />
+              <MaintenanceGuard>
+                <Navbar />
+                <main className="min-h-screen pt-16 flex flex-col bg-[#f5f6f9] dark:bg-gray-900 transition-colors duration-500">
+                  {children}
+                </main>
+                <Footer />
+              </MaintenanceGuard>
             </AuthProvider>
           </SWRProvider>
         </ThemeProvider>

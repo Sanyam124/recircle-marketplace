@@ -7,6 +7,8 @@ export interface IOtp extends Document {
     attempts?: number;
     lastAttemptAt?: Date;
     expiresAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 const OtpSchema: Schema<IOtp> = new Schema(

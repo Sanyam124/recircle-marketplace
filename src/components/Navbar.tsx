@@ -16,7 +16,6 @@ export default function Navbar() {
   const { user, loading, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
-  const [newVerification, setNewVerification] = useState<string | null>(null);
   const pathname = usePathname();
 
   // Optimized Unread Count via SWR
@@ -32,14 +31,8 @@ export default function Navbar() {
   }, [pathname]);
 
   useEffect(() => {
-    // Re-check for verification notification on every path change
-    const vc = sessionStorage.getItem('newVerification');
-    if (vc) {
-      setNewVerification(vc);
-      sessionStorage.removeItem('newVerification');
-      const timer = setTimeout(() => setNewVerification(null), 5000);
-      return () => clearTimeout(timer);
-    }
+    setIsMobileMenuOpen(false);
+    setIsCreateMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -63,22 +56,7 @@ export default function Navbar() {
 
   return (
     <>
-    {/* Global Verification Toast */}
-    <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[60] transition-all duration-700 ease-in-out transform ${newVerification ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-12 opacity-0 scale-95 pointer-events-none'}`}>
-        <div className="bg-white dark:bg-gray-800 shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-2 border-green-500 dark:border-green-400 rounded-2xl py-4 px-8 flex items-center space-x-4 min-w-[320px] max-w-md animate-in fade-in zoom-in duration-300">
-            <div className="flex-shrink-0 bg-green-100 dark:bg-green-900/50 rounded-xl p-2 animate-bounce">
-                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-            </div>
-            <div>
-                <p className="text-xs font-black uppercase tracking-widest text-green-600 dark:text-green-400 mb-0.5">Verification Success</p>
-                <p className="text-sm font-bold text-gray-900 dark:text-white">
-                    Verified for <span className="underline decoration-2 underline-offset-4 decoration-green-500/30">{newVerification}</span>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <nav className="bg-white/90 dark:bg-gray-950/90 backdrop-blur-md shadow-sm dark:shadow-gray-900/50 fixed top-0 left-0 right-0 z-50 transition-colors duration-300 border-b border-gray-200/50 dark:border-gray-800/50 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/60">
+    <nav className="bg-white/90 dark:bg-gray-950/90 backdrop-blur-md shadow-sm dark:shadow-gray-900/50 fixed top-0 left-0 right-0 z-[200] transition-colors duration-300 border-b border-gray-200/50 dark:border-gray-800/50 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
@@ -100,7 +78,7 @@ export default function Navbar() {
                 Explore
               </Link>
               <Link href="/board" className="text-gray-900 dark:text-gray-300 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-indigo-500 dark:hover:text-white text-sm font-medium transition-colors">
-                Board
+                Circle Board
               </Link>
 
             </div>
@@ -140,28 +118,30 @@ export default function Navbar() {
                     <button
                       onMouseEnter={() => setIsCreateMenuOpen(true)}
                       onClick={() => setIsCreateMenuOpen(!isCreateMenuOpen)}
-                      className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-sm transition-all"
+                      className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/10 transition-all hover:scale-105 active:scale-95"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
                       <span className="hidden xl:inline">Create</span>
                     </button>
 
                     {isCreateMenuOpen && (
                       <div className="absolute right-0 pt-2 w-48 z-50 animate-in fade-in slide-in-from-top-2">
-                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 py-2">
+                        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 py-2.5">
                           <Link 
                             href="/products/create" 
                             onClick={() => setIsCreateMenuOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-gray-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50/50 dark:hover:bg-gray-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all group"
                           >
-                            📦 Post a Product
+                             <span className="text-base group-hover:scale-110 transition-transform">📦</span>
+                             Post a Product
                           </Link>
                           <Link 
                             href="/services/create" 
                             onClick={() => setIsCreateMenuOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-gray-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50/50 dark:hover:bg-gray-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all group"
                           >
-                            🛠️ Offer a Service
+                             <span className="text-base group-hover:scale-110 transition-transform">🛠️</span>
+                             Offer a Service
                           </Link>
                         </div>
                       </div>
@@ -175,11 +155,17 @@ export default function Navbar() {
                      <Link href="/admin" className="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all" title="Dashboard">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                      </Link>
-                     <Link href="/admin/reports" className="p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all" title="Reports">
+                     <Link href="/admin/reports" className="p-2 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-all" title="Reports">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>
                      </Link>
-                     <Link href="/admin/users" className="p-2 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all" title="Users">
+                     <Link href="/admin/users" className="p-2 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all" title="Users">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                     </Link>
+                     <Link href="/admin/analytics" className="p-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-all" title="Analytics">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
+                     </Link>
+                     <Link href="/admin/settings" className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all" title="Site Settings">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
                      </Link>
                     </div>
                 )}
@@ -269,7 +255,7 @@ export default function Navbar() {
               <span className="text-xl">🔍</span> Explore
             </Link>
             <Link href="/board" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
-              <span className="text-xl">🏛️</span> Board
+              <span className="text-xl">🏛️</span> Circle Board
             </Link>
           </div>
           
@@ -298,7 +284,7 @@ export default function Navbar() {
                         {user.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="min-w-0 flex-1">
-                        <div className="text-base font-bold text-gray-900 dark:text-white break-words">{user.name}</div>
+                        <div className="text-base font-bold text-gray-900 dark:text-white break-all">{user.name}</div>
                         <div className="text-xs text-indigo-500 dark:text-indigo-400 font-medium tracking-tight break-words">@{user.username || 'user'}</div>
                     </div>
                 </Link>
@@ -326,15 +312,21 @@ export default function Navbar() {
                 </div>
 
                 {user.role === 'admin' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                    <div className="grid grid-cols-2 gap-2 mt-2">
                         <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-blue-600 dark:bg-blue-700 text-white font-bold text-xs sm:text-[10px] uppercase">
                             📊 Dashboard
+                        </Link>
+                        <Link href="/admin/analytics" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-600 dark:bg-emerald-700 text-white font-bold text-xs sm:text-[10px] uppercase">
+                            📈 Analytics
                         </Link>
                         <Link href="/admin/reports" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-red-600 dark:bg-red-700 text-white font-bold text-xs sm:text-[10px] uppercase">
                             🚩 Reports
                         </Link>
                         <Link href="/admin/users" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-purple-600 dark:bg-purple-700 text-white font-bold text-xs sm:text-[10px] uppercase">
                             👥 Users
+                        </Link>
+                        <Link href="/admin/settings" onClick={() => setIsMobileMenuOpen(false)} className="col-span-2 flex items-center justify-center gap-2 p-3 rounded-xl bg-gray-600 dark:bg-gray-700 text-white font-bold text-xs sm:text-[10px] uppercase">
+                            ⚙️ Settings
                         </Link>
                     </div>
                 )}

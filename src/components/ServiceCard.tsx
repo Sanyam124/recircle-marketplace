@@ -97,11 +97,14 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
       {/* Image Section - Compacted for mobile */}
       <div className="relative h-28 sm:h-48 w-full overflow-hidden bg-gray-50 dark:bg-gray-900 border-b border-gray-100/50 dark:border-gray-800/50 pointer-events-none">
         {service.status === 'Inactive' && (
-            <div className="absolute inset-0 z-10 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-500">
-                <div className="bg-gray-500 text-white px-5 py-2 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] shadow-2xl border-2 border-white/20 transform -rotate-6 scale-110">
-                    Inactive
-                </div>
-            </div>
+            <>
+              <div className="absolute inset-0 z-10 bg-gray-900/30 backdrop-blur-[2px] flex items-center justify-center pointer-events-none"></div>
+              <div className="absolute top-4 -left-10 w-36 -rotate-45 z-20 flex justify-center py-1 bg-gray-500 text-white shadow-lg pointer-events-none">
+                  <span className="text-[10px] font-black uppercase tracking-widest shadow-sm">
+                      Inactive
+                  </span>
+              </div>
+            </>
         )}
         {service.images && service.images.length > 0 ? (
           <Image
@@ -175,36 +178,52 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 </p>
             </div>
             
-            <div className="flex sm:hidden items-center gap-1 min-h-[1.5em]">
-                <div className="flex items-center shrink-0">
-                    {[...Array(5)].map((_, i) => (
-                        <svg key={i} className={`h-3 w-3 ${i < Math.floor(service.ownerRating || service.providerRating || 0) ? 'text-amber-400' : 'text-gray-200 dark:text-gray-700'}`} fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                    ))}
+            <div className="flex sm:hidden flex-col min-h-[1.5em] gap-0.5 mt-1">
+                <div className="flex items-center gap-1">
+                    <div className="flex items-center shrink-0">
+                        {[...Array(5)].map((_, i) => {
+                            const activeRating = service.itemSpecificRating ?? 0;
+                            return (
+                                <svg key={i} className={`h-3 w-3 ${i < Math.floor(activeRating) ? 'text-amber-400' : 'text-gray-200 dark:text-gray-700'}`} fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                            );
+                        })}
+                    </div>
+                    {service.itemSpecificCount ? (
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter ml-1">({service.itemSpecificCount})</span>
+                    ) : null}
+                    <span className="ml-auto text-[9px] text-gray-400 font-medium opacity-60 whitespace-nowrap pl-1 h-full flex items-center">
+                        {formatTimeAgo(service.createdAt)}
+                    </span>
                 </div>
-                {service.reviewCount ? (
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter ml-1">({service.reviewCount})</span>
-                ) : null}
-                <span className="ml-auto text-[9px] text-gray-400 font-medium opacity-60 whitespace-nowrap pl-1 truncate">
-                    {formatTimeAgo(service.createdAt)}
+                <span className="text-[8px] font-bold text-gray-400/80 uppercase tracking-widest leading-none">
+                    Service Rating
                 </span>
             </div>
         </div>
         
         <div className="flex flex-col mt-auto shrink-0 pt-2">
-            <div className="hidden sm:flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1">
-                    <div className="flex items-center shrink-0">
-                        {[...Array(5)].map((_, i) => (
-                            <svg key={i} className={`h-3 w-3 ${i < Math.floor(service.ownerRating || service.providerRating || 0) ? 'text-amber-400' : 'text-gray-200 dark:text-gray-700'}`} fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                        ))}
+            <div className="hidden sm:flex items-end justify-between mb-2">
+                <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1">
+                        <div className="flex items-center shrink-0">
+                            {[...Array(5)].map((_, i) => {
+                                const activeRating = service.itemSpecificRating ?? 0;
+                                return (
+                                    <svg key={i} className={`h-3 w-3 ${i < Math.floor(activeRating) ? 'text-amber-400' : 'text-gray-200 dark:text-gray-700'}`} fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                );
+                            })}
+                        </div>
+                        {service.itemSpecificCount ? (
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter ml-1">({service.itemSpecificCount})</span>
+                        ) : null}
                     </div>
-                    {service.reviewCount ? (
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter ml-1">({service.reviewCount})</span>
-                    ) : null}
+                    <span className="text-[9px] font-black text-gray-400/80 uppercase tracking-widest leading-none">
+                        Service Rating
+                    </span>
                 </div>
                 {service.availability && (
                     <span className="inline-flex items-center rounded-lg bg-indigo-50 dark:bg-indigo-950/30 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-800 italic">
@@ -257,7 +276,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                             e.stopPropagation();
                             onToggleStatus?.(service._id, service.status === 'Active' ? 'Inactive' : 'Active', 'services');
                         }}
-                        className={`text-[10px] font-black uppercase tracking-widest px-3 py-2 flex-[2] rounded-xl transition-all border active:scale-95 shadow-sm ${
+                        className={`text-[8px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest px-1.5 sm:px-3 py-2 flex-[2] rounded-xl transition-all border active:scale-95 shadow-sm ${
                             service.status === 'Active' 
                             ? 'text-indigo-600 bg-indigo-50 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-900/50' 
                             : 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-indigo-900/50'
@@ -267,7 +286,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                     </button>
                     <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete?.(service._id, 'services'); }}
-                        className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-3 py-2 flex-1 rounded-xl transition-all border border-rose-100 hover:bg-rose-100 active:scale-95"
+                        className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-1.5 sm:px-3 py-2 flex-1 rounded-xl transition-all border border-rose-100 hover:bg-rose-100 active:scale-95"
                     >
                         Delete
                     </button>

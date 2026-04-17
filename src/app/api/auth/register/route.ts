@@ -11,35 +11,46 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+
 export async function POST(req: NextRequest) {
     try {
         await connectToDatabase();
+
+        // --- Rate Limiting (IP-Based) ---
+        const SiteSettings = (await import('@/models/SiteSettings')).default;
+        const siteConfigData = await SiteSettings.getSingleton();
+
+        const ip = getClientIp(req);
+        const rl = await checkRateLimit(ip, 'register', siteConfigData.ipLimitRegisterPerHour, 60 * 60 * 1000);
+        if (!rl.success) {
+            return NextResponse.json(
+                { error: 'Too many registration attempts from this connection. Please try again in an hour.' },
+                { status: 429 }
+            );
+        }
+
+        // Check if new registrations are enabled
+        if (!siteConfigData.newRegistrationsEnabled) {
+            return NextResponse.json({ error: 'New registrations are temporarily disabled. Please try again later.' }, { status: 503 });
+        }
 
         // Security Shield: Check the Permanent Blacklist
         const Blacklist = (await import('@/models/Blacklist')).default;
         
         let body = await req.json();
         body = sanitize(body);
-        let { username, email } = body;
-
-        const isBlacklisted = await Blacklist.findOne({
-            $or: [
-                { email: email?.toLowerCase() },
-                { username: username?.toLowerCase() }
-            ]
-        });
-
-        if (isBlacklisted) {
-            return NextResponse.json(
-                { error: 'This account has been permanently restricted due to safety violations.' },
-                { status: 403 }
-            );
+        const { website_url } = body;
+        
+        // Honeypot Trap: If a bot fills this invisible field, reject them immediately
+        if (website_url) {
+            console.warn('\x1b[41m[BOT DETECTED]\x1b[0m Registration attempt blocked by Honeypot.');
+            return NextResponse.json({ error: 'Access Denied' }, { status: 403 });
         }
 
-        let { name, password, emailToken, googleToken } = body;
+        let { name, email, password, emailToken, googleToken } = body;
         
         name = safeString(name);
-        username = safeString(username);
         email = safeString(email);
         password = safeString(password);
         emailToken = safeString(emailToken);
@@ -51,19 +62,33 @@ export async function POST(req: NextRequest) {
 
         const isGoogleAuth = !!googleToken;
 
-        if (!username || !email || (!password && !isGoogleAuth) || (!emailToken && !isGoogleAuth)) {
+        if (!email || (!password && !isGoogleAuth) || (!emailToken && !isGoogleAuth)) {
             return NextResponse.json(
                 { error: 'Missing required fields. Verification is mandatory.' },
                 { status: 400 }
             );
         }
 
-        const USERNAME_REGEX = /^(?![0-9]+$)(?!.*\.\.)[a-z0-9_][a-z0-9._]{1,18}[a-z0-9_]$/;
-        if (username.length < 3 || username.length > 20 || !USERNAME_REGEX.test(username)) {
-            return NextResponse.json(
-                { error: 'Username must be 3-20 chars, lowercase alphanumeric, underscores, or dots. Cannot start/end with a dot, contain consecutive dots, or be only numbers.' },
-                { status: 400 }
-            );
+        // --- Automatic Unique Username Generation ---
+        let username = '';
+        let isUnique = false;
+        let attempts = 0;
+        const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10) || 'user';
+        
+        while (!isUnique && attempts < 15) {
+            const random = Math.floor(1000 + Math.random() * 89999); // 4-5 digit random
+            const candidate = `${cleanName}${random}`;
+            const exists = await User.findOne({ username: candidate });
+            if (!exists) {
+                username = candidate;
+                isUnique = true;
+            }
+            attempts++;
+        }
+
+        if (!username) {
+            // Fallback to purely random if name-based fails
+            username = `user${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
         }
 
         let verifiedGoogleId = null;
@@ -100,40 +125,33 @@ export async function POST(req: NextRequest) {
 
         const normalizedEmail = email.trim().toLowerCase();
 
+        // Check Blacklist for email (username check is skipped since it's auto-generated)
+        const isBlacklisted = await Blacklist.findOne({ email: normalizedEmail });
+        if (isBlacklisted) {
+            return NextResponse.json(
+                { error: 'This account has been permanently restricted due to safety violations.' },
+                { status: 403 }
+            );
+        }
+
         // Check if this Google ID is already registered to ANOTHER email
         if (verifiedGoogleId) {
             const existingGoogleUser = await User.findOne({ googleId: verifiedGoogleId });
             if (existingGoogleUser) {
-                // If it's the same email, it's a duplicate registration attempt
                 if (existingGoogleUser.email === normalizedEmail) {
-                    return NextResponse.json(
-                        { error: 'This Google account is already registered. Please log in.' },
-                        { status: 409 }
-                    );
+                    return NextResponse.json({ error: 'This Google account is already registered. Please log in.' }, { status: 409 });
                 }
-                // If it's a different email, it's an identity collision
-                return NextResponse.json(
-                    { error: `This Google account is already linked to another email (${existingGoogleUser.email}).` },
-                    { status: 409 }
-                );
+                return NextResponse.json({ error: `This Google account is already linked to another email (${existingGoogleUser.email}).` }, { status: 409 });
             }
         }
 
-        // REMOVED: Strict Domain Check (@paruluniversity.ac.in)
-
-        // Final Check for Uniqueness (Race condition protection)
+        // Final Check for Uniqueness
         const existingEmail = await User.findOne({ email: normalizedEmail });
         if (existingEmail) {
             if (existingEmail.isVerified) {
                 return NextResponse.json({ error: 'Email already registered.' }, { status: 409 });
             }
-            // If unverified, we overwrite.
             await User.deleteOne({ email });
-        }
-
-        const existingUsername = await User.findOne({ username });
-        if (existingUsername) {
-            return NextResponse.json({ error: 'Username already taken.' }, { status: 409 });
         }
 
         const hashedPassword = isGoogleAuth ? undefined : await hashPassword(password);
@@ -146,20 +164,25 @@ export async function POST(req: NextRequest) {
         });
         const verifiedCommunityIds = matchingCommunities.map(c => c._id);
 
-        const user = await User.create({
+        let userDoc = await User.create({
             name,
             username,
             email,
             ...(hashedPassword && { password: hashedPassword }),
-            role: 'user', // Default Role
-            gender: 'none', // Default Gender
+            role: 'user',
+            gender: 'none',
             isVerified: true,
             authProvider: isGoogleAuth ? 'google' : 'email',
             verifiedCommunities: verifiedCommunityIds,
             ...(verifiedGoogleId && { googleId: verifiedGoogleId })
         });
 
-        // Generate Login Token
+        const user = await User.findById(userDoc._id)
+            .populate('verifiedCommunities', 'name image isActive hostels')
+            .lean();
+
+        if (!user) throw new Error('User creation failed');
+
         const token = generateToken({
             userId: user._id,
             email: user.email,
@@ -170,7 +193,8 @@ export async function POST(req: NextRequest) {
         const response = NextResponse.json(
             {
                 message: 'Registration successful!',
-                autoVerifiedCommunities: matchingCommunities.map(c => c.name),
+                newCommunityJoined: matchingCommunities.length > 0,
+                newCommunityNames: matchingCommunities.map(c => c.name),
                 user: {
                     id: user._id,
                     name: user.name,
@@ -188,30 +212,21 @@ export async function POST(req: NextRequest) {
 
         response.cookies.set('token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60, // 7 days
+            secure: process.env.NODE_ENV === 'production' && !req.nextUrl.hostname.includes('192.168.') && !req.nextUrl.hostname.includes('10.') && !req.nextUrl.hostname.includes('localhost'),
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60,
             path: '/',
         });
 
         return response;
 
     } catch (error: any) {
-        console.error('Registration Error Details:', {
-            message: error.message,
-            code: error.code,
-            keyPattern: error.keyPattern,
-            keyValue: error.keyValue
-        });
-        // Duplicate key error handling (backup for race conditions)
+        console.error('Registration Error:', error);
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern)[0];
             const msg = field === 'googleId' ? 'This Google account is already registered.' : `${field} already exists.`;
             return NextResponse.json({ error: msg }, { status: 409 });
         }
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -15,8 +15,22 @@ export async function POST(req: NextRequest) {
 
         await connectToDatabase();
 
+        // Check if new listings are enabled
+        const SiteSettings = (await import('@/models/SiteSettings')).default;
+        const siteConfig = await SiteSettings.getSingleton();
+        if (!siteConfig.newListingsEnabled) {
+            return NextResponse.json({ error: 'New listings are temporarily disabled by the platform admin. Please try again later.' }, { status: 503 });
+        }
+
         const body = await req.json();
-        const { title: rawTitle, description: rawDescription, price: rawPrice, category: rawCategory, condition, images, visibility, communityId, location, forSell = true, forRent = false, rentPrice: rawRentPrice, rentUnit } = body;
+        const { website_url, title: rawTitle, description: rawDescription, price: rawPrice, category: rawCategory, condition, images, visibility, communityId, location, forSell = true, forRent = false, rentPrice: rawRentPrice, rentUnit } = body;
+        
+        // Honeypot Trap
+        if (website_url) {
+            console.warn('\x1b[41m[BOT DETECTED]\x1b[0m Product creation blocked by Honeypot.');
+            return NextResponse.json({ error: 'Access Denied' }, { status: 403 });
+        }
+
         const title = rawTitle?.trim();
         const description = rawDescription?.trim();
         const category = rawCategory?.trim();
@@ -229,19 +243,40 @@ export async function GET(req: NextRequest) {
             .lean();
 
         const sellerIds = products.map((p: any) => p.seller._id);
-        const reviews = await Review.aggregate([
-            { $match: { target: { $in: sellerIds } } },
-            { $group: { _id: '$target', average: { $avg: '$rating' }, count: { $sum: 1 } } }
+        const productIds = products.map((p: any) => p._id);
+        
+        // Parallel queries to fetch both explicit item ratings and global seller trust scores
+        const [sellerReviews, itemReviews] = await Promise.all([
+            // Seller Ratings (compressed anti-farm logic)
+            Review.aggregate([
+                { $match: { target: { $in: sellerIds } } },
+                { $group: { _id: { target: '$target', reviewer: '$reviewer' }, reviewerAvgRating: { $avg: '$rating' } } },
+                { $group: { _id: '$_id.target', average: { $avg: '$reviewerAvgRating' }, count: { $sum: 1 } } }
+            ]),
+            // Specific Item Ratings
+            Review.aggregate([
+                { $match: { product: { $in: productIds } } },
+                { $group: { _id: '$product', average: { $avg: '$rating' }, count: { $sum: 1 } } }
+            ])
         ]);
 
-        const reviewMap = new Map(reviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
+        const sellerReviewMap = new Map(sellerReviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
+        const itemReviewMap = new Map(itemReviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
 
         const productsWithRatings = products.map((product: any) => {
-            const stats = reviewMap.get(product.seller._id.toString()) || { average: 0, count: 0 };
+            const sellerStats = sellerReviewMap.get(product.seller._id.toString()) || { average: 0, count: 0 };
+            const itemStats = itemReviewMap.get(product._id.toString()) || { average: 0, count: 0 };
+            
             return {
                 ...product,
-                ownerRating: stats.average,
-                reviewCount: stats.count
+                sellerTrustRating: sellerStats.average,
+                sellerTrustCount: sellerStats.count,
+                itemSpecificRating: itemStats.average,
+                itemSpecificCount: itemStats.count,
+                // Legacy fields for insurance
+                ownerRating: sellerStats.average,
+                itemRating: itemStats.average,
+                reviewCount: product.forRent ? itemStats.count : sellerStats.count
             };
         });
 

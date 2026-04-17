@@ -36,14 +36,19 @@ export default function PushNotificationManager() {
     }).catch(() => {});
   }, []);
 
+  const hasSyncedRef = useRef(false);
+
   // Sync subscription with backend when user logs in
   useEffect(() => {
-    if (user && subscriptionRef.current) {
+    if (user && subscriptionRef.current && !hasSyncedRef.current) {
+      hasSyncedRef.current = true;
       fetch('/api/notifications/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subscription: subscriptionRef.current })
-      }).catch(() => {});
+      }).catch(() => {
+        hasSyncedRef.current = false; // reset on error to allow retry
+      });
     }
   }, [user]);
 

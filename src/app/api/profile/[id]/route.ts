@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mongoose from 'mongoose';
+import { Types, isValidObjectId } from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
 import Community from '@/models/Community';
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         await connectToDatabase();
         const { id } = await params;
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
+        if (!isValidObjectId(id)) {
             return NextResponse.json({ error: 'Invalid User ID' }, { status: 400 });
         }
         const { searchParams } = new URL(req.url);
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const boughtServiceSkip = (boughtServicePage - 1) * boughtLimit;
 
         const user = await User.findById(id)
-            .select('name username email profilePicture gender createdAt role bio isVerified allowEmailContact authProvider isPhoneVerified phone allowPhoneContact address isOnVacation blockedUsers verifiedCommunities')
+            .select('name username email profilePicture bannerImage gender createdAt role bio isVerified allowEmailContact authProvider isPhoneVerified phone allowPhoneContact address isOnVacation blockedUsers verifiedCommunities')
             .populate('verifiedCommunities', 'name image isActive')
             .lean();
         if (!user) {
@@ -43,13 +43,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         // Check if the viewer is the owner
         let isOwner = false;
         let currentUserId = null;
+        let canReview = false;
+        let hasReviewed = false;
+
         try {
             const { verifyToken } = await import('@/lib/auth');
             const token = req.cookies.get('token')?.value;
             if (token) {
                 const decoded = verifyToken(token) as any;
                 if (decoded && decoded.userId === id.toString()) isOwner = true;
-                if (decoded && decoded.userId) currentUserId = decoded.userId;
+                if (decoded && decoded.userId) {
+                    currentUserId = decoded.userId;
+                    
+                    // Check eligibility
+                    const [orderExists, reviewExists] = await Promise.all([
+                        Order.exists({ buyer: decoded.userId, seller: id }),
+                        Review.exists({ reviewer: decoded.userId, target: id })
+                    ]);
+                    
+                    canReview = !!orderExists && !isOwner;
+                    hasReviewed = !!reviewExists;
+                }
             }
         } catch { }
 
@@ -62,7 +76,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         }
 
         // IDs for Aggregation (Must be ObjectIds, aggregate doesn't auto-cast strings)
-        const objectId = new mongoose.Types.ObjectId(id);
+        const objectId = new Types.ObjectId(id);
 
         // Products: public shows only Available; owner sees all
         const [totalProductsAvailable, totalProductsSold, totalProductsRented] = await Promise.all([
@@ -86,12 +100,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             .lean();
 
         // Services: public shows only Active; owner sees all
-        const [totalServicesActive, totalServicesInactive, totalEnrollments] = await Promise.all([
+        const [totalServicesActive, totalServicesInactive, totalEnrollments, uniqueClientsRes] = await Promise.all([
             Service.countDocuments({ provider: objectId, status: 'Active' }),
             Service.countDocuments({ provider: objectId, status: { $ne: 'Active' } }),
             Order.countDocuments({ seller: objectId, orderType: 'Service_Appointment' }),
+            Order.aggregate([
+                { $match: { seller: objectId, service: { $exists: true, $ne: null } } },
+                { $group: { _id: '$buyer' } },
+                { $count: 'uniqueClients' }
+            ])
         ]);
         const totalServices = totalServicesActive + totalServicesInactive;
+        const clientsServed = uniqueClientsRes[0]?.uniqueClients || 0;
         const serviceQuery = isOwner
             ? { provider: objectId }
             : (user.isOnVacation ? { _id: null } : { provider: objectId });
@@ -169,19 +189,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const totalAll = allItemsRes[0]?.metadata[0]?.total || 0;
         const allItems = allItemsRes[0]?.data || [];
 
-        // Efficient Reviews Aggregation (Resolve N+1 potential)
+        // Efficient Reviews Aggregation (Resolve N+1 & Prevent Review Farming)
         const reviewStats = await Review.aggregate([
-            { $match: { target: new mongoose.Types.ObjectId(id) } },
+            { $match: { target: new Types.ObjectId(id), rating: { $exists: true, $ne: null } } },
+            // 1. Group by reviewer to compress multiple spam reviews into a single unique vote
             {
                 $group: {
-                    _id: '$target',
-                    averageRating: { $avg: '$rating' },
+                    _id: '$reviewer',
+                    reviewerAvgRating: { $avg: '$rating' }
+                }
+            },
+            // 2. Aggregate the unique votes to get the Master Trust Score
+            {
+                $group: {
+                    _id: null,
+                    averageRating: { $avg: '$reviewerAvgRating' },
                     totalReviews: { $sum: 1 }
                 }
             }
         ]);
 
-        const rating = reviewStats[0]?.averageRating || 0;
+        const rawRating = reviewStats[0]?.averageRating;
+        const rating = (rawRating && !isNaN(rawRating)) ? rawRating : 0;
         const totalReviews = reviewStats[0]?.totalReviews || 0;
 
         // Purchases — only for owner, split by product vs service
@@ -212,6 +241,61 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             ]);
         }
 
+        // Enrich all lists with precise rating info for cards (Block forced profile score injection)
+        const productIds = products.map(p => p._id);
+        const serviceIds = services.map(s => s._id);
+        const allItemIds = allItems.map((i: any) => i._id);
+
+        const [productReviews, serviceReviews] = await Promise.all([
+            Review.aggregate([
+                { $match: { product: { $exists: true, $ne: null, $in: [...productIds, ...allItemIds] }, rating: { $exists: true, $ne: null } } },
+                { $group: { _id: '$product', average: { $avg: '$rating' }, count: { $sum: 1 } } }
+            ]),
+            Review.aggregate([
+                { $match: { service: { $exists: true, $ne: null, $in: [...serviceIds, ...allItemIds] }, rating: { $exists: true, $ne: null } } },
+                { $group: { _id: '$service', average: { $avg: '$rating' }, count: { $sum: 1 } } }
+            ])
+        ]);
+
+        const productReviewMap = new Map(productReviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
+        const serviceReviewMap = new Map(serviceReviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
+
+        const enrichedProducts = products.map(p => {
+            const pidStr = p._id.toString();
+            const itemStats = productReviewMap.get(pidStr) || { average: 0, count: 0 };
+            return {
+                ...p, 
+                sellerTrustRating: rating, 
+                sellerTrustCount: totalReviews,
+                itemSpecificRating: itemStats.average,
+                itemSpecificCount: itemStats.count
+            };
+        });
+
+        const enrichedServices = services.map(s => {
+            const sidStr = s._id.toString();
+            const serviceStats = serviceReviewMap.get(sidStr) || { average: 0, count: 0 };
+            return { 
+                ...s, 
+                sellerTrustRating: rating,
+                sellerTrustCount: totalReviews,
+                itemSpecificRating: serviceStats.average,
+                itemSpecificCount: serviceStats.count 
+            };
+        });
+
+        const enrichedAllItems = allItems.map((i: any) => {
+           const iidStr = i._id.toString();
+           const itemStats = (i.type === 'service' ? serviceReviewMap : productReviewMap).get(iidStr) || { average: 0, count: 0 };
+           return { 
+                ...i, 
+                sellerTrustRating: rating, 
+                sellerTrustCount: totalReviews,
+                itemSpecificRating: itemStats.average,
+                itemSpecificCount: itemStats.count 
+           };
+        });
+
         return NextResponse.json({
             user: {
                 id: user._id,
@@ -219,6 +303,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 username: user.username,
                 email: user.email,
                 profilePicture: user.profilePicture,
+                bannerImage: user.bannerImage,
                 gender: user.gender,
                 bio: user.bio,
                 isVerified: user.isVerified,
@@ -236,9 +321,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 verifiedCommunities: user.verifiedCommunities || []
             },
             isOwner,
-            allItems,
-            products,
-            services,
+            allItems: enrichedAllItems,
+            products: enrichedProducts,
+            services: enrichedServices,
             boughtProducts,
             boughtServices,
             pagination: {
@@ -275,6 +360,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 totalServices,
                 totalServicesActive,
                 totalEnrollments,
+                clientsServed,
                 totalReviews,
                 totalBoughtProducts,
                 totalBoughtServices,

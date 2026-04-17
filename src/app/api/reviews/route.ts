@@ -1,87 +1,92 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Types, isValidObjectId } from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import Order from '@/models/Order';
 import Review from '@/models/Review';
+import SiteSettings from '@/models/SiteSettings';
 import { verifyToken } from '@/lib/auth';
-import mongoose from 'mongoose';
 
 export async function POST(req: NextRequest) {
     try {
         const token = req.cookies.get('token')?.value;
         if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        const user = verifyToken(token);
-        if (!user) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
-        await connectToDatabase();
+        const decoded = verifyToken(token);
+        if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
-        const { targetId, rating, comment: rawComment, orderId, productId, serviceId } = await req.json();
-        const comment = rawComment?.trim();
+        const { targetId, orderId, productId, serviceId, rating, comment } = await req.json();
 
-        if (!targetId || !rating) {
+        if (!targetId || !rating || !comment) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
+        await connectToDatabase();
+        const settings = await SiteSettings.getSingleton();
+        const maxChars = settings.maxReviewChars || 1000;
+
+        if (comment.length > maxChars) {
+            return NextResponse.json({ error: `Review comment must be ${maxChars} characters or less` }, { status: 400 });
+        }
+        const user = decoded as any;
+
         if (user.userId === targetId) {
-            return NextResponse.json({ error: 'Cannot review yourself' }, { status: 400 });
+            return NextResponse.json({ error: 'You cannot review yourself or your own listings.' }, { status: 403 });
         }
 
-        // 1. Verified Transaction Check — either party can review the other
-        let query: any = {
-            $or: [
-                { buyer: user.userId },
-                { seller: user.userId }
-            ],
+        // 1. Verify eligibility (MUST have a completed order matching exactly what they are reviewing)
+        const query: any = { 
+            buyer: user.userId, 
+            seller: targetId,
             status: 'Completed'
         };
 
-        if (orderId) {
+        if (orderId && isValidObjectId(orderId)) {
             query._id = orderId;
-        } else if (productId) {
+        } else if (productId && isValidObjectId(productId)) {
             query.product = productId;
-        } else if (serviceId) {
+        } else if (serviceId && isValidObjectId(serviceId)) {
             query.service = serviceId;
-        } else {
-            // General review: require at least one completed order involving both users
-            query.$and = [
-                { $or: [{ buyer: user.userId }, { seller: user.userId }] },
-                { $or: [{ buyer: targetId }, { seller: targetId }] }
-            ];
-            delete query.$or;
         }
 
         const order = await Order.findOne(query);
 
         if (!order) {
-            return NextResponse.json({
-                error: 'Permission Denied. You can only review after a completed transaction for this item.'
-            }, { status: 403 });
+            return NextResponse.json({ error: 'You are only eligible to leave a review if you have a verified, completed transaction exactly matching this item or seller.' }, { status: 403 });
         }
 
-        // 2. Prevent duplicate reviews for the same order/item combo
+        // 2. Prevent duplicate reviews
+        // Case A: Item-specific review (Product/Service)
+        // Case B: Global Seller review (no item)
         const duplicateQuery: any = { reviewer: user.userId, target: targetId };
-        if (orderId) duplicateQuery.order = orderId;
-        else if (productId) duplicateQuery.product = productId;
-        else if (serviceId) duplicateQuery.service = serviceId;
+        
+        if (serviceId && isValidObjectId(serviceId)) {
+            duplicateQuery.service = serviceId;
+        } else if (productId && isValidObjectId(productId)) {
+            duplicateQuery.product = productId;
+        } else {
+            // Global seller review check (must NOT have an item associated)
+            duplicateQuery.service = { $exists: false };
+            duplicateQuery.product = { $exists: false };
+        }
 
         const existingReview = await Review.findOne(duplicateQuery);
         if (existingReview) {
-            return NextResponse.json({ error: 'You have already reviewed this purchase' }, { status: 400 });
+            return NextResponse.json({ 
+                error: `You have already reviewed this ${(productId || serviceId) ? 'listing' : 'user'}. You can only rate each unique item once.` 
+            }, { status: 409 });
         }
 
-        const reviewData: any = {
+        const review = await Review.create({
             reviewer: user.userId,
             target: targetId,
-            rating: Number(rating),
-            comment,
-            order: order._id,
-            product: order.product,
-            service: order.service
-        };
+            order: (orderId && isValidObjectId(orderId)) ? orderId : undefined,
+            product: productId || undefined,
+            service: serviceId || undefined,
+            rating,
+            comment
+        });
 
-        const review = await Review.create(reviewData);
-
-        return NextResponse.json({ review }, { status: 201 });
-
+        return NextResponse.json({ success: true, review }, { status: 201 });
     } catch (error: any) {
         console.error('Create Review Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -90,46 +95,45 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
     try {
-        await connectToDatabase();
         const { searchParams } = new URL(req.url);
-        const targetId = searchParams.get('targetId'); // Seller ID
+        const targetId = searchParams.get('targetId');
         const productId = searchParams.get('productId');
         const serviceId = searchParams.get('serviceId');
-        const ratingFilter = searchParams.get('rating');
-
-        // TargetId is the shared key for seller profiles, but individual products can have their own reviews
-        const query: any = {};
-        if (targetId) query.target = targetId;
-        if (productId) query.product = productId;
-        if (serviceId) query.service = serviceId;
-
-        if (Object.keys(query).length === 0) {
-            return NextResponse.json({ error: 'Missing targetId, productId or serviceId' }, { status: 400 });
-        }
-
-        if (ratingFilter) {
-            query.rating = parseInt(ratingFilter);
-        }
-
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '5');
         const skip = (page - 1) * limit;
 
-        const totalReviews = await Review.countDocuments(query);
-        const totalPages = Math.ceil(totalReviews / limit);
+        await connectToDatabase();
 
-        const reviews = await Review.find(query)
-            .populate('reviewer', 'name profilePicture gender')
+        // 1. Fetch Reviews
+        const filter: any = {};
+        if (targetId && isValidObjectId(targetId)) filter.target = targetId;
+        if (productId && isValidObjectId(productId)) filter.product = productId;
+        if (serviceId && isValidObjectId(serviceId)) filter.service = serviceId;
+
+        const total = await Review.countDocuments(filter);
+        const reviews = await Review.find(filter)
+            .populate('reviewer', 'name profilePicture')
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
-        // Aggregate stats for the current scope (Seller, Product, or Service)
+        // 2. Aggregate Rating Summary
         const matchQuery: any = {};
-        if (targetId) matchQuery.target = new mongoose.Types.ObjectId(targetId);
-        if (productId) matchQuery.product = new mongoose.Types.ObjectId(productId);
-        if (serviceId) matchQuery.service = new mongoose.Types.ObjectId(serviceId);
+        if (targetId && isValidObjectId(targetId)) matchQuery.target = new Types.ObjectId(targetId);
+        if (productId && isValidObjectId(productId)) matchQuery.product = new Types.ObjectId(productId);
+        if (serviceId && isValidObjectId(serviceId)) matchQuery.service = new Types.ObjectId(serviceId);
 
+        const summaryStats = await Review.aggregate([
+            { $match: matchQuery },
+            { $group: { _id: null, average: { $avg: '$rating' }, count: { $sum: 1 } } }
+        ]);
+
+        const averageRating = summaryStats.length > 0 ? summaryStats[0].average : 0;
+        const totalReviews = summaryStats.length > 0 ? summaryStats[0].count : 0;
+
+        // 3. Score Distribution
         const distributionPipeline = await Review.aggregate([
             { $match: matchQuery },
             { $group: { _id: '$rating', count: { $sum: 1 } } }
@@ -139,9 +143,9 @@ export async function GET(req: NextRequest) {
         let totalSum = 0;
         let totalCount = 0;
 
-        distributionPipeline.forEach(group => {
-            const r = group._id;
-            const c = group.count;
+        distributionPipeline.forEach(d => {
+            const r = d._id;
+            const c = d.count;
             if (r >= 1 && r <= 5) {
                 ratingCounts[r] = c;
                 totalSum += r * c;
@@ -149,21 +153,59 @@ export async function GET(req: NextRequest) {
             }
         });
 
-        const average = totalCount > 0 ? (totalSum / totalCount).toFixed(1) : 0;
+        const avgScore = totalCount > 0 ? (totalSum / totalCount) : 0;
+        const average = !isNaN(avgScore) ? Number(avgScore.toFixed(1)) : 0;
+        const totalPages = Math.ceil(total / limit);
+
+        // 4. Check Current User's Eligibility & Status (Drives the UI)
+        let canReview = false;
+        let hasReviewed = false;
+        try {
+            const token = req.cookies.get('token')?.value;
+            const decoded = token ? verifyToken(token) : null;
+            if (decoded) {
+                const currentUserId = (decoded as any).userId;
+                
+                // If targetId is missing in query, try to infer it from the object if unique (usually passed by frontend anyway)
+                if ((!targetId || targetId === 'undefined') && reviews.length > 0) {
+                   // This is a fallback but frontend should always pass targetId
+                }
+
+                if (targetId && targetId !== 'undefined' && currentUserId !== targetId) {
+                    // Eligibility: Completed order for this specific target/item
+                    const eligibilityQuery: any = { buyer: currentUserId, seller: targetId, status: 'Completed' };
+                    if (serviceId) eligibilityQuery.service = serviceId;
+                    else if (productId) eligibilityQuery.product = productId;
+
+                    const [completedOrder, existingUserReview] = await Promise.all([
+                        Order.findOne(eligibilityQuery).select('_id').lean(),
+                        Review.findOne({ reviewer: currentUserId, ...filter }).select('_id').lean()
+                    ]);
+
+                    canReview = !!completedOrder;
+                    hasReviewed = !!existingUserReview;
+                }
+            }
+        } catch (e) {
+            console.error("Review Meta Check Error:", e);
+        }
 
         return NextResponse.json({
             reviews,
-            average,
-            count: totalCount,
-            ratingCounts,
-            pagination: {
-                currentPage: page,
-                totalPages,
+            canReview,
+            hasReviewed,
+            stats: {
+                averageRating: Number(average),
                 totalReviews,
+                distribution: ratingCounts
+            },
+            pagination: {
+                total,
+                page,
+                totalPages,
                 hasMore: page < totalPages
             }
-        }, { status: 200 });
-
+        });
     } catch (error: any) {
         console.error('Fetch Reviews Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

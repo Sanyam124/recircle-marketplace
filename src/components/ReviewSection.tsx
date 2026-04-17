@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import StarRating from './StarRating';
 import Link from 'next/link';
 import Image from 'next/image';
+import { showSuccess } from '@/lib/confirm';
 
 interface Review {
   _id: string;
@@ -32,6 +33,7 @@ export default function ReviewSection({ targetId, targetName, productId, service
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [canReview, setCanReview] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(false);
   const [ratingCounts, setRatingCounts] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
   const [filterRating, setFilterRating] = useState<number | null>(null);
 
@@ -41,20 +43,18 @@ export default function ReviewSection({ targetId, targetName, productId, service
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Determine if user has already reviewed the specific item or target
-  const hasReviewed = user && reviews.some((r) => {
-      if (productId) return r.reviewer?._id === user.id && r.product === productId;
-      if (serviceId) return r.reviewer?._id === user.id && r.service === serviceId;
-      return r.reviewer?._id === user.id;
-  });
+  // Edit Review state
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [editRating, setEditRating] = useState(5);
+  const [editComment, setEditComment] = useState('');
 
   const fetchReviews = useCallback(async (pageNum: number, append: boolean = false) => {
     try {
       if (!append) setLoading(true);
       let url = `/api/reviews?page=${pageNum}&limit=5`;
+      if (targetId) url += `&targetId=${targetId}`;
       if (productId) url += `&productId=${productId}`;
-      else if (serviceId) url += `&serviceId=${serviceId}`;
-      else if (targetId) url += `&targetId=${targetId}`;
+      if (serviceId) url += `&serviceId=${serviceId}`;
       
       if (filterRating) url += `&rating=${filterRating}`;
 
@@ -66,14 +66,15 @@ export default function ReviewSection({ targetId, targetName, productId, service
         } else {
           setReviews(data.reviews);
         }
-        setAverage(Number(data.average));
-        setCount(data.count);
-        setRatingCounts(data.ratingCounts || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
-        setHasMore(data.pagination.hasMore);
+        const avg = data.stats?.averageRating;
+        setAverage(avg && !isNaN(avg) ? Number(avg.toFixed(1)) : 0);
+        setCount(data.stats?.totalReviews || 0);
+        setRatingCounts(data.stats?.distribution || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+        setHasMore(data.pagination?.hasMore || false);
         
-        // canReview logic might still need targetId for backend check
         if (!append) {
             setCanReview(data.canReview || false);
+            setHasReviewed(data.hasReviewed || false);
         }
       }
     } catch (error) {
@@ -117,6 +118,7 @@ export default function ReviewSection({ targetId, targetName, productId, service
         throw new Error(data.error || 'Failed to submit review');
       }
 
+      await showSuccess('Review Posted', 'Thank you for your feedback! It helps keeping the community safe.');
       setComment('');
       setRating(5);
       setPage(1);
@@ -126,6 +128,39 @@ export default function ReviewSection({ targetId, targetName, productId, service
       setError(err.message);
       setSubmitting(false);
     }
+  };
+
+  const handleEditClick = (review: Review) => {
+    setEditingReviewId(review._id);
+    setEditRating(review.rating);
+    setEditComment(review.comment);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent, reviewId: string) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: editRating, comment: editComment }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update review');
+      }
+      setEditingReviewId(null);
+      await fetchReviews(1);
+      await showSuccess('Review Updated', 'Your feedback was successfully updated.');
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReviewId(null);
+    setEditRating(5);
+    setEditComment('');
   };
 
   const handleFilterClick = (star: number) => {
@@ -148,7 +183,7 @@ export default function ReviewSection({ targetId, targetName, productId, service
         
         {/* Left Col: Average */}
         <div className="flex flex-col items-center justify-center md:w-1/3 bg-gray-50 dark:bg-gray-700/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700">
-           <span className="text-5xl font-extrabold text-indigo-600 dark:text-indigo-400 mb-2 tracking-tighter">{average}</span>
+           <span className="text-5xl font-extrabold text-indigo-600 dark:text-indigo-400 mb-2 tracking-tighter">{Number(average).toFixed(1)}</span>
            <StarRating rating={average} />
            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-2">{count} {productId || serviceId ? 'listing ratings' : 'seller ratings'}</p>
         </div>
@@ -254,7 +289,11 @@ export default function ReviewSection({ targetId, targetName, productId, service
       )}
 
       <div className="space-y-6">
-        {reviews.map((review) => (
+        {[...reviews].sort((a, b) => {
+           if (user && a.reviewer?._id === user.id) return -1;
+           if (user && b.reviewer?._id === user.id) return 1;
+           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }).map((review) => (
           <div key={review._id} className="flex space-x-4">
              <div className="flex-shrink-0">
                <Link href={`/profile/${review.reviewer?._id || ''}`}>
@@ -283,10 +322,34 @@ export default function ReviewSection({ targetId, targetName, productId, service
                  </Link>
                  <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(review.createdAt).toLocaleDateString()}</span>
                </div>
-               <div className="mt-1">
-                 <StarRating rating={review.rating} />
-               </div>
-               <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{review.comment}</p>
+               {editingReviewId === review._id ? (
+                 <form onSubmit={(e) => handleEditSubmit(e, review._id)} className="mt-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-600">
+                   <div className="mb-3">
+                     <div className="flex gap-1.5">
+                       {[1, 2, 3, 4, 5].map((star) => (
+                         <button key={star} type="button" onClick={() => setEditRating(star)} className={`w-6 h-6 ${editRating >= star ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-500'}`}>
+                           <svg fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                         </button>
+                       ))}
+                     </div>
+                   </div>
+                   <textarea rows={2} className="w-full text-sm rounded-md border-gray-200 dark:border-gray-600 focus:border-indigo-500 p-2 text-gray-900 dark:text-white bg-white dark:bg-gray-800 mb-3" value={editComment} onChange={(e) => setEditComment(e.target.value)} required />
+                   <div className="flex gap-2">
+                     <button type="submit" className="px-3 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
+                     <button type="button" onClick={handleCancelEdit} className="px-3 py-1.5 text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-200 dark:bg-gray-600 rounded-md">Cancel</button>
+                   </div>
+                 </form>
+               ) : (
+                 <>
+                   <div className="mt-1 flex items-center justify-between">
+                     <StarRating rating={review.rating} />
+                     {user?.id === review.reviewer?._id && (
+                       <button onClick={() => handleEditClick(review)} className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300">Edit Review</button>
+                     )}
+                   </div>
+                   <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 break-all">{review.comment}</p>
+                 </>
+               )}
              </div>
           </div>
         ))}

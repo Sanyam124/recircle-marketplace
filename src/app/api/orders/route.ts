@@ -4,6 +4,7 @@ import Order from '@/models/Order';
 import Product from '@/models/Product';
 import Service from '@/models/Service';
 import User from '@/models/User';
+import Review from '@/models/Review';
 import { createNotification } from '@/lib/notifications';
 import { verifyToken } from '@/lib/auth';
 
@@ -152,8 +153,20 @@ export async function GET(req: NextRequest) {
             .limit(limit)
             .lean();
 
+        // 3. Mark orders as reviewed if the user has already left a review for this listing
+        const ordersWithReviewStatus = await Promise.all(orders.map(async (o: any) => {
+            const hasReview = await Review.exists({
+                reviewer: decoded.userId,
+                $or: [
+                    ...(o.product ? [{ product: o.product._id || o.product }] : []),
+                    ...(o.service ? [{ service: o.service._id || o.service }] : [])
+                ]
+            });
+            return { ...o, isReviewed: !!hasReview };
+        }));
+
         return NextResponse.json({
-            orders,
+            orders: ordersWithReviewStatus,
             pagination: {
                 currentPage: page,
                 totalPages,

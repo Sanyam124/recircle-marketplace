@@ -9,6 +9,7 @@ import ExpandableText from '@/components/ExpandableText';
 import Link from 'next/link';
 import Image from 'next/image';
 import useSWR from 'swr';
+import RateLimitScreen from '@/components/RateLimitScreen';
 
 interface Post {
     _id: string;
@@ -93,6 +94,10 @@ function BoardPageContent() {
     const [replyContent, setReplyContent] = useState('');
     const [replySubmitting, setReplySubmitting] = useState(false);
     const isFirstRender = useRef(true);
+
+    const { data: siteConfig } = useSWR('/api/site-config');
+    const maxPostChars = siteConfig?.maxBoardPostChars || 500;
+    const maxReplyChars = siteConfig?.maxBoardReplyChars || 300;
 
     // Sync URL -> State (Initial selection)
     useEffect(() => {
@@ -183,16 +188,7 @@ function BoardPageContent() {
     };
 
     if (isRateLimited) {
-        return (
-            <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 inline-block max-w-lg border border-gray-100 dark:border-gray-700">
-                    <span className="text-6xl mb-6 block animate-bounce">🐢</span>
-                    <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2 uppercase italic tracking-tighter">Whoa, slow down!</h2>
-                    <p className="text-gray-500 dark:text-gray-400 mb-8 font-medium">You're participating faster than we can keep up with. Please take a quick break before refreshing.</p>
-                    <button onClick={() => mutate()} className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg active:scale-95">Try Again</button>
-                </div>
-            </div>
-        );
+        return <RateLimitScreen onRetry={() => mutate()} />;
     }
 
     if (authLoading || (!user && !authLoading)) {
@@ -271,16 +267,16 @@ function BoardPageContent() {
                                     placeholder={`What's happening at ${selectedCommunity?.name || 'campus'}?`}
                                     value={newPostContent}
                                     onChange={(e) => setNewPostContent(e.target.value)}
-                                    maxLength={500}
+                                    maxLength={maxPostChars}
                                     required
                                 />
                                 {error && <p className="text-[10px] text-red-500 font-bold mb-2">{error}</p>}
                                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50 dark:border-gray-700/50">
                                     <div className="flex items-center gap-4">
                                          <span className="text-[10px] text-gray-400 font-medium">🕒 Posts expire in 48h</span>
-                                         <span className={`text-[10px] font-bold ${newPostContent.length >= 450 ? 'text-red-500' : 'text-gray-300'}`}>
-                                            {newPostContent.length}/500
-                                         </span>
+                                          <span className={`text-[10px] font-bold ${newPostContent.length >= (maxPostChars - 50) ? 'text-red-500' : 'text-gray-300'}`}>
+                                            {newPostContent.length}/{maxPostChars}
+                                          </span>
                                     </div>
                                     <button 
                                         type="submit" 
@@ -315,6 +311,7 @@ function BoardPageContent() {
                                     replyContent={replyContent}
                                     setReplyContent={setReplyContent}
                                     replySubmitting={replySubmitting}
+                                    maxReplyChars={maxReplyChars}
                                 />
                             ))}
                             
@@ -363,7 +360,8 @@ function PostCard({
     setReplyingTo,
     replyContent,
     setReplyContent,
-    replySubmitting
+    replySubmitting,
+    maxReplyChars
 }: { 
     post: Post; 
     user: any; 
@@ -374,6 +372,7 @@ function PostCard({
     replyContent: string;
     setReplyContent: (val: string) => void;
     replySubmitting: boolean;
+    maxReplyChars: number;
 }) {
     const postRef = useRef<HTMLDivElement>(null);
     const [repliesVisible, setRepliesVisible] = useState(false);
@@ -402,18 +401,18 @@ function PostCard({
             <div className="flex items-start gap-3 sm:gap-4">
                 <Link href={`/profile/${post.author._id}`} className="shrink-0 transition-transform hover:scale-105 active:scale-95">
                     <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600 overflow-hidden shadow-sm">
-                        {post.author.profilePicture ? (
-                                <Image src={post.author.profilePicture} alt={post.author.name} width={40} height={40} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        {post.author?.profilePicture ? (
+                                <Image src={post.author.profilePicture} alt={post.author?.name || 'User'} width={40} height={40} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
-                            <span className="text-gray-500 dark:text-gray-400 font-bold text-xs">{post.author.name?.[0].toUpperCase()}</span>
+                            <span className="text-gray-500 dark:text-gray-400 font-bold text-xs">{post.author?.name?.[0].toUpperCase() || '?'}</span>
                         )}
                     </div>
                 </Link>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <Link href={`/profile/${post.author._id}`} className="group flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
-                            <span className="font-bold text-gray-900 dark:text-white text-sm truncate uppercase tracking-tight italic group-hover:text-indigo-600 transition-colors">{post.author.name}</span>
-                            <span className="text-gray-400 dark:text-gray-500 text-[10px] font-medium tracking-tight">@{post.author.username}</span>
+                        <Link href={`/profile/${post.author?._id}`} className="group flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
+                            <span className="font-bold text-gray-900 dark:text-white text-sm truncate uppercase tracking-tight italic group-hover:text-indigo-600 transition-colors">{post.author?.name || 'Deleted User'}</span>
+                            <span className="text-gray-400 dark:text-gray-500 text-[10px] font-medium tracking-tight">@{post.author?.username || 'deleted'}</span>
                         </Link>
                         <span className="text-gray-300 dark:text-gray-600">·</span>
                         <span className="text-gray-400 dark:text-gray-500 text-[10px] font-medium tracking-tight">{formatTimeAgo(post.createdAt)}</span>
@@ -447,7 +446,7 @@ function PostCard({
                                 <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/20 shrink-0 flex items-center justify-center font-bold text-indigo-600 text-[10px] border border-indigo-100/50 dark:border-indigo-800/30 overflow-hidden shadow-sm">
                                     {user?.profilePicture ? <Image src={user.profilePicture} alt="You" width={32} height={32} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : user?.name?.[0].toUpperCase()}
                                 </div>
-                                <input type="text" placeholder="Add a comment..." className="flex-1 bg-gray-50 dark:bg-gray-700/50 border-none rounded-xl text-xs py-2 px-4 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-indigo-500 shadow-inner" value={replyingTo === post._id ? replyContent : ''} onFocus={() => setReplyingTo(post._id)} onKeyDown={(e) => { if (e.key === 'Enter') { setReplyingTo(post._id); handleReply(post._id); } }} onChange={(e) => { setReplyingTo(post._id); setReplyContent(e.target.value); }} maxLength={300} />
+                                <input type="text" placeholder="Add a comment..." className="flex-1 bg-gray-50 dark:bg-gray-700/50 border-none rounded-xl text-xs py-2 px-4 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-indigo-500 shadow-inner" value={replyingTo === post._id ? replyContent : ''} onFocus={() => setReplyingTo(post._id)} onKeyDown={(e) => { if (e.key === 'Enter') { setReplyingTo(post._id); handleReply(post._id); } }} onChange={(e) => { setReplyingTo(post._id); setReplyContent(e.target.value); }} maxLength={maxReplyChars} />
                                 <button onClick={() => handleReply(post._id)} disabled={replySubmitting || !replyContent.trim() || replyingTo !== post._id} className="text-indigo-600 dark:text-indigo-400 text-xs font-black disabled:opacity-30 hover:text-indigo-800 transition-colors">
                                     {replySubmitting ? '...' : 'POST'}
                                 </button>
@@ -458,14 +457,14 @@ function PostCard({
                                     <div key={reply._id} className="flex items-start gap-3 animate-in fade-in duration-300">
                                         <Link href={`/profile/${reply.author._id}`} className="shrink-0 transition-transform hover:scale-105 active:scale-95">
                                             <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden">
-                                                {reply.author.profilePicture ? <Image src={reply.author.profilePicture} alt={reply.author.name} width={24} height={24} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-[8px] flex items-center justify-center h-full font-bold text-gray-400">{reply.author.name?.[0].toUpperCase()}</span>}
+                                                {reply.author?.profilePicture ? <Image src={reply.author.profilePicture} alt={reply.author?.name || 'User'} width={24} height={24} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-[8px] flex items-center justify-center h-full font-bold text-gray-400">{reply.author?.name?.[0].toUpperCase() || '?'}</span>}
                                             </div>
                                         </Link>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-0.5">
-                                                <Link href={`/profile/${reply.author._id}`} className="flex flex-col group">
-                                                    <span className="font-bold text-gray-900 dark:text-white text-[11px] uppercase tracking-tight leading-none group-hover:text-indigo-600 transition-colors">{reply.author.name}</span>
-                                                    <span className="text-gray-400 dark:text-gray-500 text-[9px] font-medium tracking-tighter">@{reply.author.username}</span>
+                                                <Link href={`/profile/${reply.author?._id}`} className="flex flex-col group">
+                                                    <span className="font-bold text-gray-900 dark:text-white text-[11px] uppercase tracking-tight leading-none group-hover:text-indigo-600 transition-colors">{reply.author?.name || 'Deleted user'}</span>
+                                                    <span className="text-gray-400 dark:text-gray-500 text-[9px] font-medium tracking-tighter">@{reply.author?.username || 'deleted'}</span>
                                                 </Link>
                                                 <span className="text-gray-300 dark:text-gray-600 self-center">·</span>
                                                 <span className="text-gray-400 dark:text-gray-500 text-[10px] self-center">{formatTimeAgo(reply.createdAt)}</span>

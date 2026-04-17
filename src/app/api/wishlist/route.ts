@@ -101,21 +101,40 @@ export async function GET(req: NextRequest) {
         const ownerIds = paginatedItems.map((item: any) => 
             item.itemType === 'product' ? item.seller?._id : item.provider?._id
         ).filter((id: any) => id != null);
+        const itemIds = paginatedItems.map((item: any) => item._id);
 
-        const reviews = await Review.aggregate([
-            { $match: { target: { $in: ownerIds } } },
-            { $group: { _id: '$target', average: { $avg: '$rating' }, count: { $sum: 1 } } }
+        const [ownerReviews, itemReviews] = await Promise.all([
+            Review.aggregate([
+                { $match: { target: { $in: ownerIds } } },
+                { $group: { _id: { target: '$target', reviewer: '$reviewer' }, reviewerAvgRating: { $avg: '$rating' } } },
+                { $group: { _id: '$_id.target', average: { $avg: '$reviewerAvgRating' }, count: { $sum: 1 } } }
+            ]),
+            Review.aggregate([
+                { $match: { $or: [{ product: { $in: itemIds } }, { service: { $in: itemIds } }] } },
+                { $group: { _id: { $ifNull: ['$product', '$service'] }, average: { $avg: '$rating' }, count: { $sum: 1 } } }
+            ])
         ]);
 
-        const reviewMap = new Map(reviews.map((r: any) => [r._id.toString(), { average: r.average, count: r.count } ]));
+        const ownerReviewMap = new Map(ownerReviews.map((r: any) => [r._id.toString(), { average: r.average, count: r.count } ]));
+        const itemReviewMap = new Map(itemReviews.map((r: any) => [r._id.toString(), { average: r.average, count: r.count } ]));
 
         const wishlistWithRatings = paginatedItems.map((item: any) => {
             const ownerId = item.itemType === 'product' ? item.seller?._id?.toString() : item.provider?._id?.toString();
-            const stats = reviewMap.get(ownerId) || { average: 0, count: 0 };
+            const ownerStats = ownerReviewMap.get(ownerId) || { average: 0, count: 0 };
+            const itemStats = itemReviewMap.get(item._id.toString()) || { average: 0, count: 0 };
+            
             return {
                 ...item,
-                ownerRating: stats.average || 0,
-                reviewCount: stats.count || 0
+                sellerTrustRating: ownerStats.average,
+                sellerTrustCount: ownerStats.count,
+                itemSpecificRating: itemStats.average,
+                itemSpecificCount: itemStats.count,
+                // Legacy fields for insurance
+                ownerRating: ownerStats.average,
+                providerRating: ownerStats.average,
+                serviceRating: itemStats.average,
+                itemRating: itemStats.average,
+                reviewCount: item.forRent ? itemStats.count : ownerStats.count
             };
         });
 

@@ -28,8 +28,13 @@ interface Product {
     name: string;
     profilePicture?: string;
   };
-  ownerRating?: number;
-  reviewCount?: number;
+  sellerTrustRating?: number;
+  sellerTrustCount?: number;
+  itemSpecificRating?: number;
+  itemSpecificCount?: number;
+  ownerRating?: number; // Legacy
+  itemRating?: number;  // Legacy
+  reviewCount?: number; // Legacy
   visibility?: 'Public' | 'Community';
   community?: { _id: string; name: string } | string | any;
   location?: { pincode: string; city: string; state: string; hostel?: string; coordinates?: [number, number] };
@@ -141,11 +146,16 @@ export default function ProductCard({
       {/* Image Section - Compacted for mobile */}
       <div className="relative h-28 sm:h-48 w-full overflow-hidden bg-gray-50 dark:bg-gray-900 border-b border-gray-100/50 dark:border-gray-800/50 pointer-events-none">
         {(product.status === 'Sold' || product.status === 'Completed' || product.status === 'Rented') && (
-            <div className="absolute inset-0 z-10 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-500">
-                <div className={`${(product.status === 'Rented' || product.status === 'Completed') ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'} text-white px-5 py-2 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] shadow-2xl border-2 border-white/20 transform -rotate-6 scale-110`}>
-                    {(product.status === 'Rented' || product.status === 'Completed') ? 'Rented Out' : 'Sold'}
-                </div>
-            </div>
+            <>
+              <div className="absolute inset-0 z-10 bg-gray-900/30 backdrop-blur-[2px] flex items-center justify-center pointer-events-none"></div>
+              <div className={`absolute top-4 -left-10 w-36 -rotate-45 z-20 flex justify-center py-1 shadow-lg pointer-events-none ${
+                (product.status === 'Rented' || product.status === 'Completed') ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+              }`}>
+                  <span className="text-[10px] font-black uppercase tracking-widest shadow-sm">
+                      {(product.status === 'Rented' || product.status === 'Completed') ? 'Rented' : 'Sold Out'}
+                  </span>
+              </div>
+            </>
         )}
         {product.images && product.images.length > 0 ? (
           <Image
@@ -218,37 +228,53 @@ export default function ProductCard({
             </div>
             
             {/* Mobile Only: Rating & Timeago */}
-            <div className="flex sm:hidden items-center gap-1 min-h-[1.5em]">
-                <div className="flex items-center shrink-0">
-                    {[...Array(5)].map((_, i) => (
-                        <svg key={i} className={`h-3 w-3 ${i < Math.floor(product.ownerRating || 0) ? 'text-amber-400' : 'text-gray-200 dark:text-gray-700'}`} fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                    ))}
+            <div className="flex sm:hidden flex-col min-h-[1.5em] gap-0.5 mt-1">
+                <div className="flex items-center gap-1">
+                    <div className="flex items-center shrink-0">
+                        {[...Array(5)].map((_, i) => {
+                            const activeRating = product.forRent ? (product.itemSpecificRating ?? 0) : (product.sellerTrustRating ?? 0);
+                            return (
+                                <svg key={i} className={`h-3 w-3 ${i < Math.floor(activeRating) ? 'text-amber-400' : 'text-gray-200 dark:text-gray-700'}`} fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                            );
+                        })}
+                    </div>
+                    {(product.forRent ? product.itemSpecificCount : product.sellerTrustCount) ? (
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter ml-1">({product.forRent ? product.itemSpecificCount : product.sellerTrustCount})</span>
+                    ) : null}
+                    <span className="ml-auto text-[9px] text-gray-400 font-medium opacity-60 whitespace-nowrap pl-1 h-full flex items-center">
+                        {formatTimeAgo(product.createdAt)}
+                    </span>
                 </div>
-                {product.reviewCount ? (
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter ml-1">({product.reviewCount})</span>
-                ) : null}
-                <span className="ml-auto text-[9px] text-gray-400 font-medium opacity-60 whitespace-nowrap pl-1 truncate">
-                    {formatTimeAgo(product.createdAt)}
+                <span className="text-[8px] font-bold text-gray-400/80 uppercase tracking-widest leading-none">
+                    {product.forRent ? 'Item Rating' : 'Seller Rating'}
                 </span>
             </div>
         </div>
         
         <div className="flex flex-col mt-auto shrink-0 pt-2">
             {/* Desktop Only: Rating & Condition */}
-            <div className="hidden sm:flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1">
-                    <div className="flex items-center shrink-0">
-                        {[...Array(5)].map((_, i) => (
-                            <svg key={i} className={`h-3 w-3 ${i < Math.floor(product.ownerRating || 0) ? 'text-amber-400' : 'text-gray-200 dark:text-gray-700'}`} fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                        ))}
+            <div className="hidden sm:flex items-end justify-between mb-2">
+                <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1">
+                        <div className="flex items-center shrink-0">
+                            {[...Array(5)].map((_, i) => {
+                                const activeRating = product.forRent ? (product.itemSpecificRating ?? 0) : (product.sellerTrustRating ?? 0);
+                                return (
+                                    <svg key={i} className={`h-3 w-3 ${i < Math.floor(activeRating) ? 'text-amber-400' : 'text-gray-200 dark:text-gray-700'}`} fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                );
+                            })}
+                        </div>
+                        {(product.forRent ? product.itemSpecificCount : product.sellerTrustCount) ? (
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter ml-1">({product.forRent ? product.itemSpecificCount : product.sellerTrustCount})</span>
+                        ) : null}
                     </div>
-                    {product.reviewCount ? (
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter ml-1">({product.reviewCount})</span>
-                    ) : null}
+                    <span className="text-[9px] font-black text-gray-400/80 uppercase tracking-widest leading-none">
+                        {product.forRent ? 'Item Rating' : 'Seller Rating'}
+                    </span>
                 </div>
                 <span className="inline-flex items-center rounded-lg bg-gray-50 dark:bg-gray-700/50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 ring-1 ring-inset ring-gray-200 dark:ring-gray-700 whitespace-nowrap italic">
                     {product.condition}
@@ -303,9 +329,9 @@ export default function ProductCard({
             {isActualOwner && (
               <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex gap-2 relative z-20 pointer-events-auto">
                 {product.status === 'Rented' ? (
-                  <button
+                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleStatus?.(product._id, 'Available', 'products'); }}
-                    className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 flex-[2] rounded-xl transition-all border border-emerald-100 hover:bg-emerald-100 active:scale-95 shadow-sm"
+                    className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 sm:px-3 py-2 flex-[2] rounded-xl transition-all border border-emerald-100 hover:bg-emerald-100 active:scale-95 shadow-sm"
                   >
                     Make Available
                   </button>
@@ -316,7 +342,7 @@ export default function ProductCard({
                           e.stopPropagation();
                           onToggleStatus?.(product._id, product.status === 'Available' ? 'Inactive' : 'Available', 'products');
                       }}
-                      className={`text-[10px] font-black uppercase tracking-widest px-3 py-2 flex-[2] rounded-xl transition-all border active:scale-95 shadow-sm ${
+                       className={`text-[8px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest px-1.5 sm:px-3 py-2 flex-[2] rounded-xl transition-all border active:scale-95 shadow-sm ${
                         product.status === 'Available' 
                           ? 'text-indigo-600 bg-indigo-50 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-900/50' 
                           : 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-900/50'
@@ -326,9 +352,9 @@ export default function ProductCard({
                     </button>
                 ) : null}
                 {(product.status !== 'Sold' && product.status !== 'Completed') && (
-                  <button
+                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete?.(product._id, 'products'); }}
-                    className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-3 py-2 flex-1 rounded-xl transition-all border border-rose-100 hover:bg-rose-100 active:scale-95"
+                    className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-1.5 sm:px-3 py-2 flex-1 rounded-xl transition-all border border-rose-100 hover:bg-rose-100 active:scale-95"
                   >
                     Delete
                   </button>

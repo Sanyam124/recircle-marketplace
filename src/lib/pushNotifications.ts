@@ -14,18 +14,26 @@ function setVapid() {
   }
 }
 
-export async function sendPushNotification(userId: string, payload: { title: string, body: string, icon?: string, data?: any }, type: 'message' | 'offer' = 'message') {
+export type NotificationType = 'message' | 'offer' | 'newsletter' | 'community' | 'security';
+
+export async function sendPushNotification(userId: string, payload: { title: string, body: string, icon?: string, data?: any }, type: NotificationType = 'message') {
   try {
     setVapid();
-    const user = await User.findById(userId).select('pushSubscription notifyOffers notifyMessages');
+    const user = await User.findById(userId).select('pushSubscription notifyOffers notifyMessages notifyNewsletter notifyCommunity notifySecurity');
     if (!user || !user.pushSubscription) return;
 
     // Check preferences (Fallback to true if undefined/missing in DB)
     const canNotifyMessages = user.notifyMessages !== false;
     const canNotifyOffers = user.notifyOffers !== false;
+    const canNotifyNewsletter = user.notifyNewsletter !== false;
+    const canNotifyCommunity = user.notifyCommunity !== false;
+    const canNotifySecurity = user.notifySecurity !== false;
 
     if (type === 'message' && !canNotifyMessages) return;
     if (type === 'offer' && !canNotifyOffers) return;
+    if (type === 'newsletter' && !canNotifyNewsletter) return;
+    if (type === 'community' && !canNotifyCommunity) return;
+    if (type === 'security' && !canNotifySecurity) return;
 
     const subscription = JSON.parse(user.pushSubscription);
     

@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
 import imageCompression from 'browser-image-compression';
 import SmartLocationPicker from '@/components/SmartLocationPicker';
+import useSWR from 'swr';
 
 export default function CreateProductPage() {
   const router = useRouter();
@@ -30,11 +31,23 @@ export default function CreateProductPage() {
     forRent: false,
     rentPrice: '',
     rentUnit: 'month',
-    category: 'Textbooks',
-    condition: 'Good',
+    category: '',
+    condition: '',
     visibility: 'Public',
     communityId: '',
   });
+
+  const { data: siteConfig } = useSWR('/api/site-config');
+
+  useEffect(() => {
+    if (siteConfig) {
+      setFormData(prev => ({
+        ...prev,
+        category: prev.category || siteConfig.productCategories?.[0] || 'Textbooks',
+        condition: prev.condition || siteConfig.productConditions?.[0] || 'Good',
+      }));
+    }
+  }, [siteConfig]);
   
   const [location, setLocation] = useState({
     coordinates: undefined as [number, number] | undefined,
@@ -60,11 +73,12 @@ export default function CreateProductPage() {
 
  // Pincode logic removed since map provides it 
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      if (files.length + images.length > 5) {
-        setError('Maximum 5 images allowed');
+      const maxImages = siteConfig?.maxProductImages || 5;
+      if (files.length + images.length > maxImages) {
+        setError(`Maximum ${maxImages} images allowed`);
         return;
       }
 
@@ -96,6 +110,8 @@ export default function CreateProductPage() {
     setImages(images.filter((_, i) => i !== index));
   };
 
+  const [website_url, setWebsiteUrl] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -103,7 +119,7 @@ export default function CreateProductPage() {
 
     // Validation for Public listings
     if (formData.visibility === 'Public' && !location.coordinates) {
-        setError('Please drop a pin on the map to set the trade-off location.');
+        setError('Please drop a pin on the map to set the meeting location.');
         setLoading(false);
         return;
     }
@@ -114,6 +130,7 @@ export default function CreateProductPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          website_url,
           price: formData.forSell ? Number(formData.price) : undefined,
           rentPrice: formData.forRent ? Number(formData.rentPrice) : undefined,
           images,
@@ -174,6 +191,11 @@ export default function CreateProductPage() {
             </div>
         
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Honeypot Trap (Invisible to humans) */}
+              <div className="absolute opacity-0 pointer-events-none -z-10 h-0 w-0 overflow-hidden">
+                  <input type="text" name="website_url" value={website_url} onChange={(e) => setWebsiteUrl(e.target.value)} tabIndex={-1} autoComplete="off" />
+              </div>
+
               <div className="grid grid-cols-1 gap-y-8 gap-x-6 sm:grid-cols-6">
                 {/* Title Section */}
                 <div className="sm:col-span-4">
@@ -236,8 +258,8 @@ export default function CreateProductPage() {
                         name="price"
                         id="price"
                         required={formData.forSell}
-                        min="5" 
-                        max="1000000"
+                        min={siteConfig?.minPrice || 5}
+                        max={siteConfig?.maxPriceProduct || 1000000}
                         step="1"
                         placeholder="0.00"
                         className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl pl-10 pr-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-black text-xl"
@@ -260,8 +282,8 @@ export default function CreateProductPage() {
                             name="rentPrice"
                             id="rentPrice"
                             required={formData.forRent}
-                            min="5" 
-                            max="100000"
+                            min={siteConfig?.minPrice || 5}
+                            max={siteConfig?.maxPriceProduct || 100000}
                             placeholder="0.00"
                             className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-emerald-500 dark:focus:border-emerald-400 rounded-l-2xl rounded-r-none pl-10 pr-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-black text-xl"
                             onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
@@ -314,16 +336,9 @@ export default function CreateProductPage() {
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               >
-                <option className="dark:bg-[#111] dark:text-white">Textbooks</option>
-                <option className="dark:bg-[#111] dark:text-white">Study Notes</option>
-                <option className="dark:bg-[#111] dark:text-white">Stationery</option>
-                <option className="dark:bg-[#111] dark:text-white">Electronics</option>
-                <option className="dark:bg-[#111] dark:text-white">Clothing</option>
-                <option className="dark:bg-[#111] dark:text-white">Bags</option>
-                <option className="dark:bg-[#111] dark:text-white">Hostel Kit</option>
-                <option className="dark:bg-[#111] dark:text-white">Sports</option>
-                <option className="dark:bg-[#111] dark:text-white">Furniture</option>
-                <option className="dark:bg-[#111] dark:text-white">Other</option>
+                {(siteConfig?.productCategories || ['Textbooks', 'Study Notes', 'Stationery', 'Electronics', 'Clothing', 'Bags', 'Hostel Kit', 'Sports', 'Furniture', 'Other']).map((cat: string) => (
+                  <option key={cat} value={cat} className="dark:bg-[#111] dark:text-white">{cat}</option>
+                ))}
               </select>
             </div>
             <div className="sm:col-span-3">
@@ -335,11 +350,9 @@ export default function CreateProductPage() {
                 value={formData.condition}
                 onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
               >
-                <option value="New" className="dark:bg-[#111] dark:text-white">✨ New</option>
-                <option value="Like New" className="dark:bg-[#111] dark:text-white">💎 Like New</option>
-                <option value="Good" className="dark:bg-[#111] dark:text-white">✅ Good</option>
-                <option value="Fair" className="dark:bg-[#111] dark:text-white">🥉 Fair</option>
-                <option value="Poor" className="dark:bg-[#111] dark:text-white">🩹 Poor</option>
+                {(siteConfig?.productConditions || ['New', 'Like New', 'Good', 'Fair', 'Poor']).map((cond: string) => (
+                  <option key={cond} value={cond} className="dark:bg-[#111] dark:text-white">{cond}</option>
+                ))}
               </select>
             </div>
 
@@ -410,7 +423,7 @@ export default function CreateProductPage() {
             
 
             <div className="sm:col-span-6">
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-4">Visual Gallery <span className="text-gray-400 font-medium">(MAX 5)</span></label>
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-4">Visual Gallery <span className="text-gray-400 font-medium">(MAX {siteConfig?.maxProductImages || 5})</span></label>
               
                <div className="bg-amber-50 dark:bg-amber-500/5 border-l-4 border-amber-400 p-5 rounded-r-3xl mb-8 flex gap-4">
                   <div className="text-xl">⚠️</div>
@@ -434,7 +447,7 @@ export default function CreateProductPage() {
                     </div>
                   </div>
                 ))}
-                {images.length < 5 && (
+                {images.length < (siteConfig?.maxProductImages || 5) && (
                   <label className="border-3 border-dashed border-gray-200 dark:border-white/10 rounded-[1.5rem] flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-white/5 transition-all aspect-square group">
                     <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-full mb-2 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 group-hover:text-indigo-600 transition-all">
                        <svg className="h-6 w-6 text-gray-400 group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

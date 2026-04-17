@@ -68,13 +68,12 @@ export async function PATCH(req: NextRequest) {
         if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
         await connectToDatabase();
-
         const { notificationId, markAll } = await req.json();
 
         if (markAll) {
-            await Notification.updateMany({ recipient: decoded.userId, isRead: false }, { isRead: true });
+            await Notification.deleteMany({ recipient: decoded.userId });
         } else if (notificationId) {
-            await Notification.updateOne({ _id: notificationId, recipient: decoded.userId }, { isRead: true });
+            await Notification.deleteOne({ _id: notificationId, recipient: decoded.userId });
         }
 
         return NextResponse.json({ success: true }, { status: 200 });

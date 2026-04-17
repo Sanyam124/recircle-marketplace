@@ -8,31 +8,37 @@ export async function GET() {
     try {
         await connectToDatabase();
 
-        // Use distinct on both collections to get all cities
-        // Filters for active/available items to only show cities with actual listings
-        const [productCities, serviceCities] = await Promise.all([
-            Product.distinct('location.city', { 
-                'location.city': { $exists: true, $ne: '' },
-                status: 'Available',
-                visibility: 'Public'
-            }),
-            Service.distinct('location.city', { 
-                'location.city': { $exists: true, $ne: '' },
-                status: 'Active',
-                visibility: 'Public'
-            })
+        // Aggregate location data from both collections
+        const productLocations = await Product.aggregate([
+            { $match: { status: 'Available', visibility: 'Public', 'location.state': { $exists: true, $ne: '' }, 'location.city': { $exists: true, $ne: '' } } },
+            { $group: { _id: { state: '$location.state', city: '$location.city' } } }
         ]);
 
-        // Merge and unique
-        const allCities = Array.from(new Set([...productCities, ...serviceCities]))
-            .filter(Boolean)
-            .sort()
-            .map(city => ({ name: city, count: 0 })); // Simplified for now, or could count
+        const serviceLocations = await Service.aggregate([
+            { $match: { status: 'Active', visibility: 'Public', 'location.state': { $exists: true, $ne: '' }, 'location.city': { $exists: true, $ne: '' } } },
+            { $group: { _id: { state: '$location.state', city: '$location.city' } } }
+        ]);
 
-        return NextResponse.json({ cities: allCities }, { status: 200 });
+        const stateCityMap: Record<string, Set<string>> = {};
+
+        [...productLocations, ...serviceLocations].forEach(doc => {
+            const state = doc._id.state;
+            const city = doc._id.city;
+            if (!stateCityMap[state]) {
+                stateCityMap[state] = new Set();
+            }
+            stateCityMap[state].add(city);
+        });
+
+        const formattedData: Record<string, string[]> = {};
+        Object.keys(stateCityMap).sort().forEach(state => {
+            formattedData[state] = Array.from(stateCityMap[state]).sort();
+        });
+
+        return NextResponse.json({ locations: formattedData }, { status: 200 });
 
     } catch (error) {
-        console.error('Error fetching cities:', error);
-        return NextResponse.json({ cities: [] }, { status: 500 });
+        console.error('Error fetching locations:', error);
+        return NextResponse.json({ locations: {} }, { status: 500 });
     }
 }

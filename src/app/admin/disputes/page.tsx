@@ -94,69 +94,69 @@ export default function AdminDisputesPage() {
     if (authLoading || loading) return <Loader />;
 
     if (!user || user.role !== 'admin') {
-        return <div className="p-8 text-center text-red-500">Access Denied</div>;
+        return <div className="p-8 text-center text-red-500 dark:text-red-400">Access Denied</div>;
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 id="disputes-top" className="text-2xl font-bold text-gray-900 mb-6">Dispute Resolution</h1>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 transition-colors duration-300">
+            <h1 id="disputes-top" className="text-2xl font-bold text-gray-900 dark:text-white mb-6 transition-colors">Dispute Resolution</h1>
 
             {disputes.length === 0 ? (
-                <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 text-center text-gray-500 dark:text-gray-400 transition-colors">
                     No pending disputes found.
                 </div>
             ) : (
                 <div className="space-y-4">
                     {disputes.map((order) => (
-                        <div key={order._id} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+                        <div key={order._id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
                             <div className="flex flex-col md:flex-row justify-between gap-4">
                                 
                                 {/* Info Section */}
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">
+                                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 transition-colors">
                                             {order.status.replace('_', ' ')}
                                         </span>
-                                        <span className="text-sm text-gray-500">Ordered on {new Date(order.createdAt).toLocaleDateString()}</span>
+                                        <span className="text-sm text-gray-500 dark:text-gray-400 transition-colors">Ordered on {new Date(order.createdAt).toLocaleDateString()}</span>
                                     </div>
                                     
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 transition-colors">
                                         {order.orderType === 'Service_Appointment' ? order.service?.title : order.product?.title}
                                     </h3>
                                     
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
                                         <div>
-                                            <p className="font-medium text-gray-700">Buyer (Complainant)</p>
-                                            <p className="text-gray-600">{order.buyer.name} ({order.buyer.email})</p>
+                                            <p className="font-medium text-gray-700 dark:text-gray-300 transition-colors">Buyer (Complainant)</p>
+                                            <p className="text-gray-600 dark:text-gray-400 transition-colors">{order.buyer.name} ({order.buyer.email})</p>
                                         </div>
                                         <div>
-                                            <p className="font-medium text-gray-700">Provider (Defendant)</p>
-                                            <p className="text-gray-600">{order.seller.name} ({order.seller.email})</p>
+                                            <p className="font-medium text-gray-700 dark:text-gray-300 transition-colors">Provider (Defendant)</p>
+                                            <p className="text-gray-600 dark:text-gray-400 transition-colors">{order.seller.name} ({order.seller.email})</p>
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 bg-red-50 p-3 rounded-md border border-red-100">
-                                        <p className="font-medium text-red-800 text-sm">Dispute Reason:</p>
-                                        <p className="text-red-700 mt-1 italic">"{order.disputeReason}"</p>
+                                    <div className="mt-4 bg-red-50 dark:bg-red-900/20 p-3 rounded-xl border border-red-100 dark:border-red-800 transition-colors">
+                                        <p className="font-medium text-red-800 dark:text-red-400 text-sm transition-colors">Dispute Reason:</p>
+                                        <p className="text-red-700 dark:text-red-300 mt-1 italic transition-colors">"{order.disputeReason}"</p>
                                     </div>
                                 </div>
 
                                 {/* Actions Section */}
-                                <div className="flex flex-col justify-center gap-3 md:border-l md:pl-6 border-gray-100 min-w-[200px]">
+                                <div className="flex flex-col justify-center gap-3 md:border-l md:pl-6 border-gray-100 dark:border-gray-700 min-w-[200px]">
                                     <div className="text-center mb-2">
-                                        <p className="text-sm text-gray-500">Original Price</p>
-                                        <p className="text-xl font-bold text-gray-900">₹{order.totalAmount}</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 transition-colors">Original Price</p>
+                                        <p className="text-xl font-bold text-gray-900 dark:text-white transition-colors">₹{order.totalAmount}</p>
                                     </div>
                                     
                                     <button
                                         onClick={() => handleResolve(order._id, 'refund_buyer')}
-                                        className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors"
+                                        className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
                                     >
                                         Cancel Reservation
                                     </button>
                                     <button
                                         onClick={() => handleResolve(order._id, 'dismiss_dispute')}
-                                        className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors"
+                                        className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
                                     >
                                         Mark as Completed
                                     </button>

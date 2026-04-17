@@ -15,8 +15,22 @@ export async function POST(req: NextRequest) {
 
         await connectToDatabase();
 
+        // Check if new listings are enabled
+        const SiteSettings = (await import('@/models/SiteSettings')).default;
+        const siteConfig = await SiteSettings.getSingleton();
+        if (!siteConfig.newListingsEnabled) {
+            return NextResponse.json({ error: 'New listings are temporarily disabled by the platform admin. Please try again later.' }, { status: 503 });
+        }
+
         const body = await req.json();
-        const { title: rawTitle, description: rawDescription, price: rawPrice, priceUnit: rawPriceUnit, category: rawCategory, availability: rawAvailability, images, visibility, communityId, location } = body;
+        const { website_url, title: rawTitle, description: rawDescription, price: rawPrice, priceUnit: rawPriceUnit, category: rawCategory, availability: rawAvailability, images, visibility, communityId, location } = body;
+        
+        // Honeypot Trap
+        if (website_url) {
+            console.warn('\x1b[41m[BOT DETECTED]\x1b[0m Service creation blocked by Honeypot.');
+            return NextResponse.json({ error: 'Access Denied' }, { status: 403 });
+        }
+
         const title = rawTitle?.trim();
         const description = rawDescription?.trim();
         const category = rawCategory?.trim();
@@ -214,19 +228,40 @@ export async function GET(req: NextRequest) {
 
         // Optimize: Aggregate ratings for all providers in one grouped database query (Eliminate N+1 Leak)
         const providerIds = services.map((s: any) => s.provider._id);
-        const reviews = await Review.aggregate([
-            { $match: { target: { $in: providerIds } } },
-            { $group: { _id: '$target', average: { $avg: '$rating' }, count: { $sum: 1 } } }
+        const serviceIds = services.map((s: any) => s._id);
+
+        const [providerReviews, serviceReviews] = await Promise.all([
+            Review.aggregate([
+                { $match: { target: { $in: providerIds } } },
+                { $group: { _id: { target: '$target', reviewer: '$reviewer' }, reviewerAvgRating: { $avg: '$rating' } } },
+                { $group: { _id: '$_id.target', average: { $avg: '$reviewerAvgRating' }, count: { $sum: 1 } } }
+            ]),
+            Review.aggregate([
+                { $match: { service: { $in: serviceIds } } },
+                { $group: { _id: '$service', average: { $avg: '$rating' }, count: { $sum: 1 } } }
+            ])
         ]);
 
-        const reviewMap = new Map(reviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
+        const providerReviewMap = new Map(providerReviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
+        const serviceReviewMap = new Map(serviceReviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
 
         const servicesWithRatings = services.map((service: any) => {
-            const stats = reviewMap.get(service.provider._id.toString()) || { average: 0, count: 0 };
+            const sidStr = service._id.toString();
+            const pidStr = service.provider._id.toString();
+            
+            const providerStats = providerReviewMap.get(pidStr) || { average: 0, count: 0 };
+            const serviceStats = serviceReviewMap.get(sidStr) || { average: 0, count: 0 };
+            
             return {
                 ...service,
-                providerRating: stats.average,
-                reviewCount: stats.count
+                sellerTrustRating: providerStats.average,
+                sellerTrustCount: providerStats.count,
+                itemSpecificRating: serviceStats.average,
+                itemSpecificCount: serviceStats.count,
+                // Legacy fields for insurance
+                providerRating: providerStats.average,
+                serviceRating: serviceStats.average,
+                reviewCount: serviceStats.count
             };
         });
 

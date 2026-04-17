@@ -4,6 +4,7 @@ import Offer from '@/models/Offer';
 import Product from '@/models/Product';
 import Service from '@/models/Service';
 import User from '@/models/User';
+import SiteSettings from '@/models/SiteSettings';
 import { verifyToken } from '@/lib/auth';
 import { createNotification } from '@/lib/notifications';
 
@@ -14,6 +15,11 @@ export async function POST(req: NextRequest) {
         const token = req.cookies.get('token')?.value;
         if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const decoded = verifyToken(token) as { userId: string };
+
+        const user = await User.findById(decoded.userId).select('status').lean();
+        if (user?.status === 'Banned') {
+            return NextResponse.json({ error: 'Your account is banned. You cannot make offers.' }, { status: 403 });
+        }
 
         const { productId, serviceId, offeredPrice: rawPrice, message: rawMessage, offerType = 'Buy', rentDuration, rentUnit } = await req.json();
         const offeredPrice = Math.round(rawPrice);
@@ -29,8 +35,8 @@ export async function POST(req: NextRequest) {
         if (productId) {
             item = await Product.findById(productId);
             if (!item) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
-            if (item.status !== 'Available') {
-                return NextResponse.json({ error: 'This product is no longer available.' }, { status: 400 });
+            if (item.status !== 'Available' && item.status !== 'Rented') {
+                return NextResponse.json({ error: `This product is currently ${item.status}.` }, { status: 400 });
             }
             if (item.seller.toString() === decoded.userId) {
                 return NextResponse.json({ error: 'You cannot offer on your own listing' }, { status: 400 });
@@ -80,6 +86,13 @@ export async function POST(req: NextRequest) {
             },
             { $set: { status: 'Declined' } }
         );
+
+        const settings = await SiteSettings.getSingleton();
+        const maxChars = settings.maxOfferMessageChars || 300;
+
+        if (message && message.length > maxChars) {
+            return NextResponse.json({ error: `Message must be ${maxChars} characters or less` }, { status: 400 });
+        }
 
         const offer = await Offer.create({
             buyer: decoded.userId,

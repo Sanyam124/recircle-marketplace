@@ -7,12 +7,21 @@ export interface IService extends Document {
     price: number; // Storing as number, could be hourly rate or fixed
     priceUnit: string; // e.g., 'per hour', 'fixed', 'starting from'
     category: string;
-    availability?: string;
     images?: string[];
     status: 'Active' | 'Inactive';
     community?: mongoose.Types.ObjectId;
     visibility: 'Public' | 'Community';
-    location?: { pincode?: string; city?: string; state?: string };
+    location?: { 
+        pincode?: string; 
+        city?: string; 
+        state?: string;
+        coordinates?: number[]; // [lng, lat]
+        isPrecise?: boolean;
+        hostel?: string;
+        room?: number;
+        bed?: number;
+    };
+    availability: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -25,7 +34,6 @@ const ServiceSchema: Schema<IService> = new Schema(
         price: { type: Number, required: true, min: 0, max: 100000 },
         priceUnit: { type: String, trim: true, default: 'fixed' },
         category: { type: String, required: true, trim: true, index: true },
-        availability: { type: String, trim: true },
         images: { type: [String] },
         status: { type: String, enum: ['Active', 'Inactive'], default: 'Active', index: true },
         community: { type: Schema.Types.ObjectId, ref: 'Community', index: true },
@@ -33,8 +41,14 @@ const ServiceSchema: Schema<IService> = new Schema(
         location: {
             pincode: { type: String, trim: true },
             city: { type: String, trim: true },
-            state: { type: String, trim: true }
-        }
+            state: { type: String, trim: true },
+            coordinates: { type: [Number], index: '2dsphere' }, // [longitude, latitude]
+            isPrecise: { type: Boolean, default: true },
+            hostel: { type: String, trim: true },
+            room: { type: Number, min: 1, max: 1000 },
+            bed: { type: Number, min: 1, max: 19 }
+        },
+        availability: { type: String, trim: true },
     },
     { timestamps: true }
 );

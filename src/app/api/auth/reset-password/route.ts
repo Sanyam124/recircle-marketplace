@@ -6,9 +6,24 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+
 export async function POST(req: NextRequest) {
     try {
         await connectToDatabase();
+
+        // --- Rate Limiting (IP-Based) ---
+        const SiteSettings = (await import('@/models/SiteSettings')).default;
+        const siteConfigData = await SiteSettings.getSingleton();
+
+        const ip = getClientIp(req);
+        const rl = await checkRateLimit(ip, 'reset-password', siteConfigData.ipLimitResetPasswordPerHour, 60 * 60 * 1000);
+        if (!rl.success) {
+            return NextResponse.json(
+                { error: 'Too many password reset attempts from this connection. Please try again later.' },
+                { status: 429 }
+            );
+        }
 
         const { email, verificationToken, newPassword } = await req.json();
 

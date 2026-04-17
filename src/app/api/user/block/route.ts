@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose, { isValidObjectId } from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
-import mongoose from 'mongoose';
 
 export async function POST(req: NextRequest) {
     try {
@@ -15,19 +15,17 @@ export async function POST(req: NextRequest) {
         await connectToDatabase();
         const { targetUserId } = await req.json();
 
-        if (!targetUserId) {
-            return NextResponse.json({ error: 'Target user ID is required' }, { status: 400 });
+        if (!targetUserId || !isValidObjectId(targetUserId)) {
+            return NextResponse.json({ error: 'Valid target user ID is required' }, { status: 400 });
         }
 
         if (targetUserId === decoded.userId) {
             return NextResponse.json({ error: 'You cannot block yourself' }, { status: 400 });
         }
 
-        const objectIdTarget = new mongoose.Types.ObjectId(targetUserId);
-
         // Add to blockedUsers array
         await User.findByIdAndUpdate(decoded.userId, {
-            $addToSet: { blockedUsers: objectIdTarget }
+            $addToSet: { blockedUsers: targetUserId }
         });
 
         return NextResponse.json({ success: true, message: 'User blocked successfully' }, { status: 200 });
@@ -48,16 +46,15 @@ export async function DELETE(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const targetUserId = searchParams.get('userId');
 
-        if (!targetUserId) {
-            return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+        if (!targetUserId || !isValidObjectId(targetUserId)) {
+            return NextResponse.json({ error: 'Valid user ID is required' }, { status: 400 });
         }
 
         await connectToDatabase();
-        const objectIdTarget = new mongoose.Types.ObjectId(targetUserId);
 
         // Remove from blockedUsers array
         await User.findByIdAndUpdate(decoded.userId, {
-            $pull: { blockedUsers: objectIdTarget }
+            $pull: { blockedUsers: targetUserId }
         });
 
         return NextResponse.json({ success: true, message: 'User unblocked successfully' }, { status: 200 });

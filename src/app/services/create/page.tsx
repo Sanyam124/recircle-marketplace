@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Loader from '@/components/Loader';
 import imageCompression from 'browser-image-compression';
-import { siteConfig } from '@/lib/config';
+import useSWR from 'swr';
 import SmartLocationPicker from '@/components/SmartLocationPicker';
 
 export default function CreateServicePage() {
@@ -28,11 +28,23 @@ export default function CreateServicePage() {
     description: '',
     price: '',
     priceUnit: 'per hour',
-    category: 'Academic Help (Tutoring, Notes)',
-    availability: 'Flexible',
+    category: '',
+    availability: '',
     visibility: 'Public',
     communityId: '',
   });
+
+  const { data: siteConfigData } = useSWR('/api/site-config');
+
+  useEffect(() => {
+    if (siteConfigData) {
+      setFormData(prev => ({
+        ...prev,
+        category: prev.category || siteConfigData.serviceCategories?.[0] || 'Academic Help',
+        availability: prev.availability || siteConfigData.serviceAvailability?.[0] || '🗓️ Flexible',
+      }));
+    }
+  }, [siteConfigData]);
 
   const [location, setLocation] = useState({
     coordinates: undefined as [number, number] | undefined,
@@ -63,8 +75,9 @@ export default function CreateServicePage() {
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      if (files.length + images.length > 5) {
-        setError('Maximum 5 images allowed');
+      const maxImages = siteConfigData?.maxServiceImages || 5;
+      if (files.length + images.length > maxImages) {
+        setError(`Maximum ${maxImages} images allowed`);
         return;
       }
 
@@ -96,6 +109,8 @@ export default function CreateServicePage() {
     setImages(images.filter((_, i) => i !== index));
   };
 
+  const [website_url, setWebsiteUrl] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -106,7 +121,7 @@ export default function CreateServicePage() {
     const hasHostelSettings = Boolean(location.hostel) || location.room !== undefined || location.bed !== undefined;
 
     if (formData.visibility === 'Public' && !hasMapSettings && !hasHostelSettings) {
-        setError('Please drop a pin on the map or provide hostel details to set the trade-off location.');
+        setError('Please drop a pin on the map or provide hostel details to set the meeting location.');
         setLoading(false);
         return;
     }
@@ -117,6 +132,7 @@ export default function CreateServicePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          website_url,
           price: Number(formData.price),
           images,
           visibility: formData.visibility,
@@ -175,7 +191,12 @@ export default function CreateServicePage() {
             </div>
   
             <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 gap-y-8 gap-x-6 sm:grid-cols-6">
+              {/* Honeypot Trap (Invisible to humans) */}
+              <div className="absolute opacity-0 pointer-events-none -z-10 h-0 w-0 overflow-hidden">
+                  <input type="text" name="website_url" value={website_url} onChange={(e) => setWebsiteUrl(e.target.value)} tabIndex={-1} autoComplete="off" />
+              </div>
+
+              <div className="grid grid-cols-1 gap-y-8 gap-x-6 sm:grid-cols-6">
             <div className="sm:col-span-4">
               <div className="flex items-center justify-between mb-2">
                 <label htmlFor="title" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Service Title</label>
@@ -206,8 +227,8 @@ export default function CreateServicePage() {
                         name="price"
                         id="price"
                         required
-                        min="0"
-                        max="100000"
+                        min={siteConfigData?.minPrice || 5}
+                        max={siteConfigData?.maxPriceService || 100000}
                         placeholder="0"
                         className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-l-2xl rounded-r-none pl-8 pr-4 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-black text-xl"
                         onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
@@ -259,13 +280,9 @@ export default function CreateServicePage() {
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               >
-                <option className="dark:bg-[#111] dark:text-white">Academic Help</option>
-                <option className="dark:bg-[#111] dark:text-white">Tech Support</option>
-                <option className="dark:bg-[#111] dark:text-white">Graphic Design</option>
-                <option className="dark:bg-[#111] dark:text-white">Photography</option>
-                <option className="dark:bg-[#111] dark:text-white">Dorm Services</option>
-                <option className="dark:bg-[#111] dark:text-white">Fitness Coaching</option>
-                <option className="dark:bg-[#111] dark:text-white">Other</option>
+                {(siteConfigData?.serviceCategories || ['Academic Help', 'Tech Support', 'Graphic Design', 'Photography', 'Dorm Services', 'Fitness Coaching', 'Other']).map((cat: string) => (
+                  <option key={cat} value={cat} className="dark:bg-[#111] dark:text-white">{cat}</option>
+                ))}
               </select>
             </div>
 
@@ -279,10 +296,9 @@ export default function CreateServicePage() {
                 value={formData.availability}
                 onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
               >
-                <option value="Flexible" className="dark:bg-[#111] dark:text-white">🗓️ Flexible</option>
-                <option value="Weekends Only" className="dark:bg-[#111] dark:text-white">🏠 Weekends</option>
-                <option value="Weekdays (Evenings)" className="dark:bg-[#111] dark:text-white">🌙 Evening</option>
-                <option value="Weekdays (Daytime)" className="dark:bg-[#111] dark:text-white">☀️ Daytime</option>
+                {(siteConfigData?.serviceAvailability || ['🗓️ Flexible', '🏠 Weekends', '🌙 Evening', '☀️ Daytime']).map((avail: string) => (
+                  <option key={avail} value={avail} className="dark:bg-[#111] dark:text-white">{avail}</option>
+                ))}
               </select>
             </div>
 
@@ -337,7 +353,7 @@ export default function CreateServicePage() {
             </div>
             
             <div className="sm:col-span-6">
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-4">Visual Portfolio <span className="text-gray-400 font-medium">(MAX 5)</span></label>
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-4">Visual Portfolio <span className="text-gray-400 font-medium">(MAX {siteConfigData?.maxServiceImages || 5})</span></label>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                 {images.map((img, index) => (
                   <div key={index} className="relative aspect-square rounded-[1.5rem] overflow-hidden group shadow-lg">
@@ -353,7 +369,7 @@ export default function CreateServicePage() {
                     </div>
                   </div>
                 ))}
-                {images.length < 5 && (
+                {images.length < (siteConfigData?.maxServiceImages || 5) && (
                   <label className="border-3 border-dashed border-gray-200 dark:border-white/10 rounded-[1.5rem] flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-white/5 transition-all aspect-square group">
                     <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-full mb-2 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 group-hover:text-indigo-600 transition-all">
                        <svg className="h-6 w-6 text-gray-400 group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -378,7 +394,7 @@ export default function CreateServicePage() {
             </button>
             <button
               type="submit"
-              disabled={loading || imageProcessing || !formData.price || !formData.availability || Number(formData.price) < 0 || Number(formData.price) > 100000}
+              disabled={loading || imageProcessing || !formData.price || !formData.availability || Number(formData.price) < (siteConfigData?.minPrice || 5) || Number(formData.price) > (siteConfigData?.maxPriceService || 100000)}
               className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 dark:from-indigo-500 dark:to-indigo-400 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/20 active:scale-95 transition-all disabled:opacity-40"
             >
               {imageProcessing ? 'Processing...' : loading ? 'Publishing...' : 'Confirm Service'}

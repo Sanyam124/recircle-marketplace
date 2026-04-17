@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import useSWR from 'swr';
 
@@ -36,6 +36,31 @@ export default function ExploreSidebar({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [filters, setFilters] = useState<ExploreFilters>(currentFilters);
   const [citySearch, setCitySearch] = useState('');
+  const [showGuestToast, setShowGuestToast] = useState(false);
+  const [toastTop, setToastTop] = useState(0);
+  const [activeTimeout, setActiveTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  const triggerGuestToast = useCallback((e?: React.MouseEvent) => {
+    if (activeTimeout) clearTimeout(activeTimeout);
+    
+    if (e) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const sidebar = document.getElementById('desktop-sidebar-inner');
+        if (sidebar) {
+            const sidebarRect = sidebar.getBoundingClientRect();
+            setToastTop(rect.top - sidebarRect.top);
+        }
+    }
+    
+    setShowGuestToast(true);
+    
+    const timeout = setTimeout(() => {
+        setShowGuestToast(false);
+        setActiveTimeout(null);
+    }, 5000);
+    
+    setActiveTimeout(timeout);
+  }, [activeTimeout]);
 
   // Lock body scroll when mobile drawer is open
   useEffect(() => {
@@ -71,7 +96,9 @@ export default function ExploreSidebar({
     const { name, value } = e.target;
     const newFilters = { ...filters, [name]: value };
     setFilters(newFilters);
-    onFilterChange(newFilters);
+    if (!isMobileOpen) {
+        onFilterChange(newFilters);
+    }
   };
 
   const toggleCategory = (cat: string) => {
@@ -81,7 +108,9 @@ export default function ExploreSidebar({
       
     const newFilters = { ...filters, categories: newCats };
     setFilters(newFilters);
-    onFilterChange(newFilters);
+    if (!isMobileOpen) {
+        onFilterChange(newFilters);
+    }
   };
 
   const toggleCondition = (cond: string) => {
@@ -91,7 +120,9 @@ export default function ExploreSidebar({
       
     const newFilters = { ...filters, conditions: newConds };
     setFilters(newFilters);
-    onFilterChange(newFilters);
+    if (!isMobileOpen) {
+        onFilterChange(newFilters);
+    }
   };
 
   const clearFilters = () => {
@@ -104,13 +135,23 @@ export default function ExploreSidebar({
       maxPrice: '',
       categories: [],
       conditions: [],
-      communityFilter: 'All',
+      communityFilter: user ? 'All' : 'Public',
       hostel: '',
       state: '',
       city: ''
     };
     setFilters(reset);
     onFilterChange(reset);
+    if (isMobileOpen) {
+        setIsMobileOpen(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const applyFilters = () => {
+    onFilterChange(filters);
+    setIsMobileOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -154,23 +195,44 @@ export default function ExploreSidebar({
              {/* Scrollable filter content */}
              <div className="flex-1 overflow-y-auto overscroll-contain px-7 py-6 pb-36 space-y-10 scroll-smooth">
                 <FilterElements 
-                  filters={filters} handleChange={handleChange} setFilters={setFilters}
-                  productDocsOpen={productDocsOpen} setProductDocsOpen={setProductDocsOpen}
-                  serviceDocsOpen={serviceDocsOpen} setServiceDocsOpen={setServiceDocsOpen}
-                  citySearch={citySearch} setCitySearch={setCitySearch} availableStates={availableStates} availableCities={availableCities}
-                  toggleCategory={toggleCategory} toggleCondition={toggleCondition} clearFilters={clearFilters} onFilterChange={onFilterChange} user={user}
-                  isSidebarOpen={true}
+                   filters={filters} handleChange={handleChange} setFilters={setFilters}
+                   productDocsOpen={productDocsOpen} setProductDocsOpen={setProductDocsOpen}
+                   serviceDocsOpen={serviceDocsOpen} setServiceDocsOpen={setServiceDocsOpen}
+                   citySearch={citySearch} setCitySearch={setCitySearch} availableStates={availableStates} availableCities={availableCities}
+                   toggleCategory={toggleCategory} toggleCondition={toggleCondition} clearFilters={clearFilters} onFilterChange={onFilterChange} user={user}
+                   isSidebarOpen={true}
+                   triggerGuestToast={triggerGuestToast}
+                   isMobileMode={isMobileOpen}
                 />
              </div>
-             {/* Sticky bottom action bar */}
-             <div className="absolute bottom-0 left-0 right-0 p-6 pb-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800/50 flex gap-3">
-                <button onClick={() => { clearFilters(); setIsMobileOpen(false); }} className="flex-1 py-4 text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 border-2 border-gray-200 dark:border-gray-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all active:scale-95">Reset</button>
+             
+             {/* Guest Toast Notification (Mobile Specific) */}
+             {showGuestToast && isMobileOpen && (
+               <div className="absolute bottom-[100px] left-6 right-6 z-[200] animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="bg-gray-950/98 dark:bg-gray-900/98 text-white p-5 rounded-2xl shadow-2xl border border-white/20 backdrop-blur-2xl">
+                    <div className="flex gap-4">
+                      <div className="shrink-0 w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </div>
+                      <p className="text-[11px] font-bold leading-relaxed">
+                        Sign up with <span className="text-indigo-400 italic font-black">college email</span> to unlock campus listings & hostel filters.
+                      </p>
+                    </div>
+                  </div>
+               </div>
+             )}
+
+             {/* Mobile Actions - Fixed at bottom */}
+             <div className="shrink-0 p-6 pb-8 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800/50 flex gap-4">
                 <button 
-                  onClick={() => {
-                    setIsMobileOpen(false);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }} 
-                  className="flex-[2] py-4 text-xs font-black uppercase tracking-widest text-white bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-500/20 dark:shadow-none active:scale-95 transition-all text-center"
+                  onClick={clearFilters}
+                  className="flex-1 py-4 text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 border-2 border-gray-100 dark:border-gray-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all active:scale-95"
+                >
+                  Reset
+                </button>
+                <button 
+                  onClick={applyFilters}
+                  className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all"
                 >
                   Apply Filters
                 </button>
@@ -181,7 +243,7 @@ export default function ExploreSidebar({
 
       {/* Desktop Sidebar */}
       <div className="hidden md:block w-full">
-        <div className="bg-white/70 dark:bg-gray-800/40 backdrop-blur-xl p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-sm sticky top-24">
+        <div id="desktop-sidebar-inner" className="bg-white/70 dark:bg-gray-800/40 backdrop-blur-xl p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-sm sticky top-24 z-[40]">
            <FilterElements 
               filters={filters} handleChange={handleChange} setFilters={setFilters}
               productDocsOpen={productDocsOpen} setProductDocsOpen={setProductDocsOpen}
@@ -190,7 +252,28 @@ export default function ExploreSidebar({
               toggleCategory={toggleCategory} toggleCondition={toggleCondition} clearFilters={clearFilters} onFilterChange={onFilterChange} user={user}
               isSidebarOpen={isSidebarOpen}
               onToggleSidebar={onToggleSidebar}
+              triggerGuestToast={triggerGuestToast}
            />
+            {/* Desktop Guest Toast (Contextual) */}
+            {showGuestToast && (
+               <div 
+                 className="absolute left-[-5px] right-[-5px] z-[200] animate-in fade-in zoom-in-95 duration-300 pointer-events-none"
+                 style={{ top: `${toastTop}px`, transform: 'translateY(calc(-100% + 10px))' }}
+               >
+                  <div className="bg-gray-950/98 dark:bg-gray-900/98 text-white p-5 rounded-2xl shadow-[0_40px_80px_rgba(0,0,0,0.6)] border border-white/20 backdrop-blur-2xl mx-1 relative">
+                    <div className="flex gap-4">
+                      <div className="shrink-0 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </div>
+                      <p className="text-[10px] font-bold leading-relaxed">
+                         Sign up with <span className="text-indigo-400 italic font-black">college email</span> to unlock campus listings & hostel filters.
+                      </p>
+                    </div>
+                    {/* Arrow overlapping inside the field */}
+                    <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-5 bg-gray-950/98 dark:bg-gray-900/98 rotate-45 border-r border-b border-white/20 shadow-2xl z-[-1]" />
+                  </div>
+               </div>
+             )}
         </div>
       </div>
 
@@ -219,19 +302,28 @@ function FilterElements({
   filters, handleChange, setFilters, productDocsOpen, setProductDocsOpen, 
   serviceDocsOpen, setServiceDocsOpen, citySearch, setCitySearch, availableStates, availableCities, 
   toggleCategory, toggleCondition, clearFilters, onFilterChange, user,
-  isSidebarOpen, onToggleSidebar
+  isSidebarOpen, onToggleSidebar, triggerGuestToast, isMobileMode
 }: any) {
-  // Extract hostels for selected community
-  const getSelectedCommunityHostels = () => {
-    if (filters.communityFilter === 'All' || filters.communityFilter === 'Public' || !user?.verifiedCommunities) return [];
-    
-    const selectedComm = user.verifiedCommunities.find((c: any) => 
-      (c.id || c._id)?.toString() === filters.communityFilter
-    );
-    return selectedComm?.hostels || [];
-  };
+  const { data: siteConfig, isLoading: configLoading } = useSWR('/api/site-config');
+  const productCategories = siteConfig?.productCategories || PRODUCT_CATEGORIES_DEFAULT;
+  const serviceCategories = siteConfig?.serviceCategories || SERVICE_CATEGORIES_DEFAULT;
 
-  const communityHostels = getSelectedCommunityHostels();
+  const communityHostels = useMemo(() => {
+      if (filters.communityFilter === 'Public') return [];
+      
+      if (filters.communityFilter === 'All') {
+          // Flatten all hostels from all verified communities
+          const allHostels = user?.verifiedCommunities?.reduce((acc: string[], curr: any) => {
+              if (curr.hostels) return [...acc, ...curr.hostels];
+              return acc;
+          }, []) || [];
+          // Remove duplicates and sort
+          return Array.from(new Set(allHostels)).sort();
+      }
+
+      const selected = user?.verifiedCommunities?.find((c: any) => (c._id || c.id || c) === filters.communityFilter);
+      return selected?.hostels || [];
+  }, [filters.communityFilter, user]);
 
   return (
     <div className="space-y-8">
@@ -249,9 +341,11 @@ function FilterElements({
         <button onClick={clearFilters} className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:underline transition-all opacity-70 hover:opacity-100">Reset</button>
       </div>
 
-      {/* Circle */}
-      <FilterGroup title="Community">
-        <div className="relative group">
+      <FilterGroup 
+        title="Community" 
+        info={!user ? "Sign up with your college email ID to unlock private campus listings and gain access to hostel-specific filtering for your community." : null}
+      >
+        <div className="relative group" onClick={(e) => !user && triggerGuestToast(e)}>
             <select 
               name="communityFilter" 
               value={filters.communityFilter} 
@@ -261,42 +355,57 @@ function FilterElements({
                  const newSort = (isVerified && filters.sort === 'distance') ? 'newest' : filters.sort;
                  const newFilters = { ...filters, communityFilter: newComm, hostel: '', sort: newSort };
                  setFilters(newFilters);
-                 onFilterChange(newFilters);
+                 if (!isMobileMode) {
+                     onFilterChange(newFilters);
+                 }
               }} 
-              className="w-full bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 rounded-2xl py-4 pl-5 pr-12 text-sm border border-indigo-200 dark:border-indigo-900/50 font-bold focus:ring-4 focus:ring-indigo-100 appearance-none outline-none cursor-pointer"
+              disabled={!user}
+              className={`w-full bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 rounded-2xl py-4 pl-5 pr-12 text-sm border border-indigo-200 dark:border-indigo-900/50 font-bold focus:ring-4 focus:ring-indigo-100 appearance-none outline-none transition-all ${!user ? 'opacity-70 pointer-events-none' : 'cursor-pointer'}`}
             >
-              <option value="All" className="dark:bg-gray-900 dark:text-white text-gray-900">🌍 All Communities</option>
-              <option value="Public" className="dark:bg-gray-900 dark:text-white text-gray-900">🌐 Public Only</option>
-              {user?.verifiedCommunities?.map((c:any) => (
-                <option key={c.id || c._id} value={c.id || c._id} className="dark:bg-gray-900 dark:text-white text-gray-900">
-                  🔒 {c.name}
-                </option>
-              ))}
+              {user ? (
+                <>
+                  <option value="All" className="dark:bg-gray-900 dark:text-white text-gray-900">🌏 Unified Feed</option>
+                  <option value="Public" className="dark:bg-gray-900 dark:text-white text-gray-900">🌐 Public Only</option>
+                  {user?.verifiedCommunities?.map((c:any) => (
+                    <option key={c.id || c._id} value={c.id || c._id} className="dark:bg-gray-900 dark:text-white text-gray-900">
+                      🔒 {c.name}
+                    </option>
+                  ))}
+                </>
+              ) : (
+                <option value="Public" className="dark:bg-gray-900 dark:text-white text-gray-900">🌐 Public Only</option>
+              )}
             </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-600 bg-indigo-200/50 dark:bg-indigo-900 p-1.5 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+            <div className={`absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none ${(filters.communityFilter === 'All' || filters.communityFilter === 'Public') ? 'text-gray-300' : 'text-indigo-400'}`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
             </div>
         </div>
-        {communityHostels.length > 0 && (
-           <div className="relative group mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
-               <select 
-                 name="hostel" 
-                 value={filters.hostel || ''} 
-                 onChange={handleChange} 
-                 className="w-full bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 rounded-2xl py-3 pl-5 pr-12 text-sm border border-emerald-200 dark:border-emerald-900/50 font-bold focus:ring-4 focus:ring-emerald-100 appearance-none outline-none cursor-pointer border-dashed"
-               >
-                 <option value="" className="dark:bg-gray-900 dark:text-white text-gray-900">All Hostels</option>
-                 {communityHostels.map((h: string) => (
-                   <option key={h} value={h} className="dark:bg-gray-900 dark:text-white text-gray-900">
-                     🏢 {h}
-                   </option>
-                 ))}
-               </select>
-               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-600 bg-emerald-200/50 dark:bg-emerald-900 p-1.5 rounded-lg flex items-center justify-center">
-                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
-               </div>
-           </div>
-        )}
+        <div className="mt-4" onClick={(e) => !user && triggerGuestToast(e)}>
+            <label className={`text-[10px] font-black uppercase tracking-widest italic ml-1 mb-1.5 block ${filters.communityFilter === 'Public' ? 'text-gray-300 dark:text-gray-700' : 'text-gray-400'}`}>Building/Hostel</label>
+            <div className={`relative group transition-opacity duration-300 ${(filters.communityFilter === 'Public' || !user) ? 'opacity-50 pointer-events-none' : ''}`}>
+                <select 
+                  name="hostel" 
+                  value={filters.hostel || ''} 
+                  onChange={handleChange} 
+                  disabled={filters.communityFilter === 'Public' || !user}
+                  className={`w-full py-3.5 pl-4 pr-10 text-[11px] border font-bold appearance-none outline-none transition-all rounded-2xl ${
+                    filters.communityFilter === 'Public' || !user
+                    ? 'bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 border-gray-100 dark:border-gray-800 pointer-events-none'
+                    : 'bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50 focus:ring-4 focus:ring-emerald-100 border-dashed cursor-pointer'
+                  }`}
+                >
+                  <option value="">All Hostels</option>
+                  {communityHostels.map((h: string) => (
+                    <option key={h} value={h} className="dark:bg-gray-900 dark:text-white text-gray-900">
+                      🏢 {h}
+                    </option>
+                  ))}
+                </select>
+                <div className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none ${filters.communityFilter === 'Public' ? 'text-gray-300' : 'text-emerald-400'}`}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+            </div>
+        </div>
       </FilterGroup>
 
       {/* Sort */}
@@ -310,8 +419,8 @@ function FilterElements({
               <option value="price_asc" className="dark:bg-gray-900 dark:text-white text-gray-900">Price: Low to High</option>
               <option value="price_desc" className="dark:bg-gray-900 dark:text-white text-gray-900">Price: High to Low</option>
             </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 bg-gray-200/50 dark:bg-gray-800 p-1.5 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+            <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
             </div>
         </div>
       </FilterGroup>
@@ -323,7 +432,9 @@ function FilterElements({
               <button key={t} onClick={() => {
                   const newFilters = { ...filters, type: t };
                   setFilters(newFilters);
-                  onFilterChange(newFilters);
+                  if (!isMobileMode) {
+                      onFilterChange(newFilters);
+                  }
                 }}
                 className={`flex items-center justify-center py-2.5 px-4 text-[10px] sm:text-[11px] font-black uppercase tracking-widest rounded-xl transition-all ${filters.type === t ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5 italic' : 'text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400'}`}
               >
@@ -348,7 +459,7 @@ function FilterElements({
             </button>
             {productDocsOpen && (
               <div className="px-1 mt-5 space-y-4 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                {PRODUCT_CATEGORIES.map((c: string) => <Checkbox key={c} label={c} checked={filters.categories.includes(c)} onChange={() => toggleCategory(c)} />)}
+                {productCategories.map((c: string) => <Checkbox key={c} label={c} checked={filters.categories.includes(c)} onChange={() => toggleCategory(c)} />)}
               </div>
             )}
           </div>
@@ -366,7 +477,7 @@ function FilterElements({
             </button>
             {serviceDocsOpen && (
               <div className="px-1 mt-5 space-y-4 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                {SERVICE_CATEGORIES.map((c: string) => <Checkbox key={c} label={c} checked={filters.categories.includes(c)} onChange={() => toggleCategory(c)} />)}
+                {serviceCategories.map((c: string) => <Checkbox key={c} label={c} checked={filters.categories.includes(c)} onChange={() => toggleCategory(c)} />)}
               </div>
             )}
           </div>
@@ -455,10 +566,27 @@ function FilterElements({
   );
 }
 
-function FilterGroup({ title, children }: any) {
+function FilterGroup({ title, children, info }: any) {
   return (
-    <div className="animate-in fade-in slide-in-from-left-4 duration-500">
-      <h4 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4 ml-1 italic">{title}</h4>
+    <div className="animate-in fade-in slide-in-from-left-4 duration-500 group/filter">
+      <div className="flex items-center gap-2 mb-4 ml-1">
+        <h4 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] italic">{title}</h4>
+        {info && (
+          <div className="relative group/info">
+            <div className="p-1 px-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors cursor-help">
+               <svg className="w-3 h-3 text-gray-400 group-hover/info:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+               </svg>
+            </div>
+            <div className="absolute left-[-10px] top-full mt-3 w-64 p-4 bg-gray-950 dark:bg-gray-800 text-white text-[10px] font-bold rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.6)] opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all z-[150] border border-white/10 backdrop-blur-xl pointer-events-none">
+              <div className="relative leading-relaxed">
+                {info}
+                <div className="absolute -top-5 left-3.5 w-3 h-3 bg-gray-950 dark:bg-gray-800 rotate-45 border-l border-t border-white/10" />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       {children}
     </div>
   );
@@ -469,16 +597,16 @@ function Checkbox({ label, checked, onChange }: any) {
     <label className="flex items-center gap-4 cursor-pointer group/label select-none">
       <div 
         onClick={onChange} 
-        className={`w-6 h-6 flex-shrink-0 rounded-lg border-2 flex items-center justify-center transition-all duration-300 ${checked ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-200 dark:shadow-none rotate-6' : 'border-gray-100 dark:border-gray-800 group-hover/label:border-indigo-400'}`}
+        className={`w-6 h-6 flex-shrink-0 rounded-xl border-2 flex items-center justify-center transition-all duration-300 ${checked ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-200 dark:shadow-none rotate-6' : 'border-gray-100 dark:border-gray-800 group-hover/label:border-indigo-400'}`}
       >
-        {checked && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M5 13l4 4L19 7" /></svg>}
+        {checked && <svg className="w-4 h-4 text-white animate-in zoom-in-50 duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M5 13l4 4L19 7" /></svg>}
       </div>
       <span className={`text-[11px] font-black uppercase tracking-tight transition-all ${checked ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 group-hover/label:text-gray-800 dark:group-hover/label:text-white'}`}>{label}</span>
     </label>
   );
 }
 
-const PRODUCT_CATEGORIES = [
+const PRODUCT_CATEGORIES_DEFAULT = [
   'Textbooks', 
   'Study Notes', 
   'Stationery', 
@@ -492,7 +620,7 @@ const PRODUCT_CATEGORIES = [
   'Other'
 ];
 
-const SERVICE_CATEGORIES = [
+const SERVICE_CATEGORIES_DEFAULT = [
   'Academic Help (Tutoring, Notes)', 
   'Assignment & Projects', 
   'Tech Support & Repairs', 

@@ -291,23 +291,6 @@ export async function GET(req: NextRequest) {
             pipeline.push({ $sort: sortStage });
         }
 
-        // 5. Lookup Ratings (Avoid N+1)
-        pipeline.push({
-            $lookup: {
-                from: 'reviews',
-                localField: 'seller',
-                foreignField: 'target',
-                as: 'ownerReviews'
-            }
-        });
-        pipeline.push({
-            $addFields: {
-                ownerRating: { $avg: '$ownerReviews.rating' },
-                reviewCount: { $size: '$ownerReviews' }
-            }
-        });
-        pipeline.push({ $project: { ownerReviews: 0 } });
-
         // Final sort if it was rating-based
         if (sort === 'rating') {
             pipeline.push({ $sort: { ownerRating: -1, createdAt: -1 } });
@@ -378,8 +361,46 @@ export async function GET(req: NextRequest) {
         const totalItems = totalRes[0]?.total || 0;
         const totalPages = Math.ceil(totalItems / limit);
 
+        // Fetch precise ratings
+        const sellerIds = results.map((i: any) => i.seller._id);
+        const itemIds = results.map((i: any) => i._id);
+
+        const [ReviewModel] = await Promise.all([import('@/models/Review').then(m => m.default)]);
+        
+        const [sellerReviews, specificItemReviews] = await Promise.all([
+            ReviewModel.aggregate([
+                { $match: { target: { $in: sellerIds } } },
+                { $group: { _id: { target: '$target', reviewer: '$reviewer' }, reviewerAvgRating: { $avg: '$rating' } } },
+                { $group: { _id: '$_id.target', average: { $avg: '$reviewerAvgRating' }, count: { $sum: 1 } } }
+            ]),
+            ReviewModel.aggregate([
+                { $match: { $or: [{ product: { $in: itemIds } }, { service: { $in: itemIds } }] } },
+                { $group: { _id: { $ifNull: ['$product', '$service'] }, average: { $avg: '$rating' }, count: { $sum: 1 } } }
+            ])
+        ]);
+
+        const sellerReviewMap = new Map(sellerReviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
+        const specificReviewMap = new Map(specificItemReviews.map(r => [r._id.toString(), { average: r.average, count: r.count }]));
+
+        const resultsWithRatings = results.map((item: any) => {
+            const itemIdStr = item._id.toString();
+            const sellerIdStr = item.seller._id.toString();
+            
+            const sellerStats = sellerReviewMap.get(sellerIdStr) || { average: 0, count: 0 };
+            const itemStats = specificReviewMap.get(itemIdStr) || { average: 0, count: 0 };
+            
+            // Unified Bulletproof Rating Schema
+            return {
+                ...item,
+                sellerTrustRating: sellerStats.average,
+                sellerTrustCount: sellerStats.count,
+                itemSpecificRating: itemStats.average,
+                itemSpecificCount: itemStats.count
+            };
+        });
+
         return NextResponse.json({
-            items: results,
+            items: resultsWithRatings,
             pagination: {
                 currentPage: page,
                 totalPages,

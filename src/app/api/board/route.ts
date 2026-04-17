@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Types, isValidObjectId } from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import BoardPost from '@/models/BoardPost';
+import SiteSettings from '@/models/SiteSettings';
 import { verifyToken } from '@/lib/auth';
-import mongoose from 'mongoose';
 
 /**
  * Notice Board API
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const communityId = searchParams.get('communityId');
 
-        if (!communityId || !mongoose.Types.ObjectId.isValid(communityId)) {
+        if (!communityId || !isValidObjectId(communityId)) {
             return NextResponse.json({ error: 'Valid Community ID required' }, { status: 400 });
         }
 
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
         const skip = (page - 1) * limit;
 
         const query = {
-            community: new mongoose.Types.ObjectId(communityId),
+            community: new Types.ObjectId(communityId),
         };
         
         console.log('Fetching Board for Community:', communityId, 'Page:', page);
@@ -74,14 +75,21 @@ export async function POST(req: NextRequest) {
         if (!decoded) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
 
         await connectToDatabase();
+        require('@/models/User');
+        require('@/models/Community');
+        require('@/models/BoardPost');
+
         const { content, communityId } = await req.json();
 
-        if (!content || content.length > 500) {
-            return NextResponse.json({ error: 'Content must be 1-500 characters' }, { status: 400 });
+        const settings = await SiteSettings.getSingleton();
+        const maxChars = settings.maxBoardPostChars || 500;
+
+        if (!content || content.length > maxChars) {
+            return NextResponse.json({ error: `Content must be 1-${maxChars} characters` }, { status: 400 });
         }
 
-        if (!communityId) {
-            return NextResponse.json({ error: 'Community ID required' }, { status: 400 });
+        if (!communityId || !isValidObjectId(communityId)) {
+            return NextResponse.json({ error: 'Valid Community ID required' }, { status: 400 });
         }
 
         const newPost = await BoardPost.create({
@@ -109,12 +117,20 @@ export async function PATCH(req: NextRequest) {
         if (!decoded) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
 
         await connectToDatabase();
+        require('@/models/User');
+        require('@/models/Community');
+        require('@/models/BoardPost');
+
         const { postId, action, content } = await req.json();
+
+        if (!postId || !isValidObjectId(postId)) {
+             return NextResponse.json({ error: 'Valid Post ID required' }, { status: 400 });
+        }
 
         const post = await BoardPost.findById(postId);
         if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 });
 
-        const userId = new mongoose.Types.ObjectId(decoded.userId);
+        const userId = new Types.ObjectId(decoded.userId);
 
         if (action === 'upvote') {
             const upvoteIndex = post.upvotes.indexOf(userId);
@@ -131,8 +147,11 @@ export async function PATCH(req: NextRequest) {
         } 
         
         else if (action === 'reply') {
-            if (!content || content.length > 300) {
-                return NextResponse.json({ error: 'Reply must be 1-300 characters' }, { status: 400 });
+            const settings = await SiteSettings.getSingleton();
+            const maxReply = settings.maxBoardReplyChars || 300;
+
+            if (!content || content.length > maxReply) {
+                return NextResponse.json({ error: `Reply must be 1-${maxReply} characters` }, { status: 400 });
             }
             
             if (!post.replies) post.replies = [];
@@ -160,3 +179,6 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;

@@ -131,10 +131,28 @@ export default function ChatSidebar() {
             
             if (res.ok) {
                 // Instantly remove from local state
-                setConversations(prev => prev.filter(c => 
-                    !( (c.rawUserId || c.user?._id) === currentRawOtherUserId && 
-                       ((c.rawProductId || c.product?._id) === currentRawProductId && (c.rawServiceId || c.service?._id) === currentRawServiceId) )
-                ));
+                setConversations(prev => prev.filter(c => {
+                    const convOtherUserId = (c.rawUserId || c.user?._id || c.user?.id)?.toString();
+                    const convProductId = (c.rawProductId || c.product?._id || c.product?.id)?.toString();
+                    const convServiceId = (c.rawServiceId || c.service?._id || c.service?.id)?.toString();
+
+                    const isSameUser = convOtherUserId === currentRawOtherUserId?.toString();
+                    const isSameProduct = convProductId === currentRawProductId?.toString();
+                    const isSameService = convServiceId === currentRawServiceId?.toString();
+
+                    // Remove if user matches AND (both product IDs match OR both service IDs match OR both are null)
+                    return !(isSameUser && isSameProduct && isSameService);
+                }));
+
+                // If the current chat is the one we just deleted, redirect to /chat
+                const isActiveURL = pathname === `/chat/${currentRawOtherUserId?.toString()}`;
+                const isActiveProduct = currentRawProductId?.toString() === searchParams.get('productId');
+                const isActiveService = currentRawServiceId?.toString() === searchParams.get('serviceId');
+                
+                // If both URL user and the product/service match, redirect
+                if (isActiveURL && (isActiveProduct || isActiveService || (!currentRawProductId && !currentRawServiceId && !searchParams.get('productId') && !searchParams.get('serviceId')))) {
+                    router.push('/chat');
+                }
             } else {
                 alert("Failed to delete chat.");
             }
@@ -181,37 +199,33 @@ export default function ChatSidebar() {
         e.stopPropagation();
         setActiveMenu(null);
         
+        const targetUserId = (conv.user?._id || conv.user?.id) || conv.rawUserId;
+        if (!targetUserId) return;
+
+        const alreadyBlocked = user?.blockedUsers?.some((id: any) => id.toString() === targetUserId.toString());
+        
         const confirmed = await confirmAction({
-            title: `Block ${conv.user.name}?`,
-            text: `They will no longer be able to message you and their listings will be hidden.`,
-            dangerMode: true,
-            confirmButtonText: 'Block User'
+            title: alreadyBlocked ? `Unblock ${conv.user?.name || 'User'}?` : `Block ${conv.user?.name || 'User'}?`,
+            text: alreadyBlocked 
+                ? `They will be able to message you again.` 
+                : `They will no longer be able to message you and their listings will be hidden.`,
+            dangerMode: !alreadyBlocked,
+            confirmButtonText: alreadyBlocked ? 'Unblock' : 'Block'
         });
         if (!confirmed) return;
 
         try {
-            const targetUserId = conv.user?._id || conv.rawUserId;
-            if (!targetUserId) return;
-
-            const res = await fetch('/api/user/block', {
-                method: 'POST',
+            const res = await fetch(alreadyBlocked ? `/api/user/block?userId=${targetUserId}` : '/api/user/block', {
+                method: alreadyBlocked ? 'DELETE' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetUserId })
+                ...(alreadyBlocked ? {} : { body: JSON.stringify({ targetUserId }) })
             });
             
             if (res.ok) {
-                // Remove from local state immediately
-                setConversations(prev => prev.filter(c => (c.rawUserId || c.user?._id) !== targetUserId));
-                
-                // If the current chat is the one we just blocked, redirect to /chat
-                if (pathname === `/chat/${targetUserId}`) {
-                    router.push('/chat');
-                }
-
                 await refreshUser();
-                showSuccess('User Blocked', `${conv.user?.name || 'User'} has been blocked.`);
+                showSuccess(alreadyBlocked ? 'User Unblocked' : 'User Blocked', `${conv.user?.name || 'User'} has been ${alreadyBlocked ? 'unblocked' : 'blocked'}.`);
             } else {
-                showError('Action Failed', "Failed to block user.");
+                showError('Action Failed', `Failed to ${alreadyBlocked ? 'unblock' : 'block'} user.`);
             }
         } catch (err) {
             console.error(err);
@@ -234,11 +248,8 @@ export default function ChatSidebar() {
     const filteredConversations = useMemo(() => {
         if (!user) return conversations;
         return conversations.filter(conv => {
-            const targetUserId = conv.user?._id || conv.rawUserId;
-
-            // [BLOCK FILTER] Skip conversations with blocked users
-            const isBlocked = targetUserId && user.blockedUsers?.some((id: any) => id.toString() === targetUserId.toString());
-            if (isBlocked) return false;
+            // [EMPTY FILTER] Ensure we don't show chats with no content
+            if (!conv.lastMessage) return false;
 
             if (activeTab === 'all') return true;
             

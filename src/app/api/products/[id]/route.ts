@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isValidObjectId } from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import Product from '@/models/Product';
 import User from '@/models/User';
@@ -10,6 +11,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     try {
         await connectToDatabase();
         const { id } = await params; // Await params in Next.js 15+
+
+        if (!isValidObjectId(id)) {
+            return NextResponse.json({ error: 'Invalid Product ID' }, { status: 400 });
+        }
 
         const product = await Product.findById(id).populate('seller', 'name username profilePicture email gender').populate('community', 'name');
 
@@ -44,20 +49,36 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             buyerId = lastOrder?.buyer;
         }
 
-        // Fetch Seller Review Stats
-        const reviewStats = await Review.aggregate([
-            { $match: { target: product.seller._id } },
-            { $group: { _id: null, average: { $avg: '$rating' }, count: { $sum: 1 } } }
+        // 1. Fetch Seller Trust Stats (Unique Reviewer Compressed)
+        const sellerTrustStats = await Review.aggregate([
+            { $match: { target: product.seller._id, rating: { $exists: true, $ne: null } } },
+            { $group: { _id: { target: '$target', reviewer: '$reviewer' }, reviewerAvgRating: { $avg: '$rating' } } },
+            { $group: { _id: '$_id.target', average: { $avg: '$reviewerAvgRating' }, count: { $sum: 1 } } }
         ]);
 
-        const averageRating = reviewStats.length > 0 ? Number(reviewStats[0].average.toFixed(1)) : 0;
-        const reviewCount = reviewStats.length > 0 ? reviewStats[0].count : 0;
+        // 2. Fetch Listing-Specific Stats
+        const itemStats = await Review.aggregate([
+            { $match: { product: product._id, rating: { $exists: true, $ne: null } } },
+            { $group: { _id: '$product', average: { $avg: '$rating' }, count: { $sum: 1 } } }
+        ]);
+
+        const sellerStats = sellerTrustStats[0] || { average: 0, count: 0 };
+        const specificStats = itemStats[0] || { average: 0, count: 0 };
+
+        const isOccupied = ['Sold', 'Rented', 'Reserved'].includes(product.status);
 
         return NextResponse.json({
             product: {
                 ...product.toObject(),
-                averageRating,
-                reviewCount
+                // Unified Bulletproof Schema
+                sellerTrustRating: sellerStats.average,
+                sellerTrustCount: sellerStats.count,
+                itemSpecificRating: specificStats.average,
+                itemSpecificCount: specificStats.count,
+                // Legacy fields for backward compatibility
+                averageRating: sellerStats.average,
+                reviewCount: product.forRent ? specificStats.count : sellerStats.count,
+                isOccupied
             },
             buyerId
         }, { status: 200 });
@@ -76,6 +97,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
         await connectToDatabase();
         const { id } = await params;
+
+        if (!isValidObjectId(id)) {
+            return NextResponse.json({ error: 'Invalid Product ID' }, { status: 400 });
+        }
 
         const product = await Product.findById(id);
 
@@ -149,6 +174,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
         await connectToDatabase();
         const { id } = await params;
+
+        if (!isValidObjectId(id)) {
+            return NextResponse.json({ error: 'Invalid Product ID' }, { status: 400 });
+        }
+
         const body = await req.json();
 
         let product = await Product.findById(id);

@@ -70,22 +70,53 @@ export async function POST(req: NextRequest) {
             await user.save();
         }
 
+        // --- Community Auto-Verification (New) ---
+        const Community = (await import('@/models/Community')).default;
+        const emailDomain = user.email.split('@')[1];
+        const matchingCommunities = await Community.find({
+            isActive: true,
+            emailDomains: emailDomain,
+            _id: { $nin: user.verifiedCommunities || [] }
+        });
+        
+        let newCommunityNames: string[] = [];
+        if (matchingCommunities.length > 0) {
+            const newIds = matchingCommunities.map(c => c._id);
+            await User.updateOne(
+                { _id: user._id },
+                { $addToSet: { verifiedCommunities: { $each: newIds } } }
+            );
+            newCommunityNames = matchingCommunities.map(c => c.name);
+        }
+
+        // Re-fetch populated user to ensure frontend has all details
+        const populatedUser = await User.findById(user._id)
+            .populate('verifiedCommunities', 'name image isActive hostels')
+            .lean();
+
+        if (!populatedUser) throw new Error('User not found after update');
+
         const token = generateToken({ userId: user._id, email: user.email, role: user.role });
 
         const response = NextResponse.json(
             {
                 message: 'Login successful',
+                newCommunityJoined: newCommunityNames.length > 0,
+                newCommunityNames,
                 user: {
-                    id: user._id,
-                    name: user.name,
-                    username: user.username,
-                    email: user.email,
-                    role: user.role,
-                    profilePicture: user.profilePicture,
-                    wishlist: user.wishlist || [],
-                    wishlistedServices: user.wishlistedServices || [],
-                    isVerified: user.isVerified,
-                    authProvider: user.authProvider
+                    id: populatedUser._id,
+                    name: populatedUser.name,
+                    username: populatedUser.username,
+                    email: populatedUser.email,
+                    role: populatedUser.role,
+                    profilePicture: populatedUser.profilePicture,
+                    wishlist: populatedUser.wishlist || [],
+                    wishlistedServices: populatedUser.wishlistedServices || [],
+                    isVerified: populatedUser.isVerified,
+                    verifiedCommunities: populatedUser.verifiedCommunities || [],
+                    authProvider: populatedUser.authProvider,
+                    defaultCommunity: populatedUser.defaultCommunity,
+                    defaultHostel: populatedUser.defaultHostel
                 }
             },
             { status: 200 }
@@ -93,8 +124,8 @@ export async function POST(req: NextRequest) {
 
         response.cookies.set('token', token, {
             httpOnly: true,
-            secure: false, // [TEMP] Allow testing on local WiFi (HTTP) from mobile
-            sameSite: 'strict',
+            secure: process.env.NODE_ENV === 'production' && !req.nextUrl.hostname.includes('192.168.') && !req.nextUrl.hostname.includes('10.') && !req.nextUrl.hostname.includes('localhost'),
+            sameSite: 'lax',
             maxAge: 60 * 60 * 24 * 7,
             path: '/',
         });

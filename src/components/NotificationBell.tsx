@@ -27,9 +27,9 @@ export default function NotificationBell() {
         { refreshInterval: 30000 }
     );
     
-    // Preferences Fetching via SWR
+    // Preferences Fetching via SWR (Only when open to save bandwidth)
     const { data: settingsData, mutate: mutateSettings } = useSWR(
-        user ? '/api/notifications/settings' : null
+        (user && isOpen) ? '/api/notifications/settings' : null
     );
 
     const notifications: NotificationItem[] = notificationsData?.notifications || [];
@@ -127,7 +127,7 @@ export default function NotificationBell() {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 ring-1 ring-black ring-opacity-5 z-[60] transition-colors">
+                <div className="fixed top-[4.5rem] left-4 right-4 sm:absolute sm:top-full sm:-right-2 sm:left-auto mt-0 sm:mt-3 w-auto sm:w-[380px] sm:min-w-[340px] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-800 ring-1 ring-black ring-opacity-5 z-[60] transition-colors origin-top sm:origin-top-right">
                     <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50 rounded-t-xl transition-colors">
                         <h3 className="text-sm font-bold text-gray-900 dark:text-white">Notifications</h3>
                         {unreadCount > 0 && (
@@ -189,7 +189,7 @@ export default function NotificationBell() {
                         )}
                     </div>
 
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto">
                         {notifications.length > 0 ? (
                             notifications.map((notif) => (
                                 <div

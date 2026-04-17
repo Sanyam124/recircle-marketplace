@@ -61,7 +61,18 @@ export async function POST(req: NextRequest) {
                 isActive: true
             });
 
-            return NextResponse.json({ community }, { status: 201 });
+            // Auto-add this community to ALL existing users whose email domain matches
+            const domainRegexParts = community.emailDomains.map(d => d.replace(/\./g, '\\.'));
+            if (domainRegexParts.length > 0) {
+                const domainRegex = new RegExp(`@(${domainRegexParts.join('|')})$`, 'i');
+                const matchResult = await User.updateMany(
+                    { email: { $regex: domainRegex }, verifiedCommunities: { $ne: community._id } },
+                    { $addToSet: { verifiedCommunities: community._id } }
+                );
+                console.log(`[Community Auto-Link] Added "${community.name}" to ${matchResult.modifiedCount} existing users.`);
+            }
+
+            return NextResponse.json({ community, autoLinkedUsers: true }, { status: 201 });
         } catch (dbError: any) {
              if (imageUploaded && finalImageUrl) {
                  try {

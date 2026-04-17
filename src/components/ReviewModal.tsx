@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import useSWR from 'swr';
+import { showSuccess } from '@/lib/confirm';
 
 interface ReviewModalProps {
   order: any;
@@ -19,6 +21,9 @@ export default function ReviewModal({ order, onClose, onSuccess }: ReviewModalPr
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const { data: siteConfig } = useSWR('/api/site-config');
+  const maxChars = siteConfig?.maxReviewChars || 1000;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -31,7 +36,7 @@ export default function ReviewModal({ order, onClose, onSuccess }: ReviewModalPr
         body: JSON.stringify({
           targetId,
           orderId: order._id,
-          productId: isProduct ? item._id : undefined,
+          productId: (isProduct && order.transactionType === 'Rent') ? item._id : undefined,
           serviceId: !isProduct ? item._id : undefined,
           rating,
           comment
@@ -43,6 +48,7 @@ export default function ReviewModal({ order, onClose, onSuccess }: ReviewModalPr
         throw new Error(data.error || 'Failed to submit review');
       }
 
+      await showSuccess('Review Posted', 'Thank you for your feedback! It helps keeping the community safe.');
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -58,7 +64,12 @@ export default function ReviewModal({ order, onClose, onSuccess }: ReviewModalPr
         {/* Header */}
         <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-700/50">
           <div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Leave a Review</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+              {isProduct 
+                ? (order.transactionType === 'Rent' ? 'Review Rental Item' : 'Review Seller') 
+                : 'Review Service Provider'
+              }
+            </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Share your experience with the community</p>
           </div>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
@@ -126,9 +137,13 @@ export default function ReviewModal({ order, onClose, onSuccess }: ReviewModalPr
 
             {/* Comment Field */}
             <div className="space-y-1.5">
-               <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">Your Feedback</label>
+               <div className="flex items-center justify-between">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">Your Feedback</label>
+                  <span className={`text-[10px] font-bold ${comment.length >= maxChars ? 'text-red-500' : 'text-gray-400'}`}>{comment.length}/{maxChars}</span>
+               </div>
                <textarea
                  rows={4}
+                 maxLength={maxChars}
                  className="w-full rounded-2xl border-gray-200 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm p-4 border text-gray-900 dark:text-white bg-white dark:bg-gray-900/70 transition-all outline-none resize-none"
                  value={comment}
                  onChange={(e) => setComment(e.target.value)}

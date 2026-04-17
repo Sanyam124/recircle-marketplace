@@ -9,12 +9,13 @@ import { MessageBubbleSkeleton } from '@/components/Skeletons';
 import { pusherClient } from '@/lib/pusherClient';
 import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 import ReviewModal from '@/components/ReviewModal';
+import ReportModal from '@/components/ReportModal';
 
 export default function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
     const userId = resolvedParams.id;
     const router = useRouter();
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading, refreshUser } = useAuth();
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -64,8 +65,33 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const [sendingMessage, setSendingMessage] = useState(false);
     const [acceptingOffer, setAcceptingOffer] = useState(false);
     const [decliningOffer, setDecliningOffer] = useState(false);
+    const [unblocking, setUnblocking] = useState(false);
     const [activeOrder, setActiveOrder] = useState<any>(null);
     const [reviewOrder, setReviewOrder] = useState<any | null>(null);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportMode, setReportMode] = useState<'user' | 'item'>('user');
+    const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+
+    const handleUnblock = async () => {
+        if (unblocking) return;
+        setUnblocking(true);
+        try {
+            const res = await fetch(`/api/user/block?userId=${userId}`, {
+                method: 'DELETE',
+            });
+            if (res.ok) {
+                await refreshUser();
+                showSuccess('User Unblocked', 'You can now message this user again.');
+            } else {
+                showError('Action Failed', 'Failed to unblock user.');
+            }
+        } catch (error) {
+            console.error('Failed to unblock user', error);
+            showError('System Error', 'An unexpected error occurred.');
+        } finally {
+            setUnblocking(false);
+        }
+    };
 
     const [otherUserLastSeen, setOtherUserLastSeen] = useState<Date | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -88,11 +114,30 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     }, [referencingItem?.data, user?.id]);
 
     const isSold = useMemo(() => {
-        return referencingItem?.type === 'product' && (referencingItem?.data?.status === 'Sold' || referencingItem?.data?.status === 'Rented');
+        return referencingItem?.type === 'product' && referencingItem?.data?.status === 'Sold';
     }, [referencingItem]);
 
     const isRented = useMemo(() => {
         return referencingItem?.type === 'product' && referencingItem?.data?.status === 'Rented';
+    }, [referencingItem]);
+
+    const isReserved = useMemo(() => {
+        return referencingItem?.type === 'product' && referencingItem?.data?.status === 'Reserved';
+    }, [referencingItem]);
+
+    const itemIsOccupied = useMemo(() => {
+        if (!referencingItem?.data) return false;
+        
+        // Use the explicit flag from the API if available
+        if (referencingItem.data.isOccupied !== undefined) {
+            return referencingItem.data.isOccupied;
+        }
+
+        // Fallback to internal status check
+        if (referencingItem.type === 'product') {
+            return ['Sold', 'Rented', 'Reserved'].includes(referencingItem.data.status);
+        }
+        return false;
     }, [referencingItem]);
 
     const inVerificationPhase = useMemo(() => {
@@ -165,6 +210,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                         return [...prev, newMsg].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
                     });
                     
+                    // Instant sync of item status (Rented, Sold, Occupied labels) when new message arrives
+                    if (referencingItemRef.current) {
+                        fetchItemData(referencingItemRef.current.type, referencingItemRef.current.id);
+                    }
+                    
                     // Fire a silent background fetch to sync Read receipts immediately over HTTP
                     fetchHistory(null, true);
                 }
@@ -181,7 +231,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             if (channelName) pusherClient.unsubscribe(channelName);
         };
     }, [userId, productId, serviceId, user]);
-    
+
     // Dedicated effect for automated intro message on redirection
     useEffect(() => {
         const shouldSendAutoMsg = searchParams.get('autoMsg') === 'true';
@@ -380,13 +430,18 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                     const orderRes = await fetch(`/api/orders?productId=${type === 'product' ? id : ''}&serviceId=${type === 'service' ? id : ''}&limit=10`);
                     if (orderRes.ok) {
                         const orderData = await orderRes.json();
-                        const active = orderData.orders?.find((o: any) => 
-                            o.status === 'Scheduled' && 
-                            (
-                                (o.buyer?._id?.toString() === user?.id?.toString() || o.buyer?.toString() === user?.id?.toString()) ||
-                                (o.seller?._id?.toString() === user?.id?.toString() || o.seller?.toString() === user?.id?.toString())
-                            )
-                        );
+                        const active = orderData.orders?.find((o: any) => {
+                            const bId = (o.buyer?._id || o.buyer)?.toString();
+                            const sId = (o.seller?._id || o.seller)?.toString();
+                            const currId = user?.id?.toString();
+                            const targId = userId?.toString();
+                            
+                            if (!currId || !targId) return false;
+                            
+                            // Check if this order is exactly between the current user and the chat partner
+                            const isMyOrder = (bId === currId && sId === targId) || (sId === currId && bId === targId);
+                            return isMyOrder && (o.status === 'Scheduled' || o.status === 'Completed' || o.status === 'Reserved');
+                        });
                         setActiveOrder(active || null);
                     }
                 } catch (err) {
@@ -434,6 +489,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     };
 
     const handleAcceptOffer = async (offerId: string, offerPrice: number, override: boolean = false) => {
+        if (isBlockedByMe) {
+            showError('User Blocked', 'You must unblock this user to accept their offer.');
+            return;
+        }
+        if (isBlockedByOther) {
+            showError('Action Restricted', 'You cannot accept offers from a user who has blocked you.');
+            return;
+        }
         if (acceptingOffer) return;
         setAcceptingOffer(true);
         try {
@@ -477,6 +540,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     };
 
     const handleDeclineOffer = async (offerId: string) => {
+        if (isBlockedByMe) {
+            showError('User Blocked', 'You must unblock this user to decline their offer.');
+            return;
+        }
+        if (isBlockedByOther) {
+            showError('Action Restricted', 'You cannot decline offers from a user who has blocked you.');
+            return;
+        }
         if (decliningOffer) return;
         setDecliningOffer(true);
         try {
@@ -683,10 +754,39 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                         </p>
                     </div>
                     
-                    <div className="shrink-0 pl-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-300 dark:text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
+                    <div className="relative pl-1 shrink-0">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setHeaderMenuOpen(!headerMenuOpen); }}
+                            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-400 dark:text-gray-500"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                            </svg>
+                        </button>
+
+                        {headerMenuOpen && (
+                            <div 
+                                className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 z-50 animate-in fade-in zoom-in duration-100"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <button 
+                                    onClick={() => { setHeaderMenuOpen(false); setReportMode('user'); setIsReportModalOpen(true); }}
+                                    className="w-full px-4 py-2.5 text-left text-[11px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2 transition-colors"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    Report User
+                                </button>
+                                {referencingItem?.data && (
+                                    <button 
+                                        onClick={() => { setHeaderMenuOpen(false); setReportMode('item'); setIsReportModalOpen(true); }}
+                                        className="w-full px-4 py-2.5 text-left text-[11px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2 transition-colors border-t border-gray-50 dark:border-gray-700/50"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        Report Listing
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>            {/* Item Info Bar */}
@@ -726,24 +826,30 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                     )}
                 </div>
                 
-                {(referencingItem?.data && referencingItem.type === 'product' && (referencingItem.data?.status === 'Sold' || referencingItem.data?.status === 'Rented')) && (
-                    <div className={`px-4 py-1 border-t flex items-center justify-between ${isRented ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' : 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30'}`}>
-                        <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-tight ${isRented ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                {(referencingItem?.data && (
+                    (referencingItem.type === 'product' && (referencingItem.data?.status === 'Sold' || referencingItem.data?.status === 'Rented')) ||
+                    (referencingItem.type === 'service' && referencingItem.data?.isOccupied)
+                )) && (
+                    <div className={`px-4 py-1 border-t flex items-center justify-between ${ (isRented || referencingItem.type === 'service') ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' : 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30'}`}>
+                        <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-tight ${ (isRented || referencingItem.type === 'service') ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={isRented ? "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" : "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"} />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={isSold ? "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"} />
                             </svg>
-                            {isRented ? 'Product Rented Out' : 'Product Sold'}
+                            {isSold ? 'Product Sold' : (isRented ? 'Product Rented Out' : 'Provider Busy (Active Booking)')}
                         </div>
                         {(() => {
-                            const sellerId = referencingItem.data?.seller?.id || referencingItem.data?.seller?._id || referencingItem.data?.seller;
+                            const sellerId = referencingItem.data?.seller?.id || referencingItem.data?.seller?._id || referencingItem.data?.seller || 
+                                             referencingItem.data?.provider?.id || referencingItem.data?.provider?._id || referencingItem.data?.provider;
                             const buyerId = referencingItem.data?.buyerId?.id || referencingItem.data?.buyerId?._id || referencingItem.data?.buyerId;
                             const isSeller = sellerId?.toString() === user?.id?.toString();
                             const isActualBuyer = buyerId?.toString() === user?.id?.toString();
                             
-                            if (buyerId && !isActualBuyer && !isSeller) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>Not available</span>;
-                            if (isSeller && buyerId && buyerId.toString() !== userId.toString()) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>Rented to other user</span>;
-                            if (isActualBuyer) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>{isRented ? 'Product Rented' : 'Product Bought'}</span>;
-                            if (isSeller && buyerId?.toString() === userId?.toString()) return <span className={`text-[9px] font-medium italic ${isRented ? 'text-emerald-500/70' : 'text-red-500/70'}`}>{isRented ? 'Rented to this user' : 'Sold to this user'}</span>;
+                            const labelType = referencingItem.type === 'product' ? (isRented ? 'Rented' : 'Sold') : 'Booked';
+
+                            if (buyerId && !isActualBuyer && !isSeller) return <span className={`text-[9px] font-medium italic ${isSold ? 'text-red-500/70' : 'text-emerald-500/70'}`}>Currently Busy</span>;
+                            if (isSeller && buyerId && buyerId.toString() !== userId.toString()) return <span className={`text-[9px] font-medium italic ${isSold ? 'text-red-500/70' : 'text-emerald-500/70'}`}>{labelType} to other user</span>;
+                            if (isActualBuyer) return <span className={`text-[9px] font-medium italic ${isSold ? 'text-red-500/70' : 'text-emerald-500/70'}`}>{referencingItem.type === 'product' ? (isRented ? 'Product Rented' : 'Product Bought') : 'Service Booked'}</span>;
+                            if (isSeller && buyerId?.toString() === userId?.toString()) return <span className={`text-[9px] font-medium italic ${isSold ? 'text-red-500/70' : 'text-emerald-500/70'}`}>{labelType} to this user</span>;
                             return null;
                         })()}
                     </div>
@@ -755,6 +861,16 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-800/50 transition-colors"
             >
+                {/* Retention Policy Hint */}
+                <div className="flex justify-center mb-6 pt-2">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gray-100/50 dark:bg-gray-900/30 rounded-2xl border border-gray-200 dark:border-gray-800/50 shadow-sm transition-all hover:bg-white dark:hover:bg-gray-900/50 group">
+                        <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Messages expire after 30 days</span>
+                    </div>
+                </div>
+
                 <div id="chat-top-sentinel" className="h-6 w-full flex items-center justify-center my-2">
                     {loadingMore && (
                         <div className="flex space-x-1">
@@ -886,10 +1002,10 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                                 : 'Check your order in My Purchases & Bookings →'}
                                                                         </Link>
 
-                                                                        {msg.offer.status === 'Accepted' && msg.sender !== userId && activeOrder?.verificationCode && (
+                                                                        {msg.offer.status === 'Accepted' && msg.sender !== userId && msg.offer.verificationCode && (
                                                                             <div className="mt-3 w-full px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 rounded-xl flex flex-col items-center animate-in zoom-in duration-300 shadow-inner">
                                                                                 <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-0.5">Secret Handoff Code</span>
-                                                                                <span className="text-xl font-black text-emerald-700 dark:text-emerald-300 tracking-[0.2em] font-mono">{activeOrder.verificationCode}</span>
+                                                                                <span className="text-xl font-black text-emerald-700 dark:text-emerald-300 tracking-[0.2em] font-mono">{msg.offer.verificationCode}</span>
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -905,7 +1021,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                 </div>
                                                             )}
 
-                                                            {msg._id === latestOfferMsgId && !activeOrder && (
+                                                            {msg._id === latestOfferMsgId && !isSold && (
                                                                 <div className={`flex p-2 gap-2 ${msg.sender === userId ? 'bg-gray-50 dark:bg-gray-800/80' : 'bg-indigo-100/30 dark:bg-indigo-900/20'}`}>
                                                                     {msg.sender !== userId ? (
                                                                         msg.offer.status === 'Pending' && (
@@ -920,12 +1036,18 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                         msg.offer.status === 'Pending' && (
                                                                             <>
                                                                                 <button 
-                                                                                    onClick={() => handleAcceptOffer(msg.offer.offerId, msg.offer.price)}
+                                                                                    onClick={() => {
+                                                                                        if (itemIsOccupied) {
+                                                                                            showError('Item Occupied', `This ${referencingItem?.type || 'item'} is currently ${referencingItem?.data?.status === 'Rented' ? 'rented out' : 'busy with another order'}. Please wait until the current transaction concludes or cancel the previous order first.`);
+                                                                                            return;
+                                                                                        }
+                                                                                        handleAcceptOffer(msg.offer.offerId, msg.offer.price);
+                                                                                    }}
                                                                                     disabled={acceptingOffer}
-                                                                                    className={`flex-1 py-2.5 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 ${acceptingOffer ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                                                                                    className={`flex-1 py-2.5 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 ${acceptingOffer || (itemIsOccupied && msg.offer.status === 'Pending') ? 'bg-gray-400 grayscale cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                                                                                 >
                                                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                                                                    {acceptingOffer ? 'Processing...' : 'Accept Order'}
+                                                                                    {acceptingOffer ? 'Processing...' : (itemIsOccupied ? 'Item Busy' : 'Accept Order')}
                                                                                 </button>
                                                                                 <button 
                                                                                     onClick={() => handleDeclineOffer(msg.offer.offerId)}
@@ -977,258 +1099,313 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
             {/* Bottom Panel */}
             <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex flex-col flex-shrink-0 relative z-20">
-                <div className="flex border-b border-gray-100 dark:border-gray-800">
-                    <button 
-                        onClick={() => setActiveTab('chat')}
-                        className={`flex-1 py-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
-                            activeTab === 'chat' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600'
-                        }`}
-                    >
-                        Chat
-                        {activeTab === 'chat' && <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full" />}
-                    </button>
-                    
-                    {!isBlockedByMe && !isBlockedByOther && (() => {
-                        const showActionTab = (!isCurrentSeller && !activeOrder) || (isCurrentSeller && inVerificationPhase);
-                        const isCompleted = activeOrder?.status === 'Completed' || (referencingItem?.data?.status === 'Sold' || referencingItem?.data?.status === 'Rented');
-                        const role = isCurrentSeller ? 'seller' : 'buyer';
-                        const manageLabel = isCurrentSeller ? 'Manage Order' : 'Next Step';
+                {!isBlockedByMe && !isBlockedByOther && (
+                    <div className="flex border-b border-gray-100 dark:border-gray-800">
+                        <button 
+                            onClick={() => setActiveTab('chat')}
+                            className={`flex-1 py-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
+                                activeTab === 'chat' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600'
+                            }`}
+                        >
+                            Chat
+                            {activeTab === 'chat' && <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full" />}
+                        </button>
+                        
+                        {(() => {
+                            // Action tab should be hidden for buyers if an active (Scheduled/Reserved) order exists OR if product is already busy
+                            const hasActiveDeal = activeOrder && ['Scheduled', 'Reserved', 'Paid'].includes(activeOrder.status);
+                            const isRecurrent = activeOrder?.status === 'Completed'; 
+                            
+                            const showActionTab = (!isCurrentSeller && !isSold && !isRented && (!activeOrder || isRecurrent)) || (isCurrentSeller && inVerificationPhase);
+                            const isCompleted = activeOrder?.status === 'Completed';
+                            const role = isCurrentSeller ? 'seller' : 'buyer';
+                            const manageLabel = isCurrentSeller ? 'Manage Order' : 'Next Step';
 
-                        return (
-                            <>
-                                {showActionTab && referencingItem?.data && (
-                                    <button 
-                                        onClick={() => setActiveTab('action')}
-                                        className={`flex-1 py-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
-                                            activeTab === 'action' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500'
-                                        }`}
-                                    >
-                                        {isCurrentSeller ? 'Verify Handoff' : (referencingItem?.type === 'product' ? 'Make Offer' : 'Req Appointment')}
-                                        {activeTab === 'action' && <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full" />}
-                                    </button>
-                                )}
+                            return (
+                                <>
+                                    {showActionTab && referencingItem?.data && !isSold && (
+                                        <button 
+                                            onClick={() => setActiveTab('action')}
+                                            className={`flex-1 py-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
+                                                activeTab === 'action' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500'
+                                            }`}
+                                        >
+                                            {isCurrentSeller ? 'Verify Handoff' : (referencingItem?.type === 'product' ? 'Make Offer' : 'Req Appointment')}
+                                            {activeTab === 'action' && <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full" />}
+                                        </button>
+                                    )}
 
-                                {(activeOrder || isCompleted) && (
-                                    <Link 
-                                        href={`/orders?tab=${role}${activeOrder ? `&orderId=${activeOrder._id}` : ''}`}
-                                        className="flex-1 py-3 text-center text-xs font-bold tracking-wider uppercase text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition-all relative border-l border-gray-100 dark:border-gray-800"
-                                    >
-                                        {manageLabel}
-                                        <span className="ml-1 text-[8px]">↗</span>
-                                    </Link>
-                                )}
+                                    {activeOrder && (
+                                        <Link 
+                                            href={`/orders?tab=${role}${activeOrder ? `&orderId=${activeOrder._id}` : ''}`}
+                                            className="flex-1 py-3 text-center text-xs font-bold tracking-wider uppercase text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition-all relative border-l border-gray-100 dark:border-gray-800"
+                                        >
+                                            {manageLabel}
+                                            <span className="ml-1 text-[8px]">↗</span>
+                                        </Link>
+                                    )}
 
-                                {isCompleted && !isCurrentSeller && (
-                                    <button 
-                                        onClick={() => setReviewOrder(activeOrder || { _id: 'temp', product: referencingItem?.data, service: referencingItem?.data, seller: referencingItem?.data?.seller, orderType: referencingItem?.type === 'product' ? 'Product' : 'Service_Appointment' })}
-                                        className="flex-1 py-3 text-xs font-bold tracking-wider uppercase text-amber-600 dark:text-amber-400 hover:text-amber-700 transition-all relative border-l border-gray-100 dark:border-gray-800"
-                                    >
-                                        Leave Review
-                                    </button>
-                                )}
-                            </>
-                        );
-                    })()}
-                </div>
+                                    {isCompleted && activeOrder && !isCurrentSeller && !activeOrder.isReviewed && (
+                                        <button 
+                                            onClick={() => setReviewOrder(activeOrder || { _id: 'temp', product: referencingItem?.data, service: referencingItem?.data, seller: referencingItem?.data?.seller, orderType: referencingItem?.type === 'product' ? 'Product' : 'Service_Appointment', itemPrice: referencingItem?.data?.price || referencingItem?.data?.rentPrice })}
+                                            className="flex-1 py-3 text-xs font-bold tracking-wider uppercase text-amber-600 dark:text-amber-400 hover:text-amber-700 transition-all relative border-l border-gray-100 dark:border-gray-800"
+                                        >
+                                            Leave Review
+                                        </button>
+                                    )}
+                                </>
+                            );
+                        })()}
+                    </div>
+                )}
 
                 <div className="p-3">
-                    {activeTab === 'chat' ? (
-                        <div className="space-y-3">
-                            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                {smartReplies.map((reply) => (
-                                    <button
-                                        key={reply}
-                                        type="button"
-                                        onClick={() => setNewMessage(reply)}
-                                        className="whitespace-nowrap px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 text-[10px] sm:text-xs font-bold border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 transition-all"
-                                    >
-                                        {reply}
-                                    </button>
-                                ))}
-                            </div>
-                            <form onSubmit={handleSendMessage} className="flex gap-2 relative bg-gray-50 dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 items-center p-1 px-2 shadow-inner">
-                                <button type="button" className="p-2 text-gray-400 hover:text-indigo-600 transition-colors shrink-0 rounded-full">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                                </button>
-                                <input
-                                    type="text"
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder="Type a message..."
-                                    className="w-full bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none text-sm py-2 px-2"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={!newMessage.trim()}
-                                    className={`p-2 rounded-full transition-all flex-shrink-0 ${newMessage.trim() ? 'bg-indigo-600 text-white shadow-md' : 'bg-transparent text-gray-300'}`}
+                    {isBlockedByMe ? (
+                        <div className="flex flex-col items-center gap-6 py-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                             <div className="w-full flex items-center gap-4">
+                                <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800" />
+                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Contact Blocked</span>
+                                <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800" />
+                             </div>
+                             
+                             <div className="flex flex-col items-center gap-2">
+                                <button 
+                                    onClick={handleUnblock}
+                                    disabled={unblocking}
+                                    className="px-10 py-4 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-red-500/20 transition-all hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:translate-y-0"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${newMessage.trim() ? '-rotate-45' : ''} transition-transform`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                    </svg>
+                                    {unblocking ? (
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            <span>Processing...</span>
+                                        </div>
+                                    ) : (
+                                        'Unblock User'
+                                    )}
                                 </button>
-                            </form>
+                                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold mt-2">Unblock to resume conversation and viewing listings.</p>
+                             </div>
+
+                             <div className="w-full h-px bg-gray-100 dark:bg-gray-800" />
+                        </div>
+                    ) : isBlockedByOther ? (
+                        <div className="flex flex-col items-center justify-center py-10 px-6 bg-red-50/50 dark:bg-red-950/5 rounded-[2rem] border border-dashed border-red-100 dark:border-red-900/20 animate-in zoom-in-95 duration-500">
+                            <div className="w-12 h-12 bg-red-100/50 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-600 dark:text-red-400 mb-4">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m0-6V9m0 12a9 9 0 110-18 9 9 0 010 18z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-sm font-black text-red-900 dark:text-red-200 uppercase tracking-widest mb-1">Access Restricted</h3>
+                            <p className="text-[10px] text-red-600/70 dark:text-red-400/60 font-bold text-center leading-relaxed">You cannot send messages to this user because of their privacy settings.</p>
                         </div>
                     ) : (
-                        <div className="space-y-4">
-                            {(() => {
-                                const prodData = referencingItem?.data;
-                                const prodStatus = prodData?.status;
-                                if (prodStatus === 'Sold') {
-                                    return (
-                                        <div className="flex flex-col items-center justify-center p-6 bg-red-50 dark:bg-red-900/10 border-2 border-dashed border-red-100 rounded-3xl">
-                                            <div className="h-14 w-14 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center text-red-600 mb-3">
-                                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                        activeTab === 'chat' ? (
+                            <>
+                                {isSold ? (
+                                    <div className="flex flex-col items-center justify-center py-6 px-6 bg-gray-100 dark:bg-gray-800/50 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700 shadow-inner">
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                            <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                                                <svg className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                             </div>
-                                            <h3 className="text-sm font-black text-red-700 uppercase mb-1">Item Sold</h3>
-                                            <p className="text-[11px] text-red-600/80 font-bold text-center">This product has been sold to someone else.</p>
+                                            <span className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-[0.15em] italic">Product Sold • Chat Closed</span>
                                         </div>
-                                    );
-                                }
-
-                                if (isCurrentSeller) {
-                                    if (inVerificationPhase) {
-                                        return (
-                                            <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4">
-                                                <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 p-3 rounded-2xl shadow-sm">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <div className="h-6 w-6 bg-emerald-600 text-white rounded-full flex items-center justify-center shadow-md shrink-0">
-                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4" /></svg>
-                                                        </div>
-                                                        <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">Handoff Verification</span>
-                                                    </div>
-                                                    <p className="text-[10px] text-emerald-700/70 mb-3 font-bold">
-                                                        Enter the buyer's 6-character <span className="underline italic">Secret Code</span>.
-                                                    </p>
-                                                    <div className="relative">
-                                                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400">
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                                        </div>
-                                                        <input
-                                                            type="text"
-                                                            value={verificationCode}
-                                                            onChange={(e) => {setVerificationCode(e.target.value.replace(/\s/g, '').toUpperCase());}}
-                                                            placeholder="CODE"
-                                                            className="w-full bg-white dark:bg-gray-800 border-2 border-emerald-100 rounded-xl pl-10 pr-4 py-2.5 text-base font-black tracking-[0.2em] font-mono text-emerald-700 outline-none focus:border-emerald-500 transition-colors"
-                                                            maxLength={6}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    onClick={(e) => { e.preventDefault(); handleActionSubmit('deal_closure'); }}
-                                                    className={`w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all shadow-lg flex items-center justify-center gap-2 ${
-                                                        verificationCode.length === 6 && !submittingAction ? 'bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer' : 'bg-gray-100 text-gray-400'
-                                                    }`}
-                                                >
-                                                    {submittingAction ? 'Processing...' : `Verify & Mark ${prodData?.type === 'service' ? 'Completed' : (offerType === 'Rent' ? 'Rented' : 'Sold')}`}
-                                                </button>
-                                                {actionError && <p className="text-[10px] text-red-500 font-bold px-3 py-1.5 bg-red-50 dark:bg-red-900/10 border border-red-100 rounded-lg mt-2">{actionError}</p>}
-                                            </div>
-                                        );
-                                    }
-                                    return (
-                                        <div className="flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
-                                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Awaiting Buyer's Offer</p>
-                                            <p className="text-[9px] text-gray-400 mt-1 text-center font-medium">Once an offer is accepted, you can verify handoff here.</p>
-                                        </div>
-                                    );
-                                }
-
-                                return !activeOrder ? (
-                                    <div className="flex flex-col gap-3">
-                                        {prodStatus === 'Rented' && (
-                                            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                                                <p className="text-[9px] text-emerald-700 dark:text-emerald-400 font-black uppercase tracking-wider">Item Currently Occupied - Inquire for Later</p>
-                                            </div>
-                                        )}
-                                        {referencingItem?.type === 'product' && (
-                                            <div className="flex gap-2 items-center justify-center p-1.5 bg-gray-100 dark:bg-gray-800 rounded-full w-max mx-auto shadow-inner border border-gray-200 dark:border-gray-700 mb-2">
-                                                {prodData?.forSell !== false && (
-                                                    <button 
-                                                       onClick={(e) => { e.preventDefault(); setOfferType('Buy'); setActionPrice(''); }} 
-                                                       className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all ${offerType === 'Buy' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>
-                                                       Buy Offer
-                                                    </button>
-                                                )}
-                                                {prodData?.forRent && (
-                                                    <button 
-                                                       onClick={(e) => { e.preventDefault(); setOfferType('Rent'); setActionPrice(''); }} 
-                                                       className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all ${offerType === 'Rent' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>
-                                                       Rent Offer
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
+                                        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center font-bold px-6 leading-relaxed">This transaction has reached its conclusion. Further messaging is disabled for this listing.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
                                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                            {[
-                                                { label: 'Listed', val: Math.round((offerType === 'Buy' || referencingItem?.type === 'service') ? (prodData?.price || 0) : (prodData?.rentPrice || 0)) },
-                                                { label: '-5%', val: Math.round(((offerType === 'Buy' || referencingItem?.type === 'service') ? (prodData?.price || 0) : (prodData?.rentPrice || 0)) * 0.95) },
-                                                { label: '-10%', val: Math.round(((offerType === 'Buy' || referencingItem?.type === 'service') ? (prodData?.price || 0) : (prodData?.rentPrice || 0)) * 0.90) }
-                                            ].map((item) => (
+                                            {smartReplies.map((reply) => (
                                                 <button
-                                                    key={item.label}
+                                                    key={reply}
                                                     type="button"
-                                                    onClick={() => { setActionPrice(item.val.toString()); }}
-                                                    className="whitespace-nowrap px-4 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 text-[10px] sm:text-xs font-bold border border-emerald-100"
+                                                    onClick={() => setNewMessage(reply)}
+                                                    className="whitespace-nowrap px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 text-[10px] sm:text-xs font-bold border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 transition-all shadow-sm active:scale-95"
                                                 >
-                                                    {item.label}: ₹{item.val.toLocaleString()}
+                                                    {reply}
                                                 </button>
                                             ))}
                                         </div>
-                                        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
-                                            <div className="flex-1 relative flex items-center w-full">
-                                                <div className="absolute left-4 text-sm font-bold text-gray-400">₹</div>
-                                                <input
-                                                    type="number"
-                                                    value={actionPrice}
-                                                    onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
-                                                    onChange={e => { setActionPrice(e.target.value.replace(/\D/g, '')); }}
-                                                    placeholder={offerType === 'Rent' ? 'Rent Price...' : 'Enter amount...'}
-                                                    className="w-full border border-gray-200 dark:border-gray-700 rounded-2xl pl-10 pr-4 py-2.5 text-sm focus:outline-none dark:bg-gray-800 dark:text-white"
-                                                />
+                                        <form onSubmit={handleSendMessage} className="flex gap-2 relative bg-gray-50 dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 items-center p-1 px-2 shadow-inner">
+                                            <button type="button" className="p-2 text-gray-400 hover:text-indigo-600 transition-colors shrink-0 rounded-full">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                            </button>
+                                            <input
+                                                type="text"
+                                                value={newMessage}
+                                                onChange={(e) => setNewMessage(e.target.value)}
+                                                placeholder="Type a message..."
+                                                className="w-full bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none text-sm py-2 px-2"
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={!newMessage.trim()}
+                                                className={`p-2 rounded-full transition-all flex-shrink-0 ${newMessage.trim() ? 'bg-indigo-600 text-white shadow-md' : 'bg-transparent text-gray-300'}`}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${newMessage.trim() ? '-rotate-45' : ''} transition-transform`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <div className="space-y-4">
+                                {(() => {
+                                    const prodData = referencingItem?.data;
+                                    const prodStatus = prodData?.status;
+                                    if (prodStatus === 'Sold') {
+                                        return (
+                                            <div className="flex flex-col items-center justify-center p-6 bg-red-50 dark:bg-red-900/10 border-2 border-dashed border-red-100 rounded-3xl">
+                                                <div className="h-14 w-14 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center text-red-600 mb-3">
+                                                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </div>
+                                                <h3 className="text-sm font-black text-red-700 uppercase mb-1">Item Sold</h3>
+                                                <p className="text-[11px] text-red-600/80 font-bold text-center">This product has been sold to someone else.</p>
                                             </div>
-                                            {offerType === 'Rent' && (
-                                                <div className="flex items-center gap-1 w-full sm:w-auto">
-                                                    <input 
-                                                        type="number" 
-                                                        value={rentDuration} 
-                                                        onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
-                                                        onChange={e => setRentDuration(e.target.value.replace(/\D/g, ''))} 
-                                                        placeholder="Qty"
-                                                        className="w-16 border border-gray-200 dark:border-gray-700 rounded-2xl px-2 py-2.5 text-sm outline-none dark:bg-gray-800 dark:text-white"
-                                                    />
-                                                    <select 
-                                                        value={rentUnit} 
-                                                        onChange={e => setRentUnit(e.target.value)}
-                                                        className="border border-gray-200 dark:border-gray-700 rounded-2xl px-2 py-2.5 text-sm outline-none dark:bg-gray-800 font-bold text-gray-600 dark:text-gray-300"
+                                        );
+                                    }
+
+                                    if (isCurrentSeller) {
+                                        if (inVerificationPhase) {
+                                            return (
+                                                <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4">
+                                                    <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 p-3 rounded-2xl shadow-sm">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <div className="h-6 w-6 bg-emerald-600 text-white rounded-full flex items-center justify-center shadow-md shrink-0">
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4" /></svg>
+                                                            </div>
+                                                            <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">Handoff Verification</span>
+                                                        </div>
+                                                        <p className="text-[10px] text-emerald-700/70 mb-3 font-bold">
+                                                            Enter the buyer's 6-character <span className="underline italic">Secret Code</span>.
+                                                        </p>
+                                                        <div className="relative">
+                                                            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400">
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                            </div>
+                                                            <input
+                                                                type="text"
+                                                                value={verificationCode}
+                                                                onChange={(e) => {setVerificationCode(e.target.value.replace(/\s/g, '').toUpperCase());}}
+                                                                placeholder="CODE"
+                                                                className="w-full bg-white dark:bg-gray-800 border-2 border-emerald-100 rounded-xl pl-10 pr-4 py-2.5 text-base font-black tracking-[0.2em] font-mono text-emerald-700 outline-none focus:border-emerald-500 transition-colors"
+                                                                maxLength={6}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => { e.preventDefault(); handleActionSubmit('deal_closure'); }}
+                                                        className={`w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all shadow-lg flex items-center justify-center gap-2 ${
+                                                            verificationCode.length === 6 && !submittingAction ? 'bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer' : 'bg-gray-100 text-gray-400'
+                                                        }`}
                                                     >
-                                                        <option value="hour">Hours</option>
-                                                        <option value="day">Days</option>
-                                                        <option value="week">Weeks</option>
-                                                        <option value="month">Months</option>
-                                                        <option value="year">Years</option>
-                                                    </select>
+                                                        {submittingAction ? 'Processing...' : `Verify & Mark ${prodData?.type === 'service' ? 'Completed' : (offerType === 'Rent' ? 'Rented' : 'Sold')}`}
+                                                    </button>
+                                                    {actionError && <p className="text-[10px] text-red-500 font-bold px-3 py-1.5 bg-red-50 dark:bg-red-900/10 border border-red-100 rounded-lg mt-2">{actionError}</p>}
+                                                </div>
+                                            );
+                                        }
+                                        return (
+                                            <div className="flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Awaiting Buyer's Offer</p>
+                                                <p className="text-[9px] text-gray-400 mt-1 text-center font-medium">Once an offer is accepted, you can verify handoff here.</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div className="flex flex-col gap-3">
+                                            {referencingItem?.data?.isOccupied && (
+                                                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                                    <p className="text-[9px] text-emerald-700 dark:text-emerald-400 font-black uppercase tracking-wider">Item Currently Occupied - Inquire for Later</p>
                                                 </div>
                                             )}
-                                            <button
-                                                onClick={() => handleActionSubmit('offer')}
-                                                disabled={submittingAction || !actionPrice || (offerType === 'Rent' && !rentDuration)}
-                                                className={`px-6 py-2.5 rounded-2xl text-[10px] w-full sm:w-auto font-black uppercase tracking-widest transition-all ${
-                                                    (!actionPrice || submittingAction || (offerType === 'Rent' && !rentDuration)) ? 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500' : 'bg-indigo-600 text-white'
-                                                }`}
-                                            >
-                                                {submittingAction ? '...' : (referencingItem?.type === 'product' ? 'Send Offer' : 'Send Req')}
-                                            </button>
+                                            {referencingItem?.type === 'product' && (
+                                                <div className="flex gap-2 items-center justify-center p-1.5 bg-gray-100 dark:bg-gray-800 rounded-full w-max mx-auto shadow-inner border border-gray-200 dark:border-gray-700 mb-2">
+                                                    {prodData?.forSell !== false && (
+                                                        <button 
+                                                           onClick={(e) => { e.preventDefault(); setOfferType('Buy'); setActionPrice(''); }} 
+                                                           className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all ${offerType === 'Buy' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>
+                                                           Buy Offer
+                                                        </button>
+                                                    )}
+                                                    {prodData?.forRent && (
+                                                        <button 
+                                                           onClick={(e) => { e.preventDefault(); setOfferType('Rent'); setActionPrice(''); }} 
+                                                           className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all ${offerType === 'Rent' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>
+                                                           Rent Offer
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                                {[
+                                                    { label: 'Listed', val: Math.round((offerType === 'Buy' || referencingItem?.type === 'service') ? (prodData?.price || 0) : (prodData?.rentPrice || 0)) },
+                                                    { label: '-5%', val: Math.round(((offerType === 'Buy' || referencingItem?.type === 'service') ? (prodData?.price || 0) : (prodData?.rentPrice || 0)) * 0.95) },
+                                                    { label: '-10%', val: Math.round(((offerType === 'Buy' || referencingItem?.type === 'service') ? (prodData?.price || 0) : (prodData?.rentPrice || 0)) * 0.90) }
+                                                ].map((item) => (
+                                                    <button
+                                                        key={item.label}
+                                                        type="button"
+                                                        onClick={() => { setActionPrice(item.val.toString()); }}
+                                                        className="whitespace-nowrap px-4 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 text-[10px] sm:text-xs font-bold border border-emerald-100"
+                                                    >
+                                                        {item.label}: ₹{item.val.toLocaleString()}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+                                                <div className="flex-1 relative flex items-center w-full">
+                                                    <div className="absolute left-4 text-sm font-bold text-gray-400">₹</div>
+                                                    <input
+                                                        type="number"
+                                                        value={actionPrice}
+                                                        onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
+                                                        onChange={e => { setActionPrice(e.target.value.replace(/\D/g, '')); }}
+                                                        placeholder={offerType === 'Rent' ? 'Rent Price...' : 'Enter amount...'}
+                                                        className="w-full border border-gray-200 dark:border-gray-700 rounded-2xl pl-10 pr-4 py-2.5 text-sm focus:outline-none dark:bg-gray-800 dark:text-white"
+                                                    />
+                                                </div>
+                                                {offerType === 'Rent' && (
+                                                    <div className="flex items-center gap-1 w-full sm:w-auto">
+                                                        <input 
+                                                            type="number" 
+                                                            value={rentDuration} 
+                                                            onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
+                                                            onChange={e => setRentDuration(e.target.value.replace(/\D/g, ''))} 
+                                                            placeholder="Qty"
+                                                            className="w-16 border border-gray-200 dark:border-gray-700 rounded-2xl px-2 py-2.5 text-sm outline-none dark:bg-gray-800 dark:text-white"
+                                                        />
+                                                        <select 
+                                                            value={rentUnit} 
+                                                            onChange={e => setRentUnit(e.target.value)}
+                                                            className="border border-gray-200 dark:border-gray-700 rounded-2xl px-2 py-2.5 text-sm outline-none dark:bg-gray-800 font-bold text-gray-600 dark:text-gray-300"
+                                                        >
+                                                            <option value="hour">Hours</option>
+                                                            <option value="day">Days</option>
+                                                            <option value="week">Weeks</option>
+                                                            <option value="month">Months</option>
+                                                            <option value="year">Years</option>
+                                                        </select>
+                                                    </div>
+                                                )}
+                                                <button
+                                                    onClick={() => handleActionSubmit('offer')}
+                                                    disabled={submittingAction || !actionPrice || (offerType === 'Rent' && !rentDuration)}
+                                                    className={`px-6 py-2.5 rounded-2xl text-[10px] w-full sm:w-auto font-black uppercase tracking-widest transition-all ${
+                                                        (!actionPrice || submittingAction || (offerType === 'Rent' && !rentDuration)) ? 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500' : 'bg-indigo-600 text-white'
+                                                    }`}
+                                                >
+                                                    {submittingAction ? '...' : (referencingItem?.type === 'product' ? 'Send Offer' : 'Send Req')}
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-dashed border-emerald-200/50">
-                                        <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest text-center">Deal Scheduled</p>
-                                        <p className="text-[9px] text-emerald-600/70 mt-1 text-center font-bold">Coordination in progress. Check orders for details.</p>
-                                    </div>
-                                )
-                            })()}
-                        </div>
+                                    );
+                                })()}
+                            </div>
+                        )
                     )}
                 </div>
             </div>
@@ -1240,6 +1417,15 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                         setReviewOrder(null);
                         if (referencingItem) fetchItemData(referencingItem.type, referencingItem.id);
                     }} 
+                />
+            )}
+
+            {isReportModalOpen && (
+                <ReportModal
+                    targetUserId={userId}
+                    itemType={reportMode === 'item' ? (referencingItem?.type || null) : null}
+                    itemId={reportMode === 'item' ? referencingItem?.id : null}
+                    onClose={() => setIsReportModalOpen(false)}
                 />
             )}
         </>

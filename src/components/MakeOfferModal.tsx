@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
 
 interface MakeOfferModalProps {
   productId?: string;
@@ -17,8 +18,10 @@ export default function MakeOfferModal({
   const [offeredPrice, setOfferedPrice] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
-
   const [error, setError] = useState('');
+
+  const { data: siteConfig } = useSWR('/api/site-config');
+  const maxChars = siteConfig?.maxOfferMessageChars || 300;
 
   const discount = offeredPrice
     ? Math.round(((originalPrice - Number(offeredPrice)) / originalPrice) * 100)
@@ -84,10 +87,14 @@ export default function MakeOfferModal({
               </p>
             )}
 
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Message to Seller <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Message to Seller <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
+              <span className={`text-[10px] font-bold ${message.length >= (maxChars - 20) ? 'text-red-500' : 'text-gray-400'}`}>{message.length}/{maxChars}</span>
+            </div>
             <textarea
               className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-4 dark:bg-gray-700 dark:text-white"
               rows={2}
+              maxLength={maxChars}
               placeholder="Reason for your offer, condition query, etc."
               value={message}
               onChange={e => setMessage(e.target.value)}

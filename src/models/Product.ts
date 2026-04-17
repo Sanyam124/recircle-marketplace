@@ -15,7 +15,16 @@ export interface IProduct extends Document {
     status: 'Available' | 'Sold' | 'Reserved' | 'Inactive' | 'Rented';
     community?: mongoose.Types.ObjectId;
     visibility: 'Public' | 'Community';
-    location?: { pincode?: string; city?: string; state?: string };
+    location?: { 
+        pincode?: string; 
+        city?: string; 
+        state?: string;
+        coordinates?: number[]; // [lng, lat]
+        isPrecise?: boolean;
+        hostel?: string;
+        room?: number;
+        bed?: number;
+    };
     createdAt: Date;
     updatedAt: Date;
 }
@@ -48,7 +57,12 @@ const ProductSchema: Schema<IProduct> = new Schema(
         location: {
             pincode: { type: String, trim: true },
             city: { type: String, trim: true },
-            state: { type: String, trim: true }
+            state: { type: String, trim: true },
+            coordinates: { type: [Number], index: '2dsphere' }, // [longitude, latitude]
+            isPrecise: { type: Boolean, default: true },
+            hostel: { type: String, trim: true },
+            room: { type: Number, min: 1, max: 1000 },
+            bed: { type: Number, min: 1, max: 19 }
         }
     },
     { timestamps: true }

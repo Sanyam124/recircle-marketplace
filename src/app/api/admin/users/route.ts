@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
         // Batch-count listings per user
         const userIds = users.map((u: any) => u._id);
 
-        const [productCounts, serviceCounts] = await Promise.all([
+        const [productCounts, serviceCounts, reportCounts] = await Promise.all([
             Product.aggregate([
                 { $match: { seller: { $in: userIds } } },
                 { $group: { _id: '$seller', count: { $sum: 1 } } }
@@ -73,16 +73,23 @@ export async function GET(req: NextRequest) {
             Service.aggregate([
                 { $match: { provider: { $in: userIds } } },
                 { $group: { _id: '$provider', count: { $sum: 1 } } }
+            ]),
+            Report.aggregate([
+                { $match: { targetUser: { $in: userIds }, status: { $in: ['Pending', 'Reviewed'] } } },
+                { $group: { _id: { target: '$targetUser', reporter: '$reporter' } } },
+                { $group: { _id: '$_id.target', count: { $sum: 1 } } }
             ])
         ]);
 
         const pMap = Object.fromEntries(productCounts.map((p: any) => [p._id.toString(), p.count]));
         const sMap = Object.fromEntries(serviceCounts.map((s: any) => [s._id.toString(), s.count]));
+        const rMap = Object.fromEntries(reportCounts.map((r: any) => [r._id.toString(), r.count]));
 
         const usersWithCounts = users.map((u: any) => ({
             ...u,
             productCount: pMap[u._id.toString()] || 0,
             serviceCount: sMap[u._id.toString()] || 0,
+            reportCount: rMap[u._id.toString()] || 0,
         }));
 
         return NextResponse.json({
@@ -149,12 +156,22 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { userId, banDays, sendEmail } = await req.json();
+        const { userId, banDays, sendEmail, action } = await req.json();
         if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
 
         await connectToDatabase();
         const user = await User.findById(userId);
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+        // UNBAN LOGIC
+        if (action === 'unban') {
+            user.status = 'Active'; // Reset to verified/active equivalent structure
+            user.bannedUntil = undefined;
+            // Also enforce removing active suspensions from the document level if required
+            user.bannedUntil = null as any; 
+            await user.save();
+            return NextResponse.json({ success: true }, { status: 200 });
+        }
 
         const days = parseInt(banDays) || 7;
         const bannedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import useSWR from 'swr';
 
 const REASONS = [
   'Spam or misleading',
@@ -25,6 +26,9 @@ export default function ReportModal({ targetUserId, itemType, itemId, onClose }:
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+
+  const { data: siteConfig } = useSWR('/api/site-config');
+  const maxChars = siteConfig?.maxReportOtherChars || 500;
 
   const handleSubmit = async () => {
     const finalReason = reason === 'Other' ? customReason.trim() : reason;
@@ -95,13 +99,25 @@ export default function ReportModal({ targetUserId, itemType, itemId, onClose }:
             </div>
 
             {reason === 'Other' && (
-              <textarea
-                className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-4 dark:bg-gray-700 dark:text-white"
-                rows={3}
-                placeholder="Describe the issue..."
-                value={customReason}
-                onChange={e => setCustomReason(e.target.value)}
-              />
+              <div className="mb-4">
+                <textarea
+                  className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:text-white transition-all"
+                  rows={4}
+                  maxLength={maxChars}
+                  placeholder={`Describe the issue in detail (max ${maxChars} characters)...`}
+                  value={customReason}
+                  onChange={e => {
+                    if (e.target.value.length <= maxChars) {
+                      setCustomReason(e.target.value);
+                    }
+                  }}
+                />
+                <div className="flex justify-end mt-1">
+                  <span className={`text-[10px] font-bold ${customReason.length >= (maxChars - 50) ? 'text-red-500' : 'text-gray-400'}`}>
+                    {customReason.length} / {maxChars}
+                  </span>
+                </div>
+              </div>
             )}
 
             {error && <p className="text-sm text-red-500 dark:text-red-400 mb-3">{error}</p>}

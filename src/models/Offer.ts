@@ -42,6 +42,9 @@ const OfferSchema: Schema<IOffer> = new Schema(
 // Optimization: Optimize fetching pending offers for a seller
 OfferSchema.index({ seller: 1, status: 1, createdAt: -1 });
 
+// TTL Index: Auto-delete offers after 30 days to match chat message retention
+OfferSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
+
 if (mongoose.models.Offer) {
     const currentSchema = mongoose.models.Offer.schema;
     if (!currentSchema.path('offerType')) {
