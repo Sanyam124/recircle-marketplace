@@ -1,12 +1,117 @@
 import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-const transporter = nodemailer.createTransport({
+// Primary Transporter (Gmail)
+const transporter1 = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.SMTP_EMAIL,
-    pass: process.env.SMTP_PASSWORD,  // Use a Gmail App Password, NOT your real password
+    pass: process.env.SMTP_PASSWORD,
   },
 });
+
+// Secondary Transporter (Brevo / Sendinblue)
+const transporter2 = process.env.SMTP_EMAIL_2 ? nodemailer.createTransport({
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_EMAIL_2,
+    pass: process.env.SMTP_PASSWORD_2, // This will be your generated Brevo API/SMTP Key
+  },
+}) : null;
+
+// Tertiary Transporter (Resend)
+const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+import RequestLog from '@/models/RequestLog';
+
+async function sendMailWithActive(options: any) {
+  const SiteSettings = (await import('@/models/SiteSettings')).default;
+  const settings = await SiteSettings.getSingleton();
+  
+  let activeSmtp: number;
+  if (settings.activeSmtpIndex === 3 && resendClient) {
+    activeSmtp = 3;
+  } else if (settings.activeSmtpIndex === 2 && transporter2) {
+    activeSmtp = 2;
+  } else {
+    activeSmtp = 1;
+  }
+  
+  // Always use the verified primary email address (SMTP_EMAIL) for the 'from:' field
+  const fromEmail = process.env.SMTP_EMAIL;
+  
+  console.log(`[MAIL] Sending via SMTP ${activeSmtp} (${activeSmtp === 3 ? 'Resend' : activeSmtp === 2 ? 'Brevo' : 'Gmail'}) (From: ${fromEmail})...`);
+  
+  let result;
+  
+  if (activeSmtp === 3) {
+    // Send via Resend API
+    const resendFrom = process.env.RESEND_FROM_EMAIL || `ReCircle <${fromEmail}>`;
+    try {
+        const { data, error } = await resendClient!.emails.send({
+          from: resendFrom,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+        });
+
+        if (error) {
+            console.error('[MAIL] Resend API Error:', error);
+            result = { error };
+        } else {
+            console.log('[MAIL] Resend Success:', data);
+            result = { data };
+        }
+    } catch (err: any) {
+        console.error('[MAIL] Resend Exception:', err.message);
+        result = { error: err };
+    }
+  } else {
+    // Send via Nodemailer (Gmail or Brevo)
+    const transporterToUse = activeSmtp === 2 ? transporter2 : transporter1;
+    result = await transporterToUse!.sendMail({
+      ...options,
+      from: `"ReCircle" <${fromEmail}>`
+    });
+  }
+
+  // Log exactly which SMTP was used for analytics viewing
+  try {
+      const now = new Date();
+      let log = await RequestLog.findOne({ ip: 'global-system', path: `smtp-${activeSmtp}-usage` });
+      if (!log) {
+          await RequestLog.create({ ip: 'global-system', path: `smtp-${activeSmtp}-usage`, count: 1, lastRequest: now });
+      } else {
+          // If in new 24h window, reset, else increment
+          if (now.getTime() - new Date(log.lastRequest).getTime() > 24 * 60 * 60 * 1000) {
+              log.count = 1;
+          } else {
+              log.count += 1;
+          }
+          log.lastRequest = now;
+          await log.save();
+      }
+      
+      // Permanent historical log for graphs
+      try {
+          const SmtpUsage = (await import('@/models/SmtpUsage')).default;
+          const dateId = now.toISOString().split('T')[0];
+          const incField = activeSmtp === 1 ? 'smtp1' : activeSmtp === 2 ? 'smtp2' : 'smtp3';
+          await SmtpUsage.findOneAndUpdate(
+              { dateId },
+              { $inc: { [incField]: 1 } },
+              { upsert: true }
+          );
+      } catch(err) {}
+
+  } catch (logErr) {
+      console.error('[MAIL] Failed to log SMTP analytics', logErr);
+  }
+
+  return result;
+}
 
 interface BanEmailOptions {
   to: string;
@@ -52,8 +157,7 @@ export async function sendBanNotification({ to, userName, reason, itemContext, b
     </div>
   `;
 
-  await transporter.sendMail({
-    from: `"ReCircle" <${process.env.SMTP_EMAIL}>`,
+  await sendMailWithActive({
     to,
     subject: `Account Suspended for ${banDays} day${banDays > 1 ? 's' : ''} — ReCircle`,
     html,
@@ -79,8 +183,7 @@ export async function sendOtpEmail(to: string, otp: string) {
     </div>
   `;
 
-  await transporter.sendMail({
-    from: `"ReCircle" <${process.env.SMTP_EMAIL}>`,
+  await sendMailWithActive({
     to,
     subject: `${otp} is your ReCircle verification code`,
     html,
