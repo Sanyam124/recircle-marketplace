@@ -75,13 +75,34 @@ export default function Home() {
         <div className="py-20 sm:py-32 lg:pb-40 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mx-auto max-w-4xl text-center">
-              <h1 className="text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-800 to-indigo-900 dark:from-white dark:via-gray-100 dark:to-indigo-300 sm:text-7xl transition-colors leading-[1.1] pb-2 drop-shadow-sm">
-                The Student's Marketplace.
-                <span className="block mt-3 text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">Buy. Sell. Rent. Freelance.</span>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                 <span className="relative flex h-2 w-2">
+                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                   <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600 dark:bg-indigo-400"></span>
+                 </span>
+                 <span className="text-[11px] font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-widest">The #1 Campus Hub</span>
+              </div>
+              
+              <h1 className="text-5xl sm:text-7xl lg:text-[5.5rem] font-black tracking-tighter text-gray-900 dark:text-white leading-[1.05] drop-shadow-sm mb-6">
+                The Student's <br className="hidden sm:block" />
+                <span className="relative inline-block mt-2 sm:mt-0">
+                   <span className="absolute -inset-2 rounded-full bg-indigo-500/20 blur-2xl"></span>
+                   <span className="relative text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">Marketplace.</span>
+                </span>
               </h1>
-              <p className="mt-8 text-lg sm:text-xl leading-8 text-gray-600 dark:text-gray-300 transition-colors max-w-2xl mx-auto font-medium">
-                ReCircle is the open campus platform for students to buy, sell, rent essentials, and offer freelance skills — all within verified communities. 
-                Keep 100% of your earnings with zero platform fees.
+              
+              <div className="mb-10 flex flex-wrap justify-center items-center gap-2 sm:gap-4 font-black tracking-widest uppercase text-[10px] sm:text-sm text-gray-500 dark:text-gray-400">
+                  <span className="px-5 py-2.5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-transform cursor-default">Buy</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                  <span className="px-5 py-2.5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-transform cursor-default">Sell</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                  <span className="px-5 py-2.5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-transform cursor-default">Rent</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                  <span className="px-5 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl shadow-sm border border-indigo-100 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-400 hover:-translate-y-1 transition-transform cursor-default">Freelance</span>
+              </div>
+              
+              <p className="text-lg sm:text-xl leading-relaxed text-gray-600 dark:text-gray-300 max-w-2xl mx-auto font-medium">
+                ReCircle is the open campus platform for students to exchange goods and skills within verified communities. Keep 100% of your earnings.
               </p>
               
               <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
@@ -168,7 +189,7 @@ export default function Home() {
                   Campus Circles
                 </h2>
                 <p className="text-indigo-100 text-base sm:text-lg leading-relaxed mb-8">
-                  Join your college&apos;s verified community to unlock exclusive, campus-only listings. Get auto-verified instantly if your email matches your university&apos;s domain — or request approval from a campus verifier. Trade within a trusted network and filter right down to your hostel building.
+                  Join your community's verified circle to unlock exclusive, campus or workplace-only listings. Get auto-verified instantly if your email matches your domain — or request approval from a verifier. Trade within a trusted network and filter right down to your hostel/building.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
@@ -344,7 +365,7 @@ export default function Home() {
                         <div className="group relative bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm transition-all hover:-translate-y-2 hover:shadow-2xl rounded-3xl p-8 border border-gray-100 dark:border-gray-700">
                             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-2xl font-bold text-white shadow-lg mb-6 ring-8 ring-indigo-50 dark:ring-indigo-900/30 group-hover:bg-indigo-500 transition-colors">1</div>
                             <h3 className="text-lg font-bold mb-3 text-gray-900 dark:text-white">Sign Up &amp; Verify</h3>
-                            <p className="text-gray-600 dark:text-gray-400 text-sm">Sign Up with your College/Community Email. Join your Campus Circle for exclusive access to verified, local listings.</p>
+                            <p className="text-gray-600 dark:text-gray-400 text-sm">Sign Up with your College/Organization Email. Join your Circle for exclusive access to verified, local listings.</p>
                         </div>
                         <div className="group relative bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm transition-all hover:-translate-y-2 hover:shadow-2xl rounded-3xl p-8 border border-gray-100 dark:border-gray-700">
                             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-2xl font-bold text-white shadow-lg mb-6 ring-8 ring-indigo-50 dark:ring-indigo-900/30 group-hover:bg-indigo-500 transition-colors">2</div>

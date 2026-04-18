@@ -76,15 +76,18 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
         
         {/* Lightbox Modal for Single Image */}
         {isLightboxOpen && (
-          <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center backdrop-blur-sm animate-in fade-in duration-200">
+          <div 
+             className="fixed inset-0 z-[999] bg-black/95 flex items-center justify-center backdrop-blur-sm animate-in fade-in duration-200"
+             onClick={() => setIsLightboxOpen(false)}
+          >
             <button 
-                onClick={() => setIsLightboxOpen(false)}
-                className="absolute top-4 right-4 sm:top-6 sm:right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-[105]"
+                onClick={(e) => { e.stopPropagation(); setIsLightboxOpen(false); }}
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors z-[1000]"
                 aria-label="Close fullscreen"
             >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
-            <div className="relative w-[95vw] h-[95vh] max-w-6xl max-h-6xl">
+            <div className="relative w-[95vw] h-[95vh] max-w-6xl max-h-6xl" onClick={(e) => e.stopPropagation()}>
                 <Image src={images[0]} alt={alt} fill className="object-contain" sizes="100vw" priority />
             </div>
           </div>
@@ -114,7 +117,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
 
         {/* Prev button */}
         <button
-          onClick={prev}
+          onClick={(e) => { e.stopPropagation(); prev(); }}
           className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
           aria-label="Previous image"
         >
@@ -125,7 +128,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
 
         {/* Next button */}
         <button
-          onClick={next}
+          onClick={(e) => { e.stopPropagation(); next(); }}
           className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
           aria-label="Next image"
         >
@@ -173,11 +176,14 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
 
       {/* Lightbox Modal for Multiple Images */}
       {isLightboxOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center backdrop-blur-sm animate-in fade-in duration-200">
+        <div 
+           className="fixed inset-0 z-[999] bg-black/95 flex flex-col items-center justify-center backdrop-blur-sm animate-in fade-in duration-200"
+           onClick={() => setIsLightboxOpen(false)}
+        >
           {/* Close button */}
           <button 
-              onClick={() => setIsLightboxOpen(false)}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-[105]"
+              onClick={(e) => { e.stopPropagation(); setIsLightboxOpen(false); }}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors z-[1000]"
               aria-label="Close fullscreen"
           >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -188,6 +194,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
               className="relative w-full h-full flex items-center justify-center p-4 sm:p-12"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
+              onClick={(e) => e.stopPropagation()}
           >
              <div className="relative w-full h-full max-w-6xl">
                  <Image src={images[current]} alt={`${alt} - Fullscreen ${current + 1}`} fill className="object-contain" sizes="100vw" priority />
@@ -196,7 +203,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
              {/* Navigation Overlay Buttons */}
              <button
                 onClick={(e) => { e.stopPropagation(); prev(); }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-colors z-[105]"
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-colors z-[1000]"
                 aria-label="Previous image"
               >
                 <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
@@ -204,7 +211,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
 
               <button
                 onClick={(e) => { e.stopPropagation(); next(); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-colors z-[105]"
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-colors z-[1000]"
                 aria-label="Next image"
               >
                 <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
@@ -212,7 +219,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
           </div>
 
           {/* Counter bottom */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white px-4 py-1.5 rounded-full text-sm font-medium tracking-wide">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white px-4 py-1.5 rounded-full text-sm font-medium tracking-wide z-[1000]">
              {current + 1} / {images.length}
           </div>
         </div>

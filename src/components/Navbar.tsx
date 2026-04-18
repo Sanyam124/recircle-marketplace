@@ -7,7 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import NotificationBell from './NotificationBell';
 import Community from '@/models/Community'; // Register for populate
-import { Skeleton } from './Skeletons';
+import Skeleton from './Skeletons';
 import { pusherClient } from '@/lib/pusherClient';
 import useSWR from 'swr';
 
@@ -39,7 +39,7 @@ export default function Navbar() {
     if (user) {
       // Pusher real-time subscription for immediate UI updates
       const userId = user.id || (user as any)._id;
-      const channelName = `user-${userId}`;
+      const channelName = `private-user-${userId}`;
       const channel = pusherClient.subscribe(channelName);
       
       channel.bind('new-message', () => {
@@ -250,14 +250,7 @@ export default function Navbar() {
       {/* Mobile menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shadow-xl animate-in slide-in-from-top-4 duration-200 w-full max-w-[100vw] overflow-x-hidden">
-          <div className="pt-2 pb-3 space-y-1 px-4">
-            <Link href="/explore" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-              <span className="text-xl">🔍</span> Explore
-            </Link>
-            <Link href="/board" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
-              <span className="text-xl">🏛️</span> Circle Board
-            </Link>
-          </div>
+
           
           <div className="pt-2 pb-2 border-t border-gray-100 dark:border-gray-800 space-y-1 px-4">
              <Link href="/products/create" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
@@ -289,25 +282,10 @@ export default function Navbar() {
                     </div>
                 </Link>
 
-                <div className="grid grid-cols-3 gap-1 mt-4">
-                    <Link href="/chat" onClick={() => setIsMobileMenuOpen(false)} className="flex flex-col items-center justify-center p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
-                        <div className="relative mb-1">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
-                          {messageUnreadCount > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-black text-white border-2 border-white dark:border-gray-900 animate-in zoom-in duration-300 shadow-sm">
-                              {messageUnreadCount > 9 ? '9+' : messageUnreadCount}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[10px] uppercase font-bold tracking-wider">Messages</span>
-                    </Link>
-                    <Link href="/wishlist" onClick={() => setIsMobileMenuOpen(false)} className="flex flex-col items-center justify-center p-3 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                        <span className="text-[10px] uppercase font-bold tracking-wider">Wishlist</span>
-                    </Link>
-                    <Link href="/orders" onClick={() => setIsMobileMenuOpen(false)} className="flex flex-col items-center justify-center p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                        <span className="text-[10px] uppercase font-bold tracking-wider">Orders</span>
+                <div className="grid grid-cols-1 gap-1 mt-4">
+                    <Link href="/wishlist" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 active:scale-[0.98] transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                        <span className="text-sm font-bold tracking-wider">Wishlist</span>
                     </Link>
                 </div>
 

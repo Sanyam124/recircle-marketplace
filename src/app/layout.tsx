@@ -5,6 +5,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SWRProvider } from "@/components/SWRProvider";
 import PushNotificationManager from "@/components/PushNotificationManager";
@@ -85,11 +86,14 @@ export default function RootLayout({
               <PushNotificationManager />
               <CelebrationContainer />
               <MaintenanceGuard>
-                <Navbar />
-                <main className="min-h-screen pt-16 flex flex-col bg-[#f5f6f9] dark:bg-gray-900 transition-colors duration-500">
-                  {children}
-                </main>
-                <Footer />
+                <div className="flex flex-col bg-[#f5f6f9] dark:bg-gray-900 transition-colors duration-500">
+                  <Navbar />
+                  <main className="pt-16 pb-24 md:pb-0">
+                    {children}
+                  </main>
+                  <Footer />
+                  <MobileBottomNav />
+                </div>
               </MaintenanceGuard>
             </AuthProvider>
           </SWRProvider>

@@ -8,12 +8,19 @@ import { siteConfig } from '@/lib/config';
 export default function Footer() {
   const pathname = usePathname();
   
-  // Hide footer on full-height pages
-  if (pathname.startsWith('/chat')) return null;
+  // 📍 Define pages where the footer is treated as a professional necessity (Landing/Legal)
+  const staticPages = ['/', '/about', '/contact', '/privacy', '/terms', '/disclaimer'];
+  const isStaticPage = staticPages.includes(pathname);
+
+  // 🚫 Completely hide footer on interactive app hulls
+  if (pathname.startsWith('/chat') || pathname.startsWith('/board')) return null;
+
+  // 📱 For App sections (Explore, Profile, Settings etc), hide on mobile for a native-app feel
+  const visibilityClass = isStaticPage ? "block" : "hidden sm:block";
 
   return (
-    <footer className="bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+    <footer className={`${visibilityClass} bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 transition-colors`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-28 sm:pb-14">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* Brand */}
           <div className="col-span-2 lg:col-span-1">
