@@ -26,8 +26,17 @@ export async function POST(req: NextRequest) {
         const { email: rawEmail, name, picture, sub: googleId } = payload;
         const email = rawEmail.toLowerCase();
 
+        // --- BLACKLIST ENFORCEMENT ---
+        const Blacklist = (await import('@/models/Blacklist')).default;
+        const isBlacklisted = await Blacklist.findOne({ email });
+        if (isBlacklisted) {
+            return NextResponse.json({ 
+                error: "Access Restricted: This account has been permanently suspended for violating community safety guidelines. If you believe this is an error, please contact ReCircle Support." 
+            }, { status: 403 });
+        }
+
         // Search for user by either email OR googleId
-        let user = await User.findOne({
+        const user = await User.findOne({
             $or: [{ email }, { googleId }]
         }).select('+password');
 
@@ -53,9 +62,16 @@ export async function POST(req: NextRequest) {
             } else {
                 const expiryMsg = user.bannedUntil 
                     ? ` Your ban expires on ${new Date(user.bannedUntil).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}.`
-                    : '';
+                    : ' Access will remain restricted until moderation is complete.';
+                
+                const isShadowBan = user.bio === 'Account self-deactivated while under moderation review.'; // Detected from self-deletion logic
+
                 return NextResponse.json(
-                    { error: `Your account has been banned.${expiryMsg} To appeal, contact ${siteConfig.supportEmail}` },
+                    { 
+                        error: isShadowBan 
+                            ? "Account Frozen: Your profile is currently under safety review and cannot be re-activated at this time. Please contact ReCircle Support."
+                            : `Your account has been banned.${expiryMsg} To appeal, contact ${siteConfig.supportEmail}` 
+                    },
                     { status: 403 }
                 );
             }

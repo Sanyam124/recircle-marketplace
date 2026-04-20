@@ -26,7 +26,10 @@ export async function POST(req: NextRequest) {
         const rl = await checkRateLimit(ip, 'otp-send', siteConfigData.ipLimitOtpSendPerHour, 60 * 60 * 1000);
         if (!rl.success) {
             return NextResponse.json(
-                { error: 'Too many OTP requests from this connection. Please try again in an hour.' },
+                { 
+                    error: 'Too many OTP requests. Please try again later.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 30
+                },
                 { status: 429 }
             );
         }
@@ -52,7 +55,10 @@ export async function POST(req: NextRequest) {
         const emailRL = await checkRateLimit(target, 'otp-send-email', siteConfigData.maxOtpPerEmailPerHour, 60 * 60 * 1000);
         if (!emailRL.success) {
             return NextResponse.json(
-                { error: 'Too many OTPs requested for this email. Please try again in an hour.' },
+                { 
+                    error: 'Too many OTPs requested for this email. Please try again in an hour.',
+                    retryAfter: emailRL.resetTime ? Math.ceil((emailRL.resetTime.getTime() - Date.now()) / 1000) : 3600
+                },
                 { status: 429 }
             );
         }
@@ -86,7 +92,10 @@ export async function POST(req: NextRequest) {
             if (timeSinceLastSend < cooldownMs) {
                 const waitTime = Math.ceil((cooldownMs - timeSinceLastSend) / 1000);
                 return NextResponse.json(
-                    { error: `Please wait ${waitTime} seconds before requesting another OTP.` },
+                    { 
+                        error: `Please wait ${waitTime} seconds before requesting another OTP.`,
+                        retryAfter: waitTime
+                    },
                     { status: 429 }
                 );
             }
@@ -100,7 +109,7 @@ export async function POST(req: NextRequest) {
         // 3. Save to Otp Collection (Upsert)
         await Otp.findOneAndUpdate(
             { target, type },
-            { otp: otpHash, expiresAt },
+            { otp: otpHash, expiresAt, purpose: purpose || 'register' },
             { upsert: true, new: true }
         );
 
@@ -112,12 +121,17 @@ export async function POST(req: NextRequest) {
             if (siteConfig.otpEmailEnabled) {
                 const { sendOtpEmail } = await import('@/lib/mailer');
                 await sendOtpEmail(target, otp);
-            } else {
+            } else if (process.env.NODE_ENV !== 'production') {
                 console.log(`DEV OTP for ${target} (Email Disabled): ${otp}`);
             }
         } catch (emailError) {
-            console.error('Email send failed, falling back to console:', emailError);
-            console.log(`DEV OTP for ${target}: ${otp}`);
+            if (process.env.NODE_ENV !== 'production') {
+                console.error('Email send failed, falling back to console:', emailError);
+                console.log(`DEV OTP for ${target}: ${otp}`);
+            } else {
+                console.error('Email send failed');
+                throw emailError;
+            }
         }
 
         return NextResponse.json({ message: 'OTP sent successfully' }, { status: 200 });

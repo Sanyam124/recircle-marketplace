@@ -71,7 +71,7 @@ type TabKey = 'all' | 'products' | 'services';
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
-  const { user: authUser, refreshUser } = useAuth();
+  const { user: authUser, refreshUser, authFetch } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isFirstRender = useRef(true);
@@ -85,6 +85,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [productPage, setProductPage] = useState(pPageParam);
   const [servicePage, setServicePage] = useState(sPageParam);
   const [allPage, setAllPage] = useState(aPageParam);
+  const [productStatus, setProductStatus] = useState<'all' | 'available' | 'sold'>('all');
   const [reportOpen, setReportOpen] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blocking, setBlocking] = useState(false);
@@ -112,10 +113,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     if (productPage > 1) params.set('pPage', productPage.toString());
     if (servicePage > 1) params.set('sPage', servicePage.toString());
     if (allPage > 1) params.set('aPage', allPage.toString());
+    if (productStatus !== 'all' && activeTab === 'products') params.set('productStatus', productStatus);
     const queryString = params.toString();
     const url = `/profile/${id}${queryString ? `?${queryString}` : ''}`;
-    router.push(url, { scroll: false });
-  }, [activeTab, productPage, servicePage, allPage, id]);
+    // Use history.replaceState to update URL silently without triggering Next.js scroll-to-top logic
+    window.history.replaceState({ ...window.history.state, as: url, url }, '', url);
+  }, [activeTab, productPage, servicePage, allPage, id, productStatus]);
 
   const getQueryUrl = () => {
     const params = new URLSearchParams();
@@ -123,11 +126,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     params.append('servicePage', servicePage.toString());
     params.append('allPage', allPage.toString());
     params.append('limit', '20');
+    if (productStatus !== 'all') params.append('productStatus', productStatus);
     return `/api/profile/${id}?${params.toString()}`;
   };
 
   const fetcher = async (url: string) => {
-    const res = await fetch(url);
+    const res = await authFetch(url);
     if (!res.ok) {
        const errData = await res.json().catch(() => ({}));
        const error: any = new Error(errData.error || 'Failed to load profile');
@@ -159,14 +163,14 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     });
     if (!confirmed) return;
     try {
-      const res = await fetch(`/api/${type}/${itemId}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/${type}/${itemId}`, { method: 'DELETE' });
       if (res.ok) mutate();
     } catch { console.error('Delete failed'); }
   };
 
   const handleToggleStatus = async (itemId: string, newStatus: string, type: 'products' | 'services') => {
     try {
-      const res = await fetch(`/api/${type}/${itemId}`, { 
+      const res = await authFetch(`/api/${type}/${itemId}`, { 
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: newStatus })
@@ -179,7 +183,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     if (!authUser) return;
     try {
       setBlocking(true);
-      const res = await fetch(isBlocked ? `/api/user/block?userId=${id}` : '/api/user/block', {
+      const res = await authFetch(isBlocked ? `/api/user/block?userId=${id}` : '/api/user/block', {
         method: isBlocked ? 'DELETE' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         ...(isBlocked ? {} : { body: JSON.stringify({ targetUserId: id }) })
@@ -203,10 +207,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const allPagination = pagination?.all;
 
   return (
-    <div className="min-h-screen bg-gray-50/30 dark:bg-[#080B14] transition-colors duration-500 pb-20">
+    <div className="min-h-screen w-full overflow-x-hidden bg-gray-50/30 dark:bg-[#080B14] transition-colors duration-500 pb-20">
       
       {/* 🔹 Panoramic Immersive Header */}
-      <div className="relative h-[220px] sm:h-[280px] lg:h-[320px] overflow-hidden group">
+      <div className="relative w-full h-[220px] sm:h-[280px] lg:h-[320px] overflow-hidden group">
         {/* Dynamic Background Banner */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           {user.bannerImage ? (
@@ -233,7 +237,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
       {/* Floating Profile Glass Card */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-30 -mt-36 sm:-mt-44 lg:-mt-48 pb-12">
-          <div className="p-6 md:p-10 rounded-[2.5rem] bg-white/70 dark:bg-gray-950/70 backdrop-blur-2xl border border-white/40 dark:border-white/5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.1)] transition-all duration-500 hover:shadow-indigo-500/10">
+          <div className="w-full p-6 md:p-10 rounded-[2.5rem] bg-white/70 dark:bg-gray-950/70 backdrop-blur-2xl border border-white/40 dark:border-white/5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.1)] transition-all duration-500 hover:shadow-indigo-500/10 overflow-hidden">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
             
               {/* Avatar Column */}
@@ -246,7 +250,13 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                        user.name?.charAt(0).toUpperCase()
                      )}
                    </div>
-                   <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-emerald-500 border-4 border-white dark:border-gray-900 rounded-full shadow-lg z-20"></div>
+                   {user.isVerified && (
+                     <div className="absolute -bottom-1.5 -right-1.5 h-8 w-8 bg-blue-500 border-4 border-white dark:border-gray-950 rounded-full flex items-center justify-center text-white shadow-[0_4px_15px_rgba(59,130,246,0.3)] z-20">
+                       <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                         <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                       </svg>
+                     </div>
+                   )}
                 </div>
               </div>
 
@@ -255,13 +265,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
             <div className="flex-1 text-center md:text-left pt-2 min-w-0 w-full max-w-full">
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-3">
                     <div className="flex items-center gap-2">
-                      {user.isVerified && (
-                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 shrink-0">
-                          <svg className="w-3.5 h-3.5 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      )}
                       <h1 className="text-3xl md:text-5xl font-black text-gray-950 dark:text-white tracking-tighter leading-tight break-words max-w-full drop-shadow-sm">{user.name}</h1>
                     </div>
                     <div className="flex items-center gap-2">
@@ -306,7 +309,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                        <div className="w-8 h-8 rounded-full bg-gray-100/50 dark:bg-gray-800/50 flex items-center justify-center">
                           <svg className="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                        </div>
-                       Joined {new Date(user.joinedAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                       Joined {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
                     </span>
                     {user.address && (
                       <span className="text-xs sm:text-sm font-bold text-gray-400 dark:text-gray-500 flex items-center gap-2">
@@ -379,25 +382,27 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
           </div>
         </div>
       </div>
-
       {/* 🔹 Content Tabs & Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 pb-6 border-b border-gray-100 dark:border-gray-800">
            <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-full sm:w-fit font-bold">
-              {[
-                { id: 'all', label: 'All Catalog' },
-                { id: 'products', label: 'Products' },
-                { id: 'services', label: 'Services' }
-              ].map(tab => (
-                <button 
-                  key={tab.id} 
-                  onClick={() => setActiveTab(tab.id as any)} 
-                  className={`px-6 py-2.5 rounded-lg text-xs transition-all ${activeTab === tab.id ? 'bg-white dark:bg-gray-700 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-           </div>
+               {[
+                 { id: 'all', label: 'All Catalog', count: stats?.totalAll },
+                 { id: 'products', label: 'Products', count: stats?.totalProducts },
+                 { id: 'services', label: 'Services', count: stats?.totalServices }
+               ].map(tab => (
+                 <button 
+                   key={tab.id} 
+                   onClick={() => setActiveTab(tab.id as any)} 
+                   className={`px-5 sm:px-6 py-2.5 rounded-lg text-xs transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-white dark:bg-gray-700 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                 >
+                   <span>{tab.label}</span>
+                   <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500' : 'bg-gray-200 dark:bg-gray-900 text-gray-500'}`}>
+                      {tab.count || 0}
+                   </span>
+                 </button>
+               ))}
+            </div>
 
            <div className="flex items-center gap-3">
               {/* Mobile Grid Toggle */}
@@ -417,22 +422,42 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         </div>
 
         <div id="listings-top" className={`transition-all duration-300 ${sectionLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-           {activeTab === 'all' && (
+            {activeTab === 'all' && (
               <>
                 {allItems.length === 0 ? <p className="text-center py-20 text-gray-400 font-medium">No current listings from this user.</p> : (
                   <div className={`grid gap-5 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${cols === 2 ? 'sm:grid-cols-2' : cols === 3 ? 'sm:grid-cols-3' : cols === 4 ? 'sm:grid-cols-4' : 'sm:grid-cols-5'}`}>
-                    {allItems.map((item: any) => (item.type === 'product' ? <ProductCard key={item._id} product={item} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} /> : <ServiceCard key={item._id} service={item} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} />))}
+                    {allItems.map((item: any, index: number) => (item.type === 'product' ? <ProductCard key={item._id} product={item} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} priority={index < 4} /> : <ServiceCard key={item._id} service={item} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} priority={index < 4} />))}
                   </div>
                 )}
                 <PaginationControls page={allPage} totalPages={allPagination?.totalPages || 1} onPageChange={setAllPage} scrollTargetId="listings-top" />
               </>
            )}
 
+
+           {activeTab === 'products' && (
+              <div className="mb-8 flex items-center gap-2 p-1 bg-gray-50 dark:bg-black/20 rounded-xl w-fit">
+                {[
+                  { id: 'all', label: 'All', count: stats?.totalProducts },
+                  { id: 'available', label: 'Available', count: stats?.totalProductsAvailable },
+                  { id: 'sold', label: 'Sold', count: stats?.totalProductsSold }
+                ].map(sub => (
+                  <button 
+                    key={sub.id} 
+                    onClick={() => { setProductStatus(sub.id as any); setProductPage(1); }}
+                    className={`px-4 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-tight transition-all flex items-center gap-2 ${productStatus === sub.id ? 'bg-white dark:bg-gray-800 text-indigo-600 shadow-sm border border-gray-100 dark:border-gray-700' : 'text-gray-400 hover:text-gray-500'}`}
+                  >
+                    {sub.label}
+                    <span className="opacity-60 text-[9px]">{sub.count || 0}</span>
+                  </button>
+                ))}
+              </div>
+           )}
+
            {activeTab === 'products' && (
               <>
                 {products.length === 0 ? <p className="text-center py-20 text-gray-400 font-medium">No products listed yet.</p> : (
                   <div className={`grid gap-5 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${cols === 2 ? 'sm:grid-cols-2' : cols === 3 ? 'sm:grid-cols-3' : cols === 4 ? 'sm:grid-cols-4' : 'sm:grid-cols-5'}`}>
-                    {products.map((product: any) => (<ProductCard key={product._id} product={product} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} />))}
+                    {products.map((product: any, index: number) => (<ProductCard key={product._id} product={product} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} priority={index < 4} />))}
                   </div>
                 )}
                 <PaginationControls page={productPage} totalPages={productPagination?.totalPages || 1} onPageChange={setProductPage} scrollTargetId="listings-top" />
@@ -443,7 +468,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               <>
                 {services.length === 0 ? <p className="text-center py-20 text-gray-400 font-medium">No services provided yet.</p> : (
                   <div className={`grid gap-5 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${cols === 2 ? 'sm:grid-cols-2' : cols === 3 ? 'sm:grid-cols-3' : cols === 4 ? 'sm:grid-cols-4' : 'sm:grid-cols-5'}`}>
-                    {services.map((service: any) => (<ServiceCard key={service._id} service={service} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} />))}
+                    {services.map((service: any, index: number) => (<ServiceCard key={service._id} service={service} isOwner={isOwner} onDelete={handleDelete} onToggleStatus={handleToggleStatus} priority={index < 4} />))}
                   </div>
                 )}
                 <PaginationControls page={servicePage} totalPages={servicePagination?.totalPages || 1} onPageChange={setServicePage} scrollTargetId="listings-top" />
@@ -454,7 +479,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         {/* Reviews */}
         <div id="reviews-section" className="mt-32 pt-16 border-t border-gray-100 dark:border-gray-800">
            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 tracking-tight">Community Feedback</h2>
-           <ReviewSection targetId={user.id || user._id} targetName={user.name} />
+           <ReviewSection targetId={user.id || user._id} targetName={user.name} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors" />
         </div>
       </div>
 

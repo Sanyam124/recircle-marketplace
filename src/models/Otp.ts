@@ -4,6 +4,7 @@ export interface IOtp extends Document {
     target: string; // Email or Phone
     otp: string; // Hashed OTP
     type: 'email' | 'phone';
+    purpose?: string; // e.g., 'register', 'reset'
     attempts?: number;
     lastAttemptAt?: Date;
     expiresAt: Date;
@@ -16,6 +17,7 @@ const OtpSchema: Schema<IOtp> = new Schema(
         target: { type: String, required: true },
         otp: { type: String, required: true },
         type: { type: String, enum: ['email', 'phone'], required: true },
+        purpose: { type: String, default: 'register' },
         attempts: { type: Number, default: 0 },
         lastAttemptAt: { type: Date },
         expiresAt: { type: Date, required: true }

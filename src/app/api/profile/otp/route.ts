@@ -34,14 +34,16 @@ export async function POST(req: NextRequest) {
             { upsert: true, new: true }
         );
 
-        // 4. Log to Server Terminal (Mock Send)
-        console.log('--- PHONE VERIFICATION OTP ---');
-        console.log(`User ID: ${decoded.userId}`);
-        console.log(`Phone: ${phone}`);
-        console.log(`OTP Code: ${otp}`);
-        console.log('-------------------------------');
+        // 4. Log to Server Terminal (Mock Send) - ONLY IN DEV
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('--- PHONE VERIFICATION OTP ---');
+            console.log(`User ID: ${decoded.userId}`);
+            console.log(`Phone: ${phone}`);
+            console.log(`OTP Code: ${otp}`);
+            console.log('-------------------------------');
+        }
 
-        return NextResponse.json({ message: 'OTP sent to terminal' });
+        return NextResponse.json({ message: 'OTP processed successfully' });
     } catch (error) {
         console.error('OTP Send Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

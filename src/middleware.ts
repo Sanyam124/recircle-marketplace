@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
   const method = request.method;
 
   // 1. Initial Response Object
-  let response = NextResponse.next();
+  const response = NextResponse.next();
 
   // --- CSRF Protection for state-changing API requests ---
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && pathname.startsWith('/api')) {
@@ -80,8 +80,8 @@ export async function middleware(request: NextRequest) {
 
     // --- Dynamic Settings Fetching (Cached for performance) ---
     // We store settings in memory for 10 seconds to avoid overloading the API
-    let dynamicLimitGeneral = 100;
-    let dynamicLimitAuth = 30;
+    let dynamicLimitGeneral = 200;
+    let dynamicLimitAuth = 60;
     let isMaintenance = false;
 
     try {
@@ -93,8 +93,8 @@ export async function middleware(request: NextRequest) {
         
         if (configRes.ok) {
             const configData = await configRes.json();
-            dynamicLimitGeneral = configData.apiRateLimitGeneral || 100;
-            dynamicLimitAuth = configData.apiRateLimitAuth || 30;
+            dynamicLimitGeneral = configData.apiRateLimitGeneral || 200;
+            dynamicLimitAuth = configData.apiRateLimitAuth || 60;
             isMaintenance = configData.maintenanceMode || false;
         }
     } catch (err) {
@@ -154,11 +154,6 @@ export async function middleware(request: NextRequest) {
       );
     }
     
-    // Log successful requests (Cleaner version)
-    if (pathname.startsWith('/api') && !pathname.includes('/api/upload')) {
-        console.log(`[API Request] ${method} ${pathname}`);
-    }
-
     response.headers.set('X-RateLimit-Limit', limit.toString());
     response.headers.set('X-RateLimit-Remaining', result.remaining.toString());
     response.headers.set('X-RateLimit-Reset', result.reset.toString());
@@ -174,7 +169,10 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth';
     url.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    // Prevent browser from caching this redirect (e.g. caching that a page requires login even after user logs in)
+    redirectResponse.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
+    return redirectResponse;
   }
 
   if (pathname === '/auth' && token) {

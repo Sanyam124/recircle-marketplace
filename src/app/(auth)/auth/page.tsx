@@ -179,7 +179,6 @@ export default function AuthPage() {
             if (!res.ok) throw new Error(data.error || 'Login failed');
 
             login(data.user);
-            window.location.href = redirectUrl;
         } catch (err: any) {
             setError(err.message);
             setIsLoading(false);
@@ -277,7 +276,6 @@ export default function AuthPage() {
 
             setTimeout(() => {
                 login(data.user);
-                window.location.href = redirectUrl;
             }, 100);
         } catch (err: any) {
             setError(err.message);
@@ -373,8 +371,8 @@ export default function AuthPage() {
     // --- Renderers ---
 
     return (
-        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center py-4 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-950 transition-colors">
-            <div className="w-full max-w-md space-y-8 bg-white dark:bg-gray-900 p-6 sm:p-10 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-gray-800 transition-colors animate-in fade-in zoom-in-95 duration-500">
+        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center py-4 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-[#050505] transition-colors">
+            <div className="w-full max-w-md space-y-8 bg-white dark:bg-zinc-900 p-6 sm:p-10 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-zinc-800 transition-colors animate-in fade-in zoom-in-95 duration-500">
                 
                 {/* Header Phase */}
                 <div className="text-center">
@@ -385,7 +383,7 @@ export default function AuthPage() {
                          'Reset your password'}
                     </h2>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        {step === 1 && 'Sign in with your university email to get started'}
+                        {step === 1 && 'Sign in with your college/organization email to get started'}
                         {step === 2 && (userAuthProvider === 'google' ? 'Continue with your linked account' : 'Enter your password to sign in')}
                         {step === 3 && 'Please provide a few details to finalize your account setup.'}
                         {(step === 4 || step === 5 || step === 6) && 'Follow the steps to recover your access'}
@@ -408,7 +406,7 @@ export default function AuthPage() {
                                     setEmail(e.target.value.replace(/[\r\n]/g, '').trim());
                                     setError('');
                                 }}
-                                className="mt-1 block w-full rounded-2xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm px-4 py-3.5 border transition-all"
+                                className="mt-1 block w-full rounded-2xl border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm px-4 py-3.5 border transition-all"
                                 placeholder="Ex: XXXX@paruluniversity.ac.in"
                             />
                         </div>
@@ -426,15 +424,15 @@ export default function AuthPage() {
                         </button>
 
                         <div className="relative my-6">
-                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200 dark:border-gray-700" /></div>
-                            <div className="relative flex justify-center text-sm"><span className="bg-white dark:bg-gray-900 px-4 text-gray-500 dark:text-gray-400 italic">or continue with</span></div>
+                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200 dark:border-zinc-800" /></div>
+                            <div className="relative flex justify-center text-sm"><span className="bg-white dark:bg-zinc-900 px-4 text-gray-500 dark:text-gray-400 italic">or continue with</span></div>
                         </div>
 
                         <div id="googleSignInBtn" className="w-full flex justify-center"></div>
 
                         <div className="flex items-start gap-2 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 rounded-lg px-3 py-2.5 mt-5">
                             <svg className="w-4 h-4 text-indigo-500 dark:text-indigo-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            <p className="text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed"><strong>Tip:</strong> Sign in or register with your university email to get automatically verified for your campus community and unlock exclusive listings and features.</p>
+                            <p className="text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed"><strong>Tip:</strong> Sign in or register with your college/organization email to get automatically verified for your campus community and unlock exclusive listings and features.</p>
                         </div>
                     </form>
                 )}
@@ -443,7 +441,7 @@ export default function AuthPage() {
                 {/* --- Step 2: Login (Password) --- */}
                 {step === 2 && (
                     <form className="mt-8 space-y-6 animate-in slide-in-from-right-4 duration-300" onSubmit={handleLoginSubmit}>
-                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-between items-center mb-6">
+                        <div className="bg-gray-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-gray-200 dark:border-zinc-800 flex justify-between items-center mb-6">
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate mr-4">{email}</span>
                             <button type="button" onClick={() => {setStep(1); setPassword(''); setError(''); setUserAuthProvider(null);}} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 uppercase shrink-0">Edit</button>
                         </div>
@@ -472,17 +470,17 @@ export default function AuthPage() {
                                             Forgot Password?
                                         </button>
                                     </div>
-                                    <input
-                                        id="password"
-                                        type="password"
-                                        required
-                                        ref={passwordInputRef}
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border transition-colors"
-                                        placeholder="••••••••"
-                                    />
-                                </div>
+                                        <input
+                                            id="password"
+                                            type="password"
+                                            required
+                                            ref={passwordInputRef}
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="block w-full rounded-xl border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border transition-colors"
+                                            placeholder="••••••••"
+                                        />
+                                    </div>
 
                                 {error && <div className="text-red-600 dark:text-red-400 text-sm py-2 px-3 rounded-lg bg-red-50 dark:bg-red-900/20">{error}</div>}
 
@@ -510,7 +508,7 @@ export default function AuthPage() {
                 {/* --- Step 3: Registration --- */}
                 {step === 3 && (
                     <form className="mt-8 space-y-5 animate-in slide-in-from-right-4 duration-300" onSubmit={handleRegisterSubmit}>
-                        <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <div className="bg-gray-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-gray-200 dark:border-zinc-800 flex justify-between items-center">
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate mr-4">{email}</span>
                             {emailVerified ? (
                                 <span className="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-widest shrink-0">Verified ✓</span>
@@ -561,12 +559,12 @@ export default function AuthPage() {
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Password</label>
                                         <input type="password" required={!googleToken} value={password} onChange={(e) => setPassword(e.target.value)}
-                                            className="block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border" />
+                                            className="block w-full rounded-xl border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border" />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Confirm</label>
                                         <input type="password" required={!googleToken} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                                            className={`block w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border ${
+                                            className={`block w-full rounded-xl border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 border ${
                                                 confirmPassword && password === confirmPassword ? 'border-green-500' : confirmPassword ? 'border-red-400' : ''
                                             }`} />
                                     </div>

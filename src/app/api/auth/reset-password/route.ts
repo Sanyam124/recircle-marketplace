@@ -20,7 +20,10 @@ export async function POST(req: NextRequest) {
         const rl = await checkRateLimit(ip, 'reset-password', siteConfigData.ipLimitResetPasswordPerHour, 60 * 60 * 1000);
         if (!rl.success) {
             return NextResponse.json(
-                { error: 'Too many password reset attempts from this connection. Please try again later.' },
+                { 
+                    error: 'Too many password reset attempts. Please try again later.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 30
+                },
                 { status: 429 }
             );
         }
@@ -34,7 +37,7 @@ export async function POST(req: NextRequest) {
         // 1. Verify Verification Token
         try {
             const decoded = jwt.verify(verificationToken, JWT_SECRET) as any;
-            if (decoded.target !== email || decoded.type !== 'email' || !decoded.verified) {
+            if (decoded.target !== email || decoded.type !== 'email' || !decoded.verified || decoded.purpose !== 'reset') {
                 throw new Error('Invalid Reset Token');
             }
         } catch (e) {

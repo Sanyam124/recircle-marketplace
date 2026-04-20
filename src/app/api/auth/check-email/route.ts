@@ -16,7 +16,10 @@ export async function POST(req: NextRequest) {
         const rl = await checkRateLimit(ip, 'check-email', siteConfigData.ipLimitCheckEmailPerHour, 60 * 60 * 1000);
         if (!rl.success) {
             return NextResponse.json(
-                { error: 'Too many requests from this connection. Please try again later.' },
+                { 
+                    error: 'Too many requests from this connection. Please try again later.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 30
+                },
                 { status: 429 }
             );
         }

@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
         const email = rawEmail.toLowerCase();
 
         // Search for user by either email OR googleId
-        let user = await User.findOne({
+        const user = await User.findOne({
             $or: [{ email }, { googleId }]
         }).select('+password');
 

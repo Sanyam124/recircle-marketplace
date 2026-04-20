@@ -58,7 +58,7 @@ const UserSchema: Schema<IUser> = new Schema(
             minlength: 3,
             maxlength: 20,
             lowercase: true,
-            match: /^(?![0-9]+$)(?!.*\.\.)[a-z0-9_][a-z0-9._]{1,18}[a-z0-9_]$/
+            match: /^(?!.*\.\.)[a-z0-9_][a-z0-9._]{1,18}[a-z0-9_]$/
         },
         email: { type: String, required: true, unique: true, trim: true, lowercase: true },
         password: { type: String, select: false },

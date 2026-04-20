@@ -20,7 +20,10 @@ export async function POST(req: NextRequest) {
         const rl = await checkRateLimit(ip, 'otp-verify', siteConfigData.ipLimitOtpVerifyPerHour, 60 * 60 * 1000);
         if (!rl.success) {
             return NextResponse.json(
-                { error: 'Too many verification attempts from this connection. Please try again later.' },
+                { 
+                    error: 'Too many verification attempts. Please try again later.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 30
+                },
                 { status: 429 }
             );
         }
@@ -54,7 +57,7 @@ export async function POST(req: NextRequest) {
             });
             const currentFailures = (record.attempts || 0) + 1;
             const remaining = siteConfigData.otpVerifyMaxAttempts - currentFailures;
-            let errorMsg = `Incorrect code. ${remaining > 0 ? remaining + ' tries left.' : 'Locked for ' + siteConfigData.otpVerifyLockoutMins + 'm.'}`;
+            const errorMsg = `Incorrect code. ${remaining > 0 ? remaining + ' tries left.' : 'Locked for ' + siteConfigData.otpVerifyLockoutMins + 'm.'}`;
             return NextResponse.json({ error: errorMsg }, { status: 400 });
         }
 
@@ -64,7 +67,7 @@ export async function POST(req: NextRequest) {
 
         // Generate Verification Token (Short lived, e.g., 1 hour)
         const verificationToken = jwt.sign(
-            { target, type, verified: true },
+            { target, type, verified: true, purpose: record.purpose || 'register' },
             JWT_SECRET,
             { expiresIn: '1h' }
         );
