@@ -11,10 +11,10 @@ import ProductCard from '@/components/ProductCard';
 import ServiceCard from '@/components/ServiceCard';
 import { ExplorePageSkeleton, ItemsGridSkeleton } from '@/components/Skeletons';
 import { useAuth } from '@/context/AuthContext';
-import RateLimitScreen from '@/components/RateLimitScreen';
+
 
 function ExploreFiltersAndGrid() {
-  const { user, userLocation } = useAuth();
+  const { user, userLocation, authFetch } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -108,7 +108,7 @@ function ExploreFiltersAndGrid() {
   };
 
   const fetcher = async (url: string) => {
-    const res = await fetch(url);
+    const res = await authFetch(url);
     if (!res.ok) {
       const error = new Error('An error occurred while fetching the data.');
       (error as any).status = res.status;
@@ -157,9 +157,7 @@ function ExploreFiltersAndGrid() {
   const totalPages = data?.pagination?.totalPages || 1;
   const totalItems = data?.pagination?.totalItems || 0;
 
-  if (error && error.status === 429) {
-    return <RateLimitScreen onRetry={() => mutate()} />;
-  }
+
 
   const handlePageChange = (newPage: number) => {
     pushUpdatedUrl(currentFilters, newPage);
@@ -173,25 +171,26 @@ function ExploreFiltersAndGrid() {
   return (
     <>
       {/* MOBILE STICKY ROW */}
-      <div className="md:hidden bg-white/95 dark:bg-gray-800/95 backdrop-blur-md pb-3 pt-2 px-6 rounded-b-[1.5rem] border-b border-gray-200 dark:border-gray-700/50 flex flex-col items-center gap-2 sticky top-[64px] z-[40] -mx-4 shadow-lg mb-6">
+      <div className="md:hidden bg-white/95 dark:bg-gray-800/95 backdrop-blur-md pb-2 pt-1.5 px-4 rounded-b-[1.5rem] border-b border-gray-200 dark:border-gray-700/50 flex flex-col items-center gap-1.5 sticky top-[64px] z-[40] -mx-4 shadow-md mb-4">
         <div className="w-full relative group">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500">
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           </div>
           <input
             name="search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => { if(e.key === 'Enter') e.preventDefault(); }}
             maxLength={maxSearchChars}
             placeholder="Search..."
-            className="w-full pl-11 pr-5 py-2.5 bg-gray-50/50 dark:bg-gray-900/50 rounded-xl text-sm border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white transition-all outline-none font-medium"
+            className="w-full pl-9 pr-3 py-1.5 bg-gray-50/50 dark:bg-gray-900/50 rounded-lg text-xs border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white transition-all outline-none font-medium"
           />
         </div>
         <div className="flex items-center justify-between w-full px-1">
-          <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{totalItems} results</div>
-          <div className="flex items-center gap-1 bg-gray-100/50 dark:bg-gray-900/50 p-1 rounded-xl">
-            <button onClick={() => setMobileCols(1)} className={`px-3 py-1 text-xs font-bold rounded-lg ${mobileCols === 1 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400'}`}>1x</button>
-            <button onClick={() => setMobileCols(2)} className={`px-3 py-1 text-xs font-bold rounded-lg ${mobileCols === 2 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400'}`}>2x</button>
+          <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{totalItems} results</div>
+          <div className="flex items-center gap-1 bg-gray-100/50 dark:bg-gray-900/50 p-0.5 rounded-lg">
+            <button onClick={() => setMobileCols(1)} className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${mobileCols === 1 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400'}`}>1x</button>
+            <button onClick={() => setMobileCols(2)} className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${mobileCols === 2 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400'}`}>2x</button>
           </div>
         </div>
       </div>
@@ -214,7 +213,7 @@ function ExploreFiltersAndGrid() {
           <div className="hidden md:flex bg-white/70 dark:bg-gray-800/40 backdrop-blur-md p-5 rounded-3xl border border-gray-200 dark:border-gray-700/50 mb-8 justify-between items-center shadow-sm gap-4">
             <div className="w-1/2 xl:w-1/3 relative group text-left">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div>
-              <input name="search" value={searchTerm} maxLength={maxSearchChars} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search products or services..." className="w-full pl-11 pr-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white transition-all outline-none font-medium" />
+              <input name="search" value={searchTerm} maxLength={maxSearchChars} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') e.preventDefault(); }} placeholder="Search products or services..." className="w-full pl-11 pr-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white transition-all outline-none font-medium" />
             </div>
             <div className="flex items-center gap-4 shrink-0">
               <div className="flex flex-col text-right">
@@ -229,6 +228,29 @@ function ExploreFiltersAndGrid() {
             </div>
           </div>
 
+          {/* Maintenance Notice */}
+          {(() => {
+              const selectedCommId = currentFilters.communityFilter;
+              const isSpecific = selectedCommId && !['All', 'Public', 'Unified'].includes(selectedCommId);
+              const commData = user?.verifiedCommunities?.find((c: any) => (c._id || c.id || c) === selectedCommId);
+              if (isSpecific && commData && (commData as any).isActive === false) {
+                  return (
+                      <div className="bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-100/50 dark:border-amber-900/20 rounded-[2rem] p-6 mb-8 flex items-center gap-6 animate-in slide-in-from-top-4 duration-700">
+                          <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center shrink-0 shadow-sm">
+                              <span className="text-2xl">🚧</span>
+                          </div>
+                          <div>
+                              <h3 className="text-lg font-black text-amber-900 dark:text-amber-400 uppercase tracking-tighter italic">Campus Marketplace Paused</h3>
+                              <p className="text-sm font-bold text-amber-700 dark:text-amber-500/80 leading-snug">
+                                  The <span className="italic">{commData.name}</span> circle is currently under maintenance. Transactions and new listings are temporarily disabled.
+                              </p>
+                          </div>
+                      </div>
+                  );
+              }
+              return null;
+          })()}
+
           {loading ? (
             <ItemsGridSkeleton count={12} cols={cols} />
           ) : error ? (
@@ -238,9 +260,13 @@ function ExploreFiltersAndGrid() {
           ) : (
             <>
               <div className={`grid gap-4 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${cols === 2 ? 'sm:grid-cols-2' : cols === 3 ? 'sm:grid-cols-3' : cols === 4 ? 'sm:grid-cols-4' : 'sm:grid-cols-5'}`}>
-                {items.map((item: any) => (
+                {items.map((item: any, index: number) => (
                   <div key={item._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    {item.itemType === 'product' ? <ProductCard product={item} hideOwnerActions={true} /> : <ServiceCard service={item} hideOwnerActions={true} />}
+                    {item.itemType === 'product' ? (
+                      <ProductCard product={item} hideOwnerActions={true} priority={index < 6} />
+                    ) : (
+                      <ServiceCard service={item} hideOwnerActions={true} priority={index < 6} />
+                    )}
                   </div>
                 ))}
               </div>

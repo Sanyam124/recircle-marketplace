@@ -9,6 +9,20 @@ import { verifyToken } from '@/lib/auth';
 export async function GET(req: NextRequest) {
     try {
         await connectToDatabase();
+
+        // --- ANTI-CRAWL SHIELD ---
+        const { checkRateLimit, getClientIp } = await import('@/lib/rate-limit');
+        const ip = getClientIp(req);
+        const rl = await checkRateLimit(ip, 'explore-search', 200, 60 * 60 * 1000); // 200 per hour
+        if (!rl.success) {
+            return NextResponse.json(
+                { 
+                    error: 'Search/Explore limit reached. Please try again in an hour.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 300
+                },
+                { status: 429 }
+            );
+        }
         const { searchParams } = new URL(req.url);
         const search = searchParams.get('search');
         const lat = searchParams.get('lat');
@@ -25,7 +39,8 @@ export async function GET(req: NextRequest) {
         const categories = searchParams.getAll('categories[]');
         const conditions = searchParams.getAll('conditions[]');
         const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '12');
+        const requestedLimit = parseInt(searchParams.get('limit') || '12');
+        const limit = Math.min(requestedLimit, 50);
         const communityFilter = searchParams.get('communityFilter') || 'All'; // 'All', 'Public', or specific ID
         const stateFilter = searchParams.get('state');
         const cityFilter = searchParams.get('city');
@@ -38,8 +53,16 @@ export async function GET(req: NextRequest) {
         const productQuery: any = { status: 'Available' };
         const serviceQuery: any = { status: 'Active' };
 
+        // [MAINTENANCE MODE] Filter out circles paused by Admin
+        const Community = (await import('@/models/Community')).default;
+        const inactiveCommunities = await Community.find({ isActive: false }).select('_id').lean();
+        if (inactiveCommunities.length > 0) {
+            const inactiveIds = inactiveCommunities.map(c => c._id);
+            productQuery.community = { $nin: inactiveIds };
+            serviceQuery.community = { $nin: inactiveIds };
+        }
+
         // [VACATION MODE] & [BLOCKED USERS] & [BAN CHECK]
-        // Hide listings from users who are on vacation, banned, or have been blocked/blocked by the current user
         if (!targetId) {
             const token = req.cookies.get('token')?.value;
             const decodedToken = token ? verifyToken(token) : null;
@@ -49,20 +72,17 @@ export async function GET(req: NextRequest) {
             const vacationUsers = await User.find({ isOnVacation: true }).select('_id').lean();
             hiddenIds = vacationUsers.map((u: any) => u._id);
 
-            // 1.5 Banned Users (Hide their listings)
+            // 1.5 Banned Users
             const bannedUsers = await User.find({ status: 'Banned' }).select('_id').lean();
             const bannedUsersIds = bannedUsers.map((u: any) => u._id);
             hiddenIds = [...hiddenIds, ...bannedUsersIds];
 
-            // 2. Blocked Users (Two-Way)
+            // 2. Blocked Users
             if (decodedToken?.userId) {
-                // Users I blocked
                 const currentUser = await User.findById(decodedToken.userId).select('blockedUsers').lean();
                 if (currentUser && (currentUser as any).blockedUsers) {
                     hiddenIds = [...hiddenIds, ...(currentUser as any).blockedUsers];
                 }
-
-                // Users who blocked me
                 const usersWhoBlockedMe = await User.find({ blockedUsers: decodedToken.userId }).select('_id').lean();
                 const usersWhoBlockedMeIds = usersWhoBlockedMe.map((u: any) => u._id);
                 hiddenIds = [...hiddenIds, ...usersWhoBlockedMeIds];
@@ -82,14 +102,12 @@ export async function GET(req: NextRequest) {
             user = await User.findById(decoded.userId).select('verifiedCommunities role').lean();
         }
 
-        // 1. Specific Community Filter (ID) — show only that campus's listings
         if (communityFilter !== 'All' && communityFilter !== 'Public' && isValidObjectId(communityFilter)) {
             productQuery.community = new Types.ObjectId(communityFilter);
             productQuery.visibility = 'Community';
             serviceQuery.community = new Types.ObjectId(communityFilter);
             serviceQuery.visibility = 'Community';
         } 
-        // 2. Public Only Filter — show only public (non-community) listings
         else if (communityFilter === 'Public') {
             const publicOr = [
                 { visibility: 'Public' },
@@ -99,7 +117,6 @@ export async function GET(req: NextRequest) {
             productQuery.$or = publicOr;
             serviceQuery.$or = publicOr;
         }
-        // 3. Default "All" Filter (Show Public + Items from User's Verified Communities)
         else {
             const allowedCommunityIds = user?.verifiedCommunities || [];
             const isAdmin = user?.role === 'admin';
@@ -137,10 +154,11 @@ export async function GET(req: NextRequest) {
                         else if (term.endsWith('es')) coreTerm = term.slice(0, -2);
                         else if (term.endsWith('s') && !term.endsWith('ss')) coreTerm = term.slice(0, -1);
                     }
+                    const escapedTerm = coreTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     return [
-                        { title: { $regex: coreTerm, $options: 'i' } },
-                        { description: { $regex: coreTerm, $options: 'i' } },
-                        { category: { $regex: coreTerm, $options: 'i' } }
+                        { title: { $regex: escapedTerm, $options: 'i' } },
+                        { description: { $regex: escapedTerm, $options: 'i' } },
+                        { category: { $regex: escapedTerm, $options: 'i' } }
                     ];
                 });
                 if (!productQuery.$and) productQuery.$and = [];
@@ -181,25 +199,11 @@ export async function GET(req: NextRequest) {
             productQuery.condition = { $in: conditions };
         }
 
-        // State logic
-        if (stateFilter) {
-            productQuery['location.state'] = stateFilter;
-            serviceQuery['location.state'] = stateFilter;
-        }
+        // Other filters
+        if (stateFilter) { productQuery['location.state'] = stateFilter; serviceQuery['location.state'] = stateFilter; }
+        if (cityFilter) { productQuery['location.city'] = cityFilter; serviceQuery['location.city'] = cityFilter; }
+        if (hostelFilter) { productQuery['location.hostel'] = hostelFilter; serviceQuery['location.hostel'] = hostelFilter; }
 
-        // City logic
-        if (cityFilter) {
-            productQuery['location.city'] = cityFilter;
-            serviceQuery['location.city'] = cityFilter;
-        }
-
-        // Hostel logic
-        if (hostelFilter) {
-            productQuery['location.hostel'] = hostelFilter;
-            serviceQuery['location.hostel'] = hostelFilter;
-        }
-
-        // Listing Type Logic (Products only)
         if (listingType === 'Buy') {
             if (!productQuery.$and) productQuery.$and = [];
             productQuery.$and.push({ $or: [{ forSell: true }, { forSell: { $exists: false } }] });
@@ -207,17 +211,11 @@ export async function GET(req: NextRequest) {
             productQuery.forRent = true;
         }
 
-        // --- GEO SEARCH ---
         const pipeline: any[] = [];
         const hasGeo = lat && lng;
         let latNum = 0, lngNum = 0;
-        
-        if (hasGeo) {
-            latNum = parseFloat(lat as string);
-            lngNum = parseFloat(lng as string);
-        }
+        if (hasGeo) { latNum = parseFloat(lat as string); lngNum = parseFloat(lng as string); }
 
-        // 1. Build Product match
         if (type === 'services') {
             pipeline.push({ $match: { _id: { $exists: false } } });
         } else {
@@ -236,7 +234,6 @@ export async function GET(req: NextRequest) {
         }
         pipeline.push({ $addFields: { itemType: 'product' } });
 
-        // 2. Union with Services
         if (type === 'all' || type === 'services') {
             const servicePipeline: any[] = [];
             if (hasGeo) {
@@ -253,107 +250,39 @@ export async function GET(req: NextRequest) {
             }
             servicePipeline.push({ $addFields: { itemType: 'service' } });
             servicePipeline.push({ $project: { community: 1, visibility: 1, title: 1, price: 1, images: 1, category: 1, description: 1, status: 1, createdAt: 1, priceUnit: 1, provider: 1, location: 1, availability: 1, calculatedDistance: 1 } });
-            
-            const serviceUnion: any = {
-                coll: 'services',
-                pipeline: servicePipeline
-            };
-            pipeline.push({ $unionWith: serviceUnion });
+            pipeline.push({ $unionWith: { coll: 'services', pipeline: servicePipeline } });
         }
 
-        // 3. Normalize fields after union
         pipeline.push({
             $project: {
-                title: 1,
-                price: 1,
-                forSell: 1,
-                forRent: 1,
-                rentPrice: 1,
-                rentUnit: 1,
-                images: 1,
-                category: 1,
-                description: 1,
-                condition: 1,
-                status: 1,
-                itemType: 1,
-                createdAt: 1,
-                priceUnit: 1,
-                seller: { $ifNull: ['$seller', '$provider'] },
-                provider: 1,
-                community: 1,
-                visibility: 1,
-                location: 1,
-                availability: 1,
-                calculatedDistance: 1
+                title: 1, price: 1, forSell: 1, forRent: 1, rentPrice: 1, rentUnit: 1, images: 1, category: 1, description: 1, condition: 1, status: 1, itemType: 1, createdAt: 1, priceUnit: 1, seller: { $ifNull: ['$seller', '$provider'] }, provider: 1, community: 1, visibility: 1, location: 1, availability: 1, calculatedDistance: 1
             }
         });
 
-        // 4. Global Sort
         const sortStage: any = {};
-        if (sort === 'price_asc') {
-            sortStage.price = 1;
-        } else if (sort === 'price_desc') {
-            sortStage.price = -1;
-        } else if (sort === 'distance' && hasGeo) {
-            sortStage.calculatedDistance = 1;
-        } else {
-            sortStage.createdAt = -1;
-            sortStage._id = -1;
-        }
+        if (sort === 'price_asc') sortStage.price = 1;
+        else if (sort === 'price_desc') sortStage.price = -1;
+        else if (sort === 'distance' && hasGeo) sortStage.calculatedDistance = 1;
+        else { sortStage.createdAt = -1; sortStage._id = -1; }
 
-        if (Object.keys(sortStage).length > 0) {
-            pipeline.push({ $sort: sortStage });
-        }
+        if (Object.keys(sortStage).length > 0) pipeline.push({ $sort: sortStage });
+        if (sort === 'rating') pipeline.push({ $sort: { ownerRating: -1, createdAt: -1 } });
 
-        // Final sort if it was rating-based
-        if (sort === 'rating') {
-            pipeline.push({ $sort: { ownerRating: -1, createdAt: -1 } });
-        }
-
-        // 6. Pagination count and slice
         const countPipeline = [...pipeline, { $count: 'total' }];
         const resultsPipeline = [...pipeline, { $skip: skip }, { $limit: limit }];
 
-        // Populate seller/provider info
-        resultsPipeline.push({
-            $lookup: {
-                from: 'users',
-                localField: 'seller',
-                foreignField: '_id',
-                as: 'sellerObj'
-            }
-        });
-        resultsPipeline.push({
-            $unwind: { path: '$sellerObj', preserveNullAndEmptyArrays: true }
-        });
+        resultsPipeline.push({ $lookup: { from: 'users', localField: 'seller', foreignField: '_id', as: 'sellerObj' } });
+        resultsPipeline.push({ $unwind: { path: '$sellerObj', preserveNullAndEmptyArrays: true } });
         resultsPipeline.push({
             $addFields: {
-                seller: {
-                    _id: '$sellerObj._id',
-                    name: '$sellerObj.name',
-                    profilePicture: '$sellerObj.profilePicture'
-                },
-                provider: {
-                    _id: '$sellerObj._id',
-                    name: '$sellerObj.name',
-                    profilePicture: '$sellerObj.profilePicture'
-                }
+                seller: { _id: '$sellerObj._id', name: '$sellerObj.name', profilePicture: '$sellerObj.profilePicture' },
+                provider: { _id: '$sellerObj._id', name: '$sellerObj.name', profilePicture: '$sellerObj.profilePicture' }
             }
         });
         resultsPipeline.push({ $project: { sellerObj: 0 } });
         
-        // 8. Populate Community Info
-        resultsPipeline.push({
-            $lookup: {
-                from: 'communities',
-                localField: 'community',
-                foreignField: '_id',
-                as: 'communityObj'
-            }
-        });
-        resultsPipeline.push({
-            $unwind: { path: '$communityObj', preserveNullAndEmptyArrays: true }
-        });
+        resultsPipeline.push({ $lookup: { from: 'communities', localField: 'community', foreignField: '_id', as: 'communityObj' } });
+        resultsPipeline.push({ $unwind: { path: '$communityObj', preserveNullAndEmptyArrays: true } });
         resultsPipeline.push({
             $addFields: {
                 community: {
@@ -375,12 +304,10 @@ export async function GET(req: NextRequest) {
         const totalItems = totalRes[0]?.total || 0;
         const totalPages = Math.ceil(totalItems / limit);
 
-        // Fetch precise ratings
         const sellerIds = results.map((i: any) => i.seller._id);
         const itemIds = results.map((i: any) => i._id);
 
         const [ReviewModel] = await Promise.all([import('@/models/Review').then(m => m.default)]);
-        
         const [sellerReviews, specificItemReviews] = await Promise.all([
             ReviewModel.aggregate([
                 { $match: { target: { $in: sellerIds } } },
@@ -399,11 +326,8 @@ export async function GET(req: NextRequest) {
         const resultsWithRatings = results.map((item: any) => {
             const itemIdStr = item._id.toString();
             const sellerIdStr = item.seller._id.toString();
-            
             const sellerStats = sellerReviewMap.get(sellerIdStr) || { average: 0, count: 0 };
             const itemStats = specificReviewMap.get(itemIdStr) || { average: 0, count: 0 };
-            
-            // Unified Bulletproof Rating Schema
             return {
                 ...item,
                 sellerTrustRating: sellerStats.average,
@@ -415,12 +339,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({
             items: resultsWithRatings,
-            pagination: {
-                currentPage: page,
-                totalPages,
-                totalItems,
-                hasMore: page < totalPages
-            }
+            pagination: { currentPage: page, totalPages, totalItems, hasMore: page < totalPages }
         }, { status: 200 });
 
     } catch (error: any) {

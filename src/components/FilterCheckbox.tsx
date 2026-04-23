@@ -38,3 +38,4 @@ export const FilterCheckbox = React.memo(({ label, checked, onChange, count }: F
     </label>
   );
 });
+FilterCheckbox.displayName = 'FilterCheckbox';
