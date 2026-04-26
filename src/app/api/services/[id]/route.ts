@@ -5,6 +5,7 @@ import Service from '@/models/Service';
 import User from '@/models/User';
 import Order from '@/models/Order';
 import Review from '@/models/Review';
+import Community from '@/models/Community';
 import { verifyToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -16,15 +17,50 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             return NextResponse.json({ error: 'Invalid Service ID' }, { status: 400 });
         }
 
-        const service = await Service.findById(id).populate('provider', 'name username profilePicture email').populate('community', 'name');
+        const service = await Service.findById(id).populate('provider', 'name username profilePicture email').populate('community', 'name isActive');
 
         if (!service) {
             return NextResponse.json({ error: 'Service not found' }, { status: 404 });
         }
 
-        // Block access if a user relationship is blocked
         const token = req.cookies.get('token')?.value;
-        const decoded = token ? verifyToken(token) : null;
+        const decoded = token ? verifyToken(token) as { userId: string, role: string } : null;
+
+        // --- Maintenance Mode Check ---
+        if (service.community && !(service.community as any).isActive) {
+            const isAdmin = decoded?.role === 'admin';
+            const isOwner = decoded?.userId === service.provider._id.toString();
+            
+            if (!isAdmin && !isOwner) {
+                return NextResponse.json({ 
+                    error: `This circle (${(service.community as any).name}) is currently under maintenance. Services from this campus are temporarily hidden.`,
+                    maintenance: true 
+                }, { status: 503 });
+            }
+        }
+
+        // --- Community Visibility Hardening ---
+        if (service.visibility === 'Community' && service.community) {
+            const communityObj = service.community as any;
+            const isOwner = decoded?.userId === service.provider._id.toString();
+            let isMember = false;
+            let isAdmin = false;
+
+            if (decoded?.userId) {
+                const currentUser = await User.findById(decoded.userId).select('verifiedCommunities role');
+                isMember = !!(currentUser?.verifiedCommunities?.some((cId: any) => cId.toString() === communityObj._id.toString()));
+                isAdmin = currentUser?.role === 'admin';
+            }
+
+            if (!isOwner && !isMember && !isAdmin) {
+                return NextResponse.json({ 
+                    error: 'This service is exclusive to verified campus community members.',
+                    restricted: true 
+                }, { status: 403 });
+            }
+        }
+
+        // Block access if a user relationship is blocked
         if (decoded && service.provider) {
             const currentUserId = decoded.userId;
             const providerId = service.provider._id.toString();
@@ -106,7 +142,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             return NextResponse.json({ error: 'Service not found' }, { status: 404 });
         }
 
-        if (service.provider.toString() !== user.userId) {
+        const userDoc = await User.findById(user.userId).select('role');
+        const isAdmin = userDoc?.role === 'admin';
+
+        if (service.provider.toString() !== user.userId && !isAdmin) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -180,19 +219,31 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
         const body = await req.json();
 
-        let service = await Service.findById(id);
+        const service = await Service.findById(id);
         if (!service) {
             return NextResponse.json({ error: 'Service not found' }, { status: 404 });
         }
 
-        // Only the provider can update their own service
-        if (service.provider.toString() !== user.userId) {
+        // Only the provider or admin can update
+        const userDoc = await User.findById(user.userId).select('role');
+        const isAdmin = userDoc?.role === 'admin';
+
+        if (service.provider.toString() !== user.userId && !isAdmin) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        // --- Maintenance Mode Protection (Update) ---
+        if (service.community) {
+            const comm = await Community.findById(service.community).select('isActive name');
+            if (comm && !comm.isActive && !isAdmin) {
+                return NextResponse.json({ 
+                    error: `The ${comm.name} circle is in maintenance mode. Updates to listings are temporarily disabled.` 
+                }, { status: 503 });
+            }
         }
 
         // Hardening: Prevents hiding a service that has active bookings/disputes
         if (body.status && ['Active', 'Inactive'].includes(body.status)) {
-            const Order = (await import('@/models/Order')).default;
             const activeOrder = await Order.findOne({
                 service: id,
                 status: { $in: ['Paid', 'Scheduled', 'Dispute_Pending'] }
@@ -204,8 +255,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
             service.status = body.status;
         }
 
-        // Add more fields here in the future if users need to edit Titles/Prices.
-        // Currently, we only need to support the the `status` toggle.
         await service.save();
 
         return NextResponse.json({ message: 'Service updated', service }, { status: 200 });

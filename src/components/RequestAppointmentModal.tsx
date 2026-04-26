@@ -45,7 +45,7 @@ export default function RequestAppointmentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-colors" onClick={onClose}>
-      <div className="w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 transition-colors" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-6 transition-colors" onClick={e => e.stopPropagation()}>
           <>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Request Appointment</h3>
@@ -71,12 +71,12 @@ export default function RequestAppointmentModal({
                 setError(''); 
               }}
               placeholder={`e.g. ₹${originalPrice}`}
-              className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:text-white mb-4 transition-colors"
+              className="w-full border border-gray-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-zinc-800 dark:text-white mb-4 transition-colors"
             />
 
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Message to Provider <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
             <textarea
-              className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-4 dark:bg-gray-700 dark:text-white transition-colors"
+              className="w-full border border-gray-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-4 dark:bg-zinc-800 dark:text-white transition-colors"
               rows={3}
               placeholder="Preferred dates, questions about the service..."
               value={message}
@@ -90,7 +90,7 @@ export default function RequestAppointmentModal({
             {error && <p className="text-sm text-red-500 dark:text-red-400 mb-3">{error}</p>}
 
             <div className="flex gap-3">
-              <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
                 Cancel
               </button>
               <button

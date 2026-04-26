@@ -68,7 +68,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                         const { pusherServer } = await import('@/lib/pusherServer');
                         const recipients = new Set([updatedOrder.buyer.toString(), decoded.userId]);
                         for (const rId of recipients) {
-                            await pusherServer.trigger(`user-${rId}`, 'new-message', systemMsg);
+                            await pusherServer.trigger(`private-user-${rId}`, 'new-message', systemMsg);
                         }
                     } catch (pusherErr) {
                         console.error('Pusher sync error in admin cancel:', pusherErr);
@@ -166,7 +166,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                         const { pusherServer } = await import('@/lib/pusherServer');
                         const recipients = new Set([updatedOrder.buyer.toString(), decoded.userId]);
                         for (const rId of recipients) {
-                            await pusherServer.trigger(`user-${rId}`, 'new-message', systemMsg);
+                            await pusherServer.trigger(`private-user-${rId}`, 'new-message', systemMsg);
                         }
                     } catch (pusherErr) {
                         console.error('Pusher sync error in appointment cancel:', pusherErr);
@@ -237,7 +237,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                             const { pusherServer } = await import('@/lib/pusherServer');
                             const recipients = new Set([updatedOrder.seller.toString(), decoded.userId]);
                             for (const rId of recipients) {
-                                await pusherServer.trigger(`user-${rId}`, 'new-message', systemMsg);
+                                await pusherServer.trigger(`private-user-${rId}`, 'new-message', systemMsg);
                             }
                         } catch (pusherErr) {
                             console.error('Pusher sync error in buyer cancel appointment:', pusherErr);
@@ -343,7 +343,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                             const { pusherServer } = await import('@/lib/pusherServer');
                             const recipients = new Set([updatedOrder.buyer.toString(), decoded.userId]);
                             for (const rId of recipients) {
-                                await pusherServer.trigger(`user-${rId}`, 'new-message', systemMsg);
+                                await pusherServer.trigger(`private-user-${rId}`, 'new-message', systemMsg);
                             }
                         } catch (pusherErr) {
                             console.error('Pusher sync error in seller cancel product:', pusherErr);
@@ -399,7 +399,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                         const { pusherServer } = await import('@/lib/pusherServer');
                         const recipients = new Set([updatedOrder.seller.toString(), decoded.userId]);
                         for (const rId of recipients) {
-                            await pusherServer.trigger(`user-${rId}`, 'new-message', systemMsg);
+                            await pusherServer.trigger(`private-user-${rId}`, 'new-message', systemMsg);
                         }
                     } catch (pusherErr) {
                         console.error('Pusher sync error in buyer cancel product:', pusherErr);

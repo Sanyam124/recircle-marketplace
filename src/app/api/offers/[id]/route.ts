@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         await connectToDatabase();
         const token = req.cookies.get('token')?.value;
         if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        const decoded = verifyToken(token) as { userId: string };
+        const decoded = verifyToken(token) as { userId: string; role?: string };
         if (!decoded?.userId) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
         const { id } = await params;
@@ -40,6 +40,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         // Verify this offer belongs to the logged-in seller
         if (offer.seller.toString() !== decoded.userId) {
             return NextResponse.json({ error: 'Forbidden: not your offer' }, { status: 403 });
+        }
+
+        // --- Maintenance Mode Protection (Action Guard) ---
+        if (action === 'accept') {
+            const Community = (await import('@/models/Community')).default;
+            const Product = (await import('@/models/Product')).default;
+            const Service = (await import('@/models/Service')).default;
+            
+            const itemId = offer.product || offer.service;
+            let item;
+            if (offer.product) {
+                item = await Product.findById(itemId).select('community');
+            } else {
+                item = await Service.findById(itemId).select('community');
+            }
+            
+            if (item?.community) {
+                const comm = await Community.findById(item.community).select('isActive name');
+                if (comm && !comm.isActive) {
+                    const isAdmin = decoded?.role === 'admin';
+                    if (!isAdmin) {
+                        return NextResponse.json({ 
+                            error: `The ${comm.name} circle is in maintenance. New transactions are temporarily frozen.` 
+                        }, { status: 503 });
+                    }
+                }
+            }
         }
 
         // If accepted, check for product status first
@@ -174,6 +201,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 ? `Your offer of ₹${offer.offeredPrice} on "${itemName}" was accepted! Your secret handoff code is ${verificationCode}. Reach out to coordinate.`
                 : `Your offer of ₹${offer.offeredPrice} on "${itemName}" was declined.`,
             link: action === 'accept' ? `/chat/${decoded.userId}?${offer.product ? `productId=${offer.product._id}` : `serviceId=${offer.service?._id}`}` : undefined,
+            metadata: {
+                offerId: id,
+                offeredPrice: offer.offeredPrice,
+                action,
+                itemName
+            }
         });
 
         // 2. Automatically update the Offer Bubble visual status and include verification code
@@ -193,7 +226,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             for (const msg of updatedMessages) {
                 const recipients = new Set([msg.recipient.toString(), msg.sender.toString()]);
                 for (const rId of recipients) {
-                    await pusherServer.trigger(`user-${rId}`, 'new-message', msg);
+                    await pusherServer.trigger(`private-user-${rId}`, 'new-message', msg);
                 }
             }
         } catch (pusherErr) {

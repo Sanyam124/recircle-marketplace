@@ -15,7 +15,8 @@ export async function GET(req: NextRequest) {
 
         const { searchParams } = new URL(req.url);
         const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '12');
+        const requestedLimit = parseInt(searchParams.get('limit') || '12');
+        const limit = Math.min(requestedLimit, 50);
         const type = searchParams.get('type') || 'all'; // Default to 'all' to show both on wishlist page
         const skip = (page - 1) * limit;
 
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
 
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        let itemIdsWithTypes: { id: string; type: 'product' | 'service' }[] = [];
+        const itemIdsWithTypes: { id: string; type: 'product' | 'service' }[] = [];
 
         // Collect all related IDs
         if (type === 'product' || type === 'all') {
@@ -57,6 +58,11 @@ export async function GET(req: NextRequest) {
         const productIds = paginatedIdsWithTypes.filter(i => i.type === 'product').map(i => i.id);
         const serviceIds = paginatedIdsWithTypes.filter(i => i.type === 'service').map(i => i.id);
 
+        // --- Visibility Hardening for Wishlist Fetch ---
+        const viewerUser = await User.findById(userData.userId).select('verifiedCommunities role').lean();
+        const allowedCommunities = (viewerUser as any)?.verifiedCommunities?.map((c: any) => c.toString()) || [];
+        const isAdmin = (viewerUser as any)?.role === 'admin';
+
         const [products, services] = await Promise.all([
             Product.find({ _id: { $in: productIds } })
                 .populate('seller', 'name profilePicture')
@@ -68,6 +74,21 @@ export async function GET(req: NextRequest) {
                 .lean()
         ]);
 
+        // Filter out items the user no longer has access to
+        const filteredProducts = products.filter(p => {
+            if (p.visibility !== 'Community') return true;
+            if (isAdmin) return true;
+            if (p.seller?._id?.toString() === userData.userId) return true;
+            return allowedCommunities.includes(p.community?._id?.toString());
+        });
+
+        const filteredServices = services.filter(s => {
+            if (s.visibility !== 'Community') return true;
+            if (isAdmin) return true;
+            if (s.provider?._id?.toString() === userData.userId) return true;
+            return allowedCommunities.includes(s.community?._id?.toString());
+        });
+
         // Map back to maintain the reversed order
         const paginatedItems: any[] = [];
         const orphanedProductIds: string[] = [];
@@ -75,11 +96,11 @@ export async function GET(req: NextRequest) {
 
         paginatedIdsWithTypes.forEach(ref => {
             if (ref.type === 'product') {
-                const p = products.find(p => p._id.toString() === ref.id);
+                const p = filteredProducts.find(p => p._id.toString() === ref.id);
                 if (p) paginatedItems.push({ ...p, itemType: 'product' });
                 else orphanedProductIds.push(ref.id);
             } else {
-                const s = services.find(s => s._id.toString() === ref.id);
+                const s = filteredServices.find(s => s._id.toString() === ref.id);
                 if (s) paginatedItems.push({ ...s, itemType: 'service' });
                 else orphanedServiceIds.push(ref.id);
             }
@@ -158,6 +179,19 @@ export async function POST(req: NextRequest) {
         await connectToDatabase();
         const { productId, serviceId } = await req.json();
 
+        // --- ANTI-WISHLIST SPAM SHIELD ---
+        const { checkRateLimit } = await import('@/lib/rate-limit');
+        const rl = await checkRateLimit(userData.userId, 'wishlist-toggle', 30, 60 * 1000);
+        if (!rl.success) {
+            return NextResponse.json(
+                { 
+                    error: 'You are updating your wishlist too quickly. Please slow down.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 10
+                },
+                { status: 429 }
+            );
+        }
+
         if (!productId && !serviceId) {
             return NextResponse.json({ error: 'Product ID or Service ID required' }, { status: 400 });
         }
@@ -168,6 +202,18 @@ export async function POST(req: NextRequest) {
         let isAdded = false;
 
         if (serviceId) {
+            // --- Visibility Hardening for Wishlist Toggle ---
+            const item = await Service.findById(serviceId).select('visibility community provider');
+            if (item && item.visibility === 'Community') {
+                const currentUser = await User.findById(userData.userId).select('verifiedCommunities role');
+                const isMember = currentUser?.verifiedCommunities?.some((cId: any) => cId.toString() === item.community?.toString());
+                const isOwner = userData.userId === item.provider.toString();
+                const isAdmin = currentUser?.role === 'admin';
+                if (!isMember && !isOwner && !isAdmin) {
+                    return NextResponse.json({ error: 'This listing is restricted to campus members.' }, { status: 403 });
+                }
+            }
+
             const list = user.wishlistedServices || [];
             const exists = list.some(id => id.toString() === serviceId.toString());
 
@@ -183,6 +229,18 @@ export async function POST(req: NextRequest) {
                 isAdded = true;
             }
         } else if (productId) {
+            // --- Visibility Hardening for Wishlist Toggle ---
+            const item = await Product.findById(productId).select('visibility community seller');
+            if (item && item.visibility === 'Community') {
+                const currentUser = await User.findById(userData.userId).select('verifiedCommunities role');
+                const isMember = currentUser?.verifiedCommunities?.some((cId: any) => cId.toString() === item.community?.toString());
+                const isOwner = userData.userId === item.seller.toString();
+                const isAdmin = currentUser?.role === 'admin';
+                if (!isMember && !isOwner && !isAdmin) {
+                    return NextResponse.json({ error: 'This listing is restricted to campus members.' }, { status: 403 });
+                }
+            }
+
             const list = user.wishlist || [];
             const exists = list.some(id => id.toString() === productId.toString());
 

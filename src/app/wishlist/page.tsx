@@ -2,23 +2,27 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import useSWR from 'swr';
 import ProductCard from '@/components/ProductCard';
 import ServiceCard from '@/components/ServiceCard';
 import { ItemCardSkeleton, WishlistPageSkeleton, ItemsGridSkeleton } from '@/components/Skeletons';
-import RateLimitScreen from '@/components/RateLimitScreen';
+
 
 function WishlistPageContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pageParam = parseInt(searchParams.get('page') || '1');
   const [cols, setCols] = useState<2 | 3 | 4 | 5>(4);
   const [mobileCols, setMobileCols] = useState<1 | 2>(2);
+  const isFirstRender = useRef(true);
 
-  const { data, error, isLoading, mutate } = useSWR(user ? '/api/wishlist' : null);
+  const { data, error, isLoading, mutate } = useSWR(user ? `/api/wishlist?page=${pageParam}&limit=12` : null);
   const wishlist = data?.wishlist || [];
+  const totalPages = data?.pagination?.totalPages || 1;
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -26,13 +30,15 @@ function WishlistPageContent() {
     }
   }, [user, authLoading, router]);
 
+  const handlePageChange = (p: number) => {
+     router.push(`/wishlist?page=${p}`, { scroll: false });
+  };
+
   if (authLoading) {
     return <WishlistPageSkeleton />;
   }
 
-  if (error && error.status === 429) {
-    return <RateLimitScreen onRetry={() => mutate()} />;
-  }
+
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-[#080B14] transition-colors duration-500">
@@ -75,7 +81,7 @@ function WishlistPageContent() {
         </div>
         
         {/* Content Section */}
-        <div className="relative min-h-[400px]">
+        <div id="wishlist-top" className="relative min-h-[400px]">
           {isLoading && wishlist.length === 0 ? (
             <ItemsGridSkeleton count={8} cols={cols} />
           ) : wishlist.length > 0 ? (
@@ -115,8 +121,37 @@ function WishlistPageContent() {
               </button>
             </div>
           )}
+
+          {wishlist.length > 0 && (
+              <PaginationControls 
+                page={pageParam} 
+                totalPages={totalPages} 
+                onPageChange={handlePageChange} 
+                scrollTargetId="wishlist-top" 
+              />
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function PaginationControls({ page, totalPages, onPageChange, scrollTargetId }: { page: number; totalPages: number; onPageChange: (p: number) => void; scrollTargetId?: string }) {
+  if (totalPages <= 1) return null;
+  const go = (p: number) => { if (scrollTargetId) document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); onPageChange(p); };
+  return (
+    <div className="mt-12 flex items-center justify-center gap-2 pb-10">
+      <button onClick={() => go(Math.max(1, page - 1))} disabled={page === 1} className="p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 disabled:opacity-20 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
+      </button>
+      <div className="flex items-center gap-1 font-medium">
+        {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => Math.abs(p - page) <= 2).map(p => (
+          <button key={p} onClick={() => go(p)} className={`w-9 h-9 text-xs rounded-lg transition-all ${ p === page ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800' }`} >{p}</button>
+        ))}
+      </div>
+      <button onClick={() => go(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 disabled:opacity-20 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" >
+         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
+      </button>
     </div>
   );
 }

@@ -22,6 +22,31 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'New listings are temporarily disabled by the platform admin. Please try again later.' }, { status: 503 });
         }
 
+        // --- ANTI-LISTING SPAM SHIELD ---
+        const { checkRateLimit } = await import('@/lib/rate-limit');
+        const rl = await checkRateLimit(user.userId, 'product-create', 5, 60 * 1000);
+        if (!rl.success) {
+            return NextResponse.json(
+                { 
+                    error: 'You are creating listings too quickly. Please wait a minute.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 60
+                },
+                { status: 429 }
+            );
+        }
+        
+        // --- ACCOUNT CAPACITY SHIELD ---
+        const [productCount, serviceCount] = await Promise.all([
+            Product.countDocuments({ seller: user.userId, status: { $ne: 'Sold' } }),
+            (await import('@/models/Service')).default.countDocuments({ provider: user.userId, status: 'Active' })
+        ]);
+
+        if (productCount + serviceCount >= (siteConfig.maxListingsPerUser || 100)) {
+            return NextResponse.json({ 
+                error: `Account Limit Reached: You can have a maximum of ${siteConfig.maxListingsPerUser || 100} active listings. Please delete or sell existing items first.` 
+            }, { status: 403 });
+        }
+
         const body = await req.json();
         const { website_url, title: rawTitle, description: rawDescription, price: rawPrice, category: rawCategory, condition, images, visibility, communityId, location, forSell = true, forRent = false, rentPrice: rawRentPrice, rentUnit } = body;
         
@@ -48,12 +73,14 @@ export async function POST(req: NextRequest) {
 
         if (forSell) {
             if (rawPrice === undefined || rawPrice === null || rawPrice === '') return NextResponse.json({ error: 'Sell price is required when For Sell is checked' }, { status: 400 });
-            price = Math.round(rawPrice);
+            price = Math.round(Number(rawPrice));
+            if (price <= 0) return NextResponse.json({ error: 'Sell price must be greater than zero' }, { status: 400 });
         }
 
         if (forRent) {
              if (rawRentPrice === undefined || rawRentPrice === null || rawRentPrice === '' || !rentUnit) return NextResponse.json({ error: 'Rent price and unit are required when For Rent is checked' }, { status: 400 });
-             rentPrice = Math.round(rawRentPrice);
+             rentPrice = Math.round(Number(rawRentPrice));
+             if (rentPrice <= 0) return NextResponse.json({ error: 'Rent price must be greater than zero' }, { status: 400 });
         }
 
         if (title.length > 80) return NextResponse.json({ error: 'Title must be 80 characters or less' }, { status: 400 });
@@ -108,9 +135,38 @@ export async function POST(req: NextRequest) {
                 images: imageUrls,
                 status: 'Available',
                 visibility: visibility === 'Community' ? 'Community' : 'Public',
-                community: visibility === 'Community' ? (communityId || (user.verifiedCommunities?.length > 0 ? user.verifiedCommunities[0] : undefined)) : undefined,
+                community: (function() {
+                    if (visibility !== 'Community') return undefined;
+                    const targetId = communityId || (user.verifiedCommunities?.length > 0 ? user.verifiedCommunities[0] : undefined);
+                    // Security Check: Verify user belongs to this community
+                    const userCommunityIds = (user.verifiedCommunities || []).map((c: any) => (c._id || c.id || c).toString());
+                    const isAdmin = user.role === 'admin';
+                    if (!isAdmin && targetId && !userCommunityIds.includes(targetId.toString())) {
+                        throw new Error('UNAUTHORIZED_COMMUNITY');
+                    }
+                    return targetId;
+                })(),
                 location: sanitizedLocation
             });
+
+            // --- Maintenance Mode Protection (Creation) ---
+            if (product.community) {
+                const Community = (await import('@/models/Community')).default;
+                const comm = await Community.findById(product.community).select('isActive name');
+                if (comm && !comm.isActive && user.role !== 'admin') {
+                    // Rollback creation and images
+                    await Product.findByIdAndDelete(product._id);
+                    if (newlyUploadedUrls.length > 0) {
+                        const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                        for (const url of newlyUploadedUrls) {
+                            await deleteFromCloudinary(url).catch(() => null);
+                        }
+                    }
+                    return NextResponse.json({ 
+                        error: `New listings in ${comm.name} are temporarily disabled due to campus maintenance.` 
+                    }, { status: 503 });
+                }
+            }
 
             return NextResponse.json({ product }, { status: 201 });
         } catch (dbError: any) {
@@ -142,7 +198,8 @@ export async function GET(req: NextRequest) {
         const minPrice = searchParams.get('minPrice');
         const maxPrice = searchParams.get('maxPrice');
         const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '24');
+        const requestedLimit = parseInt(searchParams.get('limit') || '24');
+        const limit = Math.min(requestedLimit, 50);
         const communityFilter = searchParams.get('communityFilter') || 'All';
         const cityFilter = searchParams.get('city');
         const skip = (page - 1) * limit;
@@ -152,6 +209,22 @@ export async function GET(req: NextRequest) {
         let blockedUserIds: string[] = [];
 
         const query: any = { status: { $in: ['Available', 'Rented'] } };
+
+        // [MAINTENANCE MODE FILTER]
+        const isAdmin = decoded?.role === 'admin';
+        if (!isAdmin) {
+            const Community = (await import('@/models/Community')).default;
+            const inactiveCommunities = await Community.find({ isActive: false }).select('_id').lean();
+            if (inactiveCommunities.length > 0) {
+                const inactiveIds = inactiveCommunities.map(c => c._id);
+                if (!query.$and) query.$and = [];
+                // Filter out inactive communities UNLESS we are looking for a specific seller
+                // (This allows sellers to still see their own items on their profile)
+                if (!seller) {
+                    query.$and.push({ community: { $nin: inactiveIds } });
+                }
+            }
+        }
 
         if (decoded && !seller) {
              const currentUser = await User.findById(decoded.userId).select('blockedUsers verifiedCommunities role').lean();

@@ -121,7 +121,7 @@ export default function CreateServicePage() {
     const hasHostelSettings = Boolean(location.hostel) || location.room !== undefined || location.bed !== undefined;
 
     if (formData.visibility === 'Public' && !hasMapSettings && !hasHostelSettings) {
-        setError('Please drop a pin on the map or provide hostel details to set the meeting location.');
+        setError('Please select your State and City, or use Auto Detect to set your location.');
         setLoading(false);
         return;
     }
@@ -159,12 +159,12 @@ export default function CreateServicePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
-      <div className="bg-white dark:bg-[#111] rounded-[2.5rem] shadow-2xl shadow-indigo-500/5 border border-gray-100 dark:border-white/5 overflow-hidden">
+      <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl shadow-indigo-500/5 border border-gray-100 dark:border-zinc-800/50 overflow-hidden">
         <div className="p-6 sm:p-10 md:p-12 relative text-left">
           {/* Status Modal Overlay */}
           {(loading || success) && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-white/80 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-               <div className="max-w-sm w-full bg-white dark:bg-[#111] rounded-[3rem] p-10 text-center shadow-2xl border border-gray-100 dark:border-white/5 animate-in zoom-in duration-500">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-white/80 dark:bg-zinc-950/90 backdrop-blur-md animate-in fade-in duration-300">
+               <div className="max-w-sm w-full bg-white dark:bg-zinc-900 rounded-[3rem] p-10 text-center shadow-2xl border border-gray-100 dark:border-zinc-800 animate-in zoom-in duration-500">
                 {success ? (
                   <div className="flex flex-col items-center">
                     <div className="w-24 h-24 bg-green-100 dark:bg-green-500/10 rounded-full flex items-center justify-center mb-6 animate-bounce">
@@ -211,7 +211,7 @@ export default function CreateServicePage() {
                 required
                 maxLength={80}
                 placeholder="e.g. Calculus Tutoring, Graphic Design"
-                className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium"
+                className="w-full bg-gray-50 dark:bg-zinc-900/50 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value.replace(/[\r\n]/g, '') })}
               />
@@ -230,23 +230,23 @@ export default function CreateServicePage() {
                         min={siteConfigData?.minPrice || 5}
                         max={siteConfigData?.maxPriceService || 100000}
                         placeholder="0"
-                        className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-l-2xl rounded-r-none pl-8 pr-4 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-black text-xl"
+                        className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-l-2xl rounded-r-none pl-8 pr-4 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-black text-xl"
                         onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
                         onChange={(e) => setFormData({ ...formData, price: e.target.value.replace(/\D/g, '') })}
                         value={formData.price}
                       />
                   </div>
-                   <select
+                    <select
                     id="priceUnit"
                     name="priceUnit"
-                    className="bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 font-bold px-3 rounded-r-2xl border-none outline-none appearance-none cursor-pointer hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                    className="bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 font-bold px-3 rounded-r-2xl border-none outline-none appearance-none cursor-pointer hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
                     value={formData.priceUnit}
                     onChange={(e) => setFormData({ ...formData, priceUnit: e.target.value })}
-                   >
-                     <option value="per hour" className="dark:bg-[#111] dark:text-white">/ HR</option>
-                     <option value="per project" className="dark:bg-[#111] dark:text-white">/ PROJ</option>
-                     <option value="per session" className="dark:bg-[#111] dark:text-white">/ SESS</option>
-                     <option value="per day" className="dark:bg-[#111] dark:text-white">/ DAY</option>
+                    >
+                     <option value="per hour" className="dark:bg-zinc-900 dark:text-white">/ HR</option>
+                     <option value="per project" className="dark:bg-zinc-900 dark:text-white">/ PROJ</option>
+                     <option value="per session" className="dark:bg-zinc-900 dark:text-white">/ SESS</option>
+                     <option value="per day" className="dark:bg-zinc-900 dark:text-white">/ DAY</option>
                    </select>
               </div>
             </div>
@@ -265,7 +265,7 @@ export default function CreateServicePage() {
                 required
                 maxLength={2000}
                 placeholder="What exactly will you provide? Be specific to attract more clients..."
-                className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-3xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium resize-none"
+                className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-3xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium resize-none"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
@@ -276,12 +276,12 @@ export default function CreateServicePage() {
               <select
                 id="category"
                 name="category"
-                className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white outline-none transition-all font-bold appearance-none cursor-pointer shadow-sm"
+                className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white outline-none transition-all font-bold appearance-none cursor-pointer shadow-sm"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               >
                 {(siteConfigData?.serviceCategories || ['Academic Help', 'Tech Support', 'Graphic Design', 'Photography', 'Dorm Services', 'Fitness Coaching', 'Other']).map((cat: string) => (
-                  <option key={cat} value={cat} className="dark:bg-[#111] dark:text-white">{cat}</option>
+                  <option key={cat} value={cat} className="dark:bg-zinc-900 dark:text-white">{cat}</option>
                 ))}
               </select>
             </div>
@@ -292,12 +292,12 @@ export default function CreateServicePage() {
                 id="availability"
                 name="availability"
                 required
-                className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white outline-none transition-all font-bold appearance-none cursor-pointer shadow-sm"
+                className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white outline-none transition-all font-bold appearance-none cursor-pointer shadow-sm"
                 value={formData.availability}
                 onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
               >
                 {(siteConfigData?.serviceAvailability || ['🗓️ Flexible', '🏠 Weekends', '🌙 Evening', '☀️ Daytime']).map((avail: string) => (
-                  <option key={avail} value={avail} className="dark:bg-[#111] dark:text-white">{avail}</option>
+                  <option key={avail} value={avail} className="dark:bg-zinc-900 dark:text-white">{avail}</option>
                 ))}
               </select>
             </div>
@@ -334,6 +334,34 @@ export default function CreateServicePage() {
                   {!user?.verifiedCommunities?.length && <div className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-[1px] rounded-2xl flex items-center justify-center p-4 text-center text-[10px] font-bold text-gray-700 dark:text-gray-300">Verification Required</div>}
                 </button>
               </div>
+              {formData.visibility === 'Community' && user?.verifiedCommunities?.length && (
+                <div className="mt-4 animate-in fade-in slide-in-from-top-4">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 ml-1">Swap Selected Circle</label>
+                  <select
+                    className="w-full h-12 bg-white dark:bg-white/10 rounded-xl px-4 text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={formData.communityId}
+                    onChange={(e) => setFormData({ ...formData, communityId: e.target.value })}
+                  >
+                    {user.verifiedCommunities.map((c: any) => (
+                      <option key={c._id || c.id || c} value={c._id || c.id || c}>
+                        🏢 {c.name || 'Campus'} {(c as any).isActive === false ? ' (Maintenance/Paused)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {(() => {
+                      const selectedComm = user.verifiedCommunities.find((c: any) => (c._id || c.id || c) === formData.communityId);
+                      if (selectedComm && (selectedComm as any).isActive === false) {
+                          return (
+                              <p className="mt-2 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                                  <span>⚠️</span>
+                                  This campus is currently in maintenance mode. Creation is disabled.
+                              </p>
+                          );
+                      }
+                      return null;
+                  })()}
+                </div>
+              )}
             </div>
 
             {/* Location Section */}
@@ -348,7 +376,7 @@ export default function CreateServicePage() {
                     communityId={formData.communityId}
                     communities={user?.verifiedCommunities || []}
                     locationData={location}
-                    onChange={(newLoc) => setLocation(newLoc)}
+                    onChange={(newLoc) => setLocation(newLoc as any)}
                 />
             </div>
             
@@ -370,8 +398,8 @@ export default function CreateServicePage() {
                   </div>
                 ))}
                 {images.length < (siteConfigData?.maxServiceImages || 5) && (
-                  <label className="border-3 border-dashed border-gray-200 dark:border-white/10 rounded-[1.5rem] flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-white/5 transition-all aspect-square group">
-                    <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-full mb-2 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 group-hover:text-indigo-600 transition-all">
+                  <label className="border-3 border-dashed border-gray-200 dark:border-zinc-800 rounded-[1.5rem] flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-zinc-950 transition-all aspect-square group">
+                    <div className="bg-gray-100 dark:bg-zinc-900 p-3 rounded-full mb-2 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 group-hover:text-indigo-600 transition-all">
                        <svg className="h-6 w-6 text-gray-400 group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
                        </svg>
@@ -394,7 +422,15 @@ export default function CreateServicePage() {
             </button>
             <button
               type="submit"
-              disabled={loading || imageProcessing || !formData.price || !formData.availability || Number(formData.price) < (siteConfigData?.minPrice || 5) || Number(formData.price) > (siteConfigData?.maxPriceService || 100000)}
+              disabled={
+                loading || 
+                imageProcessing || 
+                !formData.price || 
+                !formData.availability || 
+                Number(formData.price) < (siteConfigData?.minPrice || 5) || 
+                Number(formData.price) > (siteConfigData?.maxPriceService || 100000) ||
+                (formData.visibility === 'Community' && user?.verifiedCommunities?.find((c: any) => (c._id || c.id || c) === formData.communityId)?.isActive === false)
+              }
               className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 dark:from-indigo-500 dark:to-indigo-400 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/20 active:scale-95 transition-all disabled:opacity-40"
             >
               {imageProcessing ? 'Processing...' : loading ? 'Publishing...' : 'Confirm Service'}

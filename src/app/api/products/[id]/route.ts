@@ -5,26 +5,62 @@ import Product from '@/models/Product';
 import User from '@/models/User';
 import Order from '@/models/Order';
 import Review from '@/models/Review';
+import Community from '@/models/Community';
 import { verifyToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         await connectToDatabase();
-        const { id } = await params; // Await params in Next.js 15+
+        const { id } = await params;
 
         if (!isValidObjectId(id)) {
             return NextResponse.json({ error: 'Invalid Product ID' }, { status: 400 });
         }
 
-        const product = await Product.findById(id).populate('seller', 'name username profilePicture email gender').populate('community', 'name');
+        const product = await Product.findById(id).populate('seller', 'name username profilePicture email gender').populate('community', 'name isActive');
 
         if (!product) {
             return NextResponse.json({ error: 'Product not found' }, { status: 404 });
         }
 
-        // Block access if a user relationship is blocked
         const token = req.cookies.get('token')?.value;
-        const decoded = token ? verifyToken(token) : null;
+        const decoded = token ? verifyToken(token) as { userId: string, role: string } : null;
+
+        // --- Maintenance Mode Check ---
+        if (product.community && !(product.community as any).isActive) {
+            const isAdmin = decoded?.role === 'admin';
+            const isOwner = decoded?.userId === product.seller._id.toString();
+            
+            if (!isAdmin && !isOwner) {
+                return NextResponse.json({ 
+                    error: `This circle (${(product.community as any).name}) is currently under maintenance. Listings from this campus are temporarily hidden.`,
+                    maintenance: true 
+                }, { status: 503 });
+            }
+        }
+
+        // --- Community Visibility Hardening ---
+        if (product.visibility === 'Community' && product.community) {
+            const communityObj = product.community as any;
+            const isOwner = decoded?.userId === product.seller._id.toString();
+            let isMember = false;
+            let isAdmin = false;
+
+            if (decoded?.userId) {
+                const currentUser = await User.findById(decoded.userId).select('verifiedCommunities role');
+                isMember = !!(currentUser?.verifiedCommunities?.some((cId: any) => cId.toString() === communityObj._id.toString()));
+                isAdmin = currentUser?.role === 'admin';
+            }
+
+            if (!isOwner && !isMember && !isAdmin) {
+                return NextResponse.json({ 
+                    error: 'This listing is exclusive to verified campus community members.',
+                    restricted: true 
+                }, { status: 403 });
+            }
+        }
+
+        // Block access if a user relationship is blocked
         if (decoded && product.seller) {
             const currentUserId = decoded.userId;
             const sellerId = product.seller._id.toString();
@@ -108,7 +144,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             return NextResponse.json({ error: 'Product not found' }, { status: 404 });
         }
 
-        if (product.seller.toString() !== user.userId) {
+        const userDoc = await User.findById(user.userId).select('role');
+        const isAdmin = userDoc?.role === 'admin';
+
+        if (product.seller.toString() !== user.userId && !isAdmin) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -122,6 +161,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         if (activeOrder) {
             return NextResponse.json({
                 error: 'Cannot delete product with active orders. Please complete or resolve existing transactions first.'
+            }, { status: 400 });
+        }
+
+        // --- DELETION GUARD (SOLD ITEMS) ---
+        if (product.status === 'Sold') {
+            return NextResponse.json({
+                error: 'Sold items cannot be deleted. They remain as a permanent part of your sales history and trust score.'
             }, { status: 400 });
         }
 
@@ -181,14 +227,27 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
         const body = await req.json();
 
-        let product = await Product.findById(id);
+        const product = await Product.findById(id);
         if (!product) {
             return NextResponse.json({ error: 'Product not found' }, { status: 404 });
         }
 
-        // Only the seller can update their own product
-        if (product.seller.toString() !== user.userId) {
+        // Only the seller or admin can update
+        const userDoc = await User.findById(user.userId).select('role');
+        const isAdmin = userDoc?.role === 'admin';
+
+        if (product.seller.toString() !== user.userId && !isAdmin) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        // --- Maintenance Mode Protection (Update) ---
+        if (product.community) {
+            const comm = await Community.findById(product.community).select('isActive name');
+            if (comm && !comm.isActive && !isAdmin) {
+                return NextResponse.json({ 
+                    error: `The ${comm.name} circle is in maintenance mode. Updates to listings are temporarily disabled.` 
+                }, { status: 503 });
+            }
         }
 
         // Apply permitted status updates (only Available ↔ Inactive toggle, or Rented → Available reset)

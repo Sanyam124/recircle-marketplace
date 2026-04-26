@@ -11,6 +11,7 @@ import ReportModal from '@/components/ReportModal';
 import ReviewSection from '@/components/ReviewSection';
 import ExpandableText from '@/components/ExpandableText';
 import LocationViewer from '@/components/LocationViewer';
+import AdBanner from '@/components/AdBanner';
 import Image from 'next/image';
 import { confirmAction, showError } from '@/lib/confirm';
 import { formatTimeAgo } from '@/lib/utils';
@@ -184,7 +185,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           </div>
           <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4 uppercase tracking-tight">Access Restricted</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto leading-relaxed">
-            Due to privacy settings, you cannot view this product or its creator at this time.
+            You can't see this product.
           </p>
           <button 
             onClick={() => router.push('/explore')}
@@ -222,76 +223,119 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 transition-all duration-300 overflow-x-hidden">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-12 sm:pb-20 w-full min-w-0">
       <div className="lg:grid lg:grid-cols-2 lg:gap-x-12 lg:items-start">
-        {/* Left Column: Image Carousel */}
-        <div className="w-full max-w-2xl mx-auto lg:max-w-none mb-10 lg:mb-0">
-          <div className="relative group rounded-3xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+        {/* Left Column: Image Carousel + Details */}
+        <div className="flex flex-col gap-4 w-full max-w-2xl mx-auto lg:max-w-none">
+          {/* Mobile Meta Actions (Fixed Single Line) */}
+          <div className="lg:hidden flex items-center justify-between gap-2 px-1 pb-2">
+             <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[9px] font-black uppercase tracking-wider border shadow-sm ${
+                  product.status === 'Available' 
+                    ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20' 
+                    : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${product.status === 'Available' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-rose-500 animate-pulse'}`} />
+                {product.status === 'Available' ? 'Available' : 'Sold'}
+             </div>
+             
+             <div className="flex items-center gap-2">
+                <ShareButton
+                  title={product.title}
+                  className="p-2 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#222] transition-all flex items-center gap-1.5 text-[9px] font-black uppercase tracking-tighter px-3 shadow-sm active:scale-95"
+                />
+                {user && !isOwner && product.status === 'Available' && (
+                  <button
+                    onClick={() => setReportOpen(true)}
+                    className="p-2 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-xl text-gray-500 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all text-[9px] font-black uppercase tracking-tighter px-3 flex items-center gap-1.5 shadow-sm active:scale-95"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>
+                    Report
+                  </button>
+                )}
+             </div>
+          </div>
+
+          <div className="relative group rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-xl sm:shadow-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111] transition-all duration-500 hover:shadow-indigo-500/10">
             <ImageCarousel images={product.images || []} alt={product.title} />
           </div>
+
+          {/* Description Card (Desktop Only) */}
+          <div className="hidden lg:block bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-[2rem] sm:rounded-3xl p-6 sm:p-8 shadow-sm">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6 flex items-center gap-2">
+              Description
+            </h3>
+            <div className="text-gray-600 dark:text-gray-400 leading-relaxed font-normal whitespace-pre-wrap">
+              <ExpandableText text={product.description} maxLines={10} className="text-gray-800 dark:text-gray-300" showReadMore={true} />
+            </div>
+          </div>
+
+           {/* Reviews Card (Desktop Only) */}
+             <ReviewSection 
+                targetId={product.seller._id} 
+                targetName={product.seller.name} 
+                productId={product._id} 
+                className="hidden lg:block bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-[2rem] sm:rounded-3xl p-5 sm:p-6 shadow-sm"
+              />
         </div>
 
         {/* Right Column: Information */}
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-4 mt-4 lg:mt-0 max-w-2xl mx-auto lg:max-w-none w-full">
           {/* Header & Meta */}
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-3">
-               <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl">
-                     <span className="text-[10px] font-extrabold uppercase tracking-widest">{product.category}</span>
-                  </div>
-                  <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border ${
-                    product.status === 'Available' 
-                      ? 'bg-green-50 dark:bg-green-900/20 text-green-600 border-green-200 dark:border-green-800/50' 
-                      : 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800/50'
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${product.status === 'Available' ? 'bg-green-500' : 'bg-rose-500 animate-pulse'}`} />
-                    {product.status === 'Available' ? 'Available' : 'Sold'}
-                  </div>
-               </div>
+          <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-[2rem] sm:rounded-3xl p-6 sm:p-8 flex flex-col gap-5 sm:gap-6 shadow-sm">
+            <div className="hidden lg:flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-2">
 
-              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 w-full min-w-0">
-                <h1 className="flex-1 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight break-all overflow-wrap-anywhere max-w-full leading-tight min-w-0">
-                  {product.title}
-                </h1>
-                
-                <div className="flex gap-2 shrink-0">
-                  <ShareButton
-                    title={product.title}
-                    className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  />
-                  {user && !isOwner && product.status === 'Available' && (
-                    <button
-                      onClick={() => setReportOpen(true)}
-                      className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold text-xs"
-                    >
-                      Report
-                    </button>
-                  )}
+                <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider border ${
+                  product.status === 'Available' 
+                    ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20' 
+                    : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${product.status === 'Available' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-rose-500 animate-pulse'}`} />
+                  {product.status === 'Available' ? 'Available' : 'Sold'}
                 </div>
+              </div>
+              
+              <div className="flex gap-2 self-start sm:self-auto">
+                <ShareButton
+                  title={product.title}
+                  className="p-2.5 bg-gray-50 dark:bg-[#2a2a2a] border border-gray-200 dark:border-[#3a3a3a] rounded-xl text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#333] transition-all flex items-center gap-2 text-xs font-bold px-4 shadow-sm"
+                />
+                {user && !isOwner && product.status === 'Available' && (
+                  <button
+                    onClick={() => setReportOpen(true)}
+                    className="p-2.5 bg-gray-50 dark:bg-[#2a2a2a] border border-gray-200 dark:border-[#3a3a3a] rounded-xl text-gray-500 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-red-50 dark:hover:bg-[#333] hover:border-red-200 dark:hover:border-rose-900/50 transition-all text-xs font-bold px-4 flex items-center gap-2 shadow-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>
+                    Report
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Pricing Section - Dynamic Grid */}
-            <div className={`grid gap-4 mt-2 ${product.forSell !== false && product.forRent ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                {product.forSell !== false && (
-                    <div className="p-5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 flex flex-col items-start transition-all w-full">
-                        <span className="text-xs font-bold uppercase tracking-widest text-indigo-800/70 dark:text-indigo-400 mb-1 block">Purchase Price</span>
-                        <span className="text-3xl font-black text-indigo-900 dark:text-indigo-300">₹{product.price?.toLocaleString()}</span>
-                    </div>
-                )}
-                {product.forRent && (
-                    <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 flex flex-col items-start transition-all w-full">
-                        <span className="text-xs font-bold uppercase tracking-widest text-emerald-800/70 dark:text-emerald-400 mb-1 block">Rent Rate</span>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-3xl font-black text-emerald-900 dark:text-emerald-300">₹{product.rentPrice?.toLocaleString()}</span>
-                            <span className="text-sm font-bold text-emerald-700/60 ml-1">/ {product.rentUnit}</span>
-                        </div>
-                    </div>
-                )}
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white tracking-tight leading-tight break-words">
+              {product.title}
+            </h1>
+
+            {/* Pricing Section */}
+            <div className="flex flex-wrap items-center gap-4 py-2">
+                <span className="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white tracking-tighter">
+                  ₹{product.price?.toLocaleString()}
+                </span>
+                <div className="flex flex-wrap gap-2 mt-1 sm:mt-0">
+                  {product.forSell !== false && (
+                    <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-md text-[10px] font-black uppercase tracking-tight">
+                      Sale price
+                    </span>
+                  )}
+                  {product.forRent && (
+                    <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-md text-[10px] font-black uppercase tracking-tight">
+                      ₹{product.rentPrice?.toLocaleString()} / {product.rentUnit}
+                    </span>
+                  )}
+                </div>
             </div>
             
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-1">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-y-3 gap-x-6 pt-2 border-t border-gray-100 dark:border-[#2a2a2a] mt-2">
                <span className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wide">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   Posted {formatTimeAgo(product.createdAt)}
@@ -302,151 +346,177 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     ? (product.community?.name || 'Campus Listing')
                     : (product.location ? [product.location.city, product.location.state].filter(Boolean).join(', ') || 'Location unknown' : 'Location unknown')}
                </span>
-
             </div>
           </div>
 
-          {/* Seller Card - Synced with Service Provider view */}
-          <div className="bg-white dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm">
-             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-5 border-b border-gray-100 dark:border-gray-800 pb-5">
-                <Link href={`/profile/${product.seller._id}`} className="relative h-16 w-16 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm flex-shrink-0 group">
-                   {product.seller.profilePicture ? (
-                     <Image src={product.seller.profilePicture} alt={product.seller.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" referrerPolicy="no-referrer" />
-                   ) : (
-                     <div className="h-full w-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-bold text-xl">{product.seller.name?.charAt(0)}</div>
-                   )}
-                </Link>
-                <div className="text-center sm:text-left flex-1 min-w-0 flex flex-col justify-center">
-                   <Link href={`/profile/${product.seller._id}`} className="text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">{product.seller.name}</Link>
-                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-1">Seller • {product.reviewCount || 0} reviews</p>
-                   {product.averageRating && product.averageRating > 0 ? (
-                     <div className="flex items-center justify-center sm:justify-start gap-1 mt-2">
-                        <span className="text-yellow-400 text-sm">★</span>
-                        <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{Number(product.averageRating).toFixed(1)}</span>
-                     </div>
-                   ) : null}
+          {/* Description Card (Mobile Only) */}
+          <div className="lg:hidden bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-[2rem] sm:rounded-3xl p-6 sm:p-8 shadow-sm">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6 flex items-center gap-2">
+              Description
+            </h3>
+            <div className="text-gray-600 dark:text-gray-400 leading-relaxed font-normal whitespace-pre-wrap">
+              <ExpandableText text={product.description} maxLines={10} className="text-gray-800 dark:text-gray-300" showReadMore={true} />
+            </div>
+          </div>
+
+          {/* Seller Card */}
+          <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm group">
+            <div className="flex items-center gap-4">
+              <Link href={`/profile/${product.seller._id}`} className="relative h-14 w-14 rounded-full overflow-hidden border border-gray-200 dark:border-[#3a3a3a] shadow-sm flex-shrink-0">
+                  {product.seller.profilePicture ? (
+                    <Image src={product.seller.profilePicture} alt={product.seller.name} fill className="object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="h-full w-full bg-indigo-50 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-lg">{product.seller.name?.charAt(0)}</div>
+                  )}
+              </Link>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-0.5">
+                  <Link href={`/profile/${product.seller._id}`} className="text-lg font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors truncate">
+                    {product.seller.name}
+                  </Link>
+                  <Link href={`/profile/${product.seller._id}`} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1 group/link shrink-0 ml-2">
+                    View <span className="group-hover/link:translate-x-1 transition-transform">→</span>
+                  </Link>
                 </div>
-                {(product.visibility === 'Community' || (!product.visibility && product.community)) && product.community && (
-                   <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center shrink-0">
-                      <span className="text-[10px] font-bold text-gray-500 uppercase mb-0.5 tracking-wide">Campus</span>
-                      <span className="text-sm font-bold text-gray-800 dark:text-gray-300 whitespace-nowrap">{product.community.name}</span>
-                   </div>
-                )}
-             </div>
-
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0">
-                    <div className="p-3.5 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-transparent dark:border-gray-800 overflow-hidden min-w-0">
-                       <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1 block">Category</span>
-                       <span className="text-sm font-black text-gray-800 dark:text-gray-200 capitalize block break-all">{product.category}</span>
-                    </div>
-                    <div className="p-3.5 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100/50 dark:border-indigo-800/30 overflow-hidden min-w-0">
-                       <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 block">Condition</span>
-                       <span className="text-sm font-black text-indigo-700 dark:text-indigo-300 capitalize block break-all">{product.condition}</span>
-                    </div>
-                 </div>
+                <div className="flex items-center gap-3">
+                  <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest hidden sm:block">Seller</p>
+                  <span className="w-1 h-1 bg-gray-300 dark:bg-[#3a3a3a] rounded-full hidden sm:block" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex text-xs space-x-[2px]">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <svg key={star} className={`w-3.5 h-3.5 ${star <= Math.round(product.averageRating || 0) ? "text-yellow-400 dark:text-yellow-500" : "text-gray-200 dark:text-gray-700"}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      ))}
+                    </span>
+                    <span className="text-xs font-bold text-gray-600 dark:text-gray-400">{product.reviewCount || 0} reviews</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Description */}
-          <div className="flex flex-col gap-3">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-2">Description</h3>
-            <div className="text-base text-gray-600 dark:text-gray-300 leading-relaxed font-normal pt-1">
-              <ExpandableText text={product.description} maxLines={8} className="whitespace-pre-wrap" showReadMore={true} />
+          {/* Info Grid 2x2 */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="p-4 sm:p-6 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-2xl sm:rounded-[2rem] flex flex-col gap-1.5 hover:border-indigo-300 dark:hover:border-indigo-500/30 transition-colors group shadow-sm">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Category</span>
+              <span className="text-sm sm:text-md font-bold text-indigo-700 dark:text-indigo-400">{product.category}</span>
             </div>
-            
-            <LocationViewer 
-               visibility={product.visibility} 
-               location={product.location} 
-            />
+            <div className="p-4 sm:p-6 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-2xl sm:rounded-[2rem] flex flex-col gap-1.5 hover:border-emerald-300 dark:hover:border-emerald-500/30 transition-colors group shadow-sm">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Condition</span>
+              <span className="text-sm sm:text-md font-bold text-emerald-700 dark:text-emerald-400">{product.condition}</span>
+            </div>
+            <div className="p-4 sm:p-6 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-2xl sm:rounded-[2rem] flex flex-col gap-1.5 hover:border-amber-300 dark:hover:border-amber-500/30 transition-colors group shadow-sm">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">Listing Type</span>
+              <span className="text-sm sm:text-md font-bold text-amber-600 dark:text-amber-500">
+                {product.forSell !== false && product.forRent ? 'Sale + Rent' : product.forRent ? 'Rent' : 'Sale'}
+              </span>
+            </div>
+            <div className="p-4 sm:p-6 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-2xl sm:rounded-[2rem] flex flex-col gap-1.5 hover:border-blue-300 dark:hover:border-blue-500/30 transition-colors group shadow-sm">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Visibility</span>
+              <span className="text-sm sm:text-md font-bold text-blue-600 dark:text-blue-400">{product.visibility || 'Public'}</span>
+            </div>
+          </div>
+
+          {/* Location Display */}
+          <LocationViewer 
+            visibility={product.visibility} 
+            location={product.location} 
+          />
+          
+          {/* Action Buttons Stack */}
+          <div className="flex flex-col gap-3 mt-2 sm:mt-4">
+            {user && isOwner && (product.status !== 'Sold' && product.status !== 'Completed') ? (
+                <button 
+                  onClick={handleDelete} 
+                  disabled={isDeleting} 
+                  className="w-full py-4 sm:py-5 bg-red-50 dark:bg-rose-500/10 hover:bg-red-100 dark:hover:bg-rose-500/20 text-red-600 dark:text-rose-500 border border-red-200 dark:border-rose-500/30 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Listing'}
+                </button>
+            ) : user && isOwner ? null : isBlockedByMe ? (
+                <button 
+                  onClick={handleUnblock} 
+                  disabled={unblocking} 
+                  className="w-full py-4 sm:py-5 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
+                >
+                  {unblocking ? 'Unblocking...' : 'Unblock User'}
+                </button>
+            ) : (
+                <>
+                  <button
+                    onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${product.seller._id}?productId=${product._id}`); }}
+                    disabled={product.status !== 'Available'}
+                    className={`w-full py-4 sm:py-5 rounded-2xl font-black text-xs uppercase tracking-[0.1em] sm:tracking-[0.15em] transition-all border shadow-lg ${
+                      product.status !== 'Available' 
+                        ? 'bg-gray-100 text-gray-400 border-transparent dark:bg-gray-800 dark:text-gray-600 cursor-not-allowed' 
+                        : 'bg-gray-900 border-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:border-white dark:hover:bg-gray-200 active:scale-[0.98]'
+                    }`}
+                  >
+                    {product.status !== 'Available' ? 'Sold Out' : 'Message seller'}
+                  </button>
+                  <button
+                    onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${product.seller._id}?productId=${product._id}&tab=action&autoMsg=true`); }}
+                    disabled={product.status !== 'Available'}
+                    className={`w-full py-4 sm:py-5 rounded-2xl font-black text-xs uppercase tracking-[0.1em] sm:tracking-[0.15em] transition-all border ${
+                      product.status !== 'Available' 
+                        ? 'bg-gray-50 text-gray-400 border-gray-200 dark:bg-gray-800/50 dark:text-gray-600 dark:border-[#2a2a2a] cursor-not-allowed' 
+                        : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-50 dark:bg-transparent dark:text-white dark:border-[#3a3a3a] dark:hover:bg-[#222] active:scale-[0.98]'
+                    }`}
+                  >
+                    Reserve item
+                  </button>
+                  <button
+                    onClick={toggleWishlist}
+                    className={`w-full py-4 sm:py-5 rounded-2xl font-black text-xs uppercase tracking-[0.1em] sm:tracking-[0.15em] transition-all border flex items-center justify-center gap-2 ${
+                      liked 
+                        ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-500/10 dark:text-rose-500 dark:border-rose-500/30' 
+                        : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-50 dark:bg-transparent dark:text-white dark:border-[#3a3a3a] dark:hover:bg-[#222]'
+                    } active:scale-[0.98]`}
+                  >
+                    <svg className={`w-4 h-4 ${liked ? 'fill-current' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                    {liked ? 'Wishlisted' : 'Add to wishlist'}
+                  </button>
+                </>
+            )}
           </div>
           
-          {/* Action Hub - Hidden on mobile */}
-          <div className="hidden sm:block bg-gray-50 dark:bg-gray-900/50 rounded-[2rem] p-6 sm:p-8 border border-gray-200 dark:border-gray-800 shadow-sm transition-all focus-within:ring-4 focus-within:ring-indigo-100">
-             <div className="flex flex-col gap-6">
-                <div className="flex flex-col gap-1">
-                   <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Interested in this item?</h3>
-                   <p className="text-sm text-gray-500 dark:text-gray-400">Directly coordinate with the seller to discuss pricing, pickup, or delivery details.</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                   {user && isOwner ? (
-                      <button onClick={handleDelete} disabled={isDeleting} className="col-span-full w-full py-4 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-xl font-bold tracking-wide transition-all disabled:opacity-50">
-                        {isDeleting ? 'Deleting...' : 'Delete Listing'}
-                      </button>
-                   ) : isBlockedByMe ? (
-                      <button onClick={handleUnblock} disabled={unblocking} className="col-span-full w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold tracking-wide transition-all">
-                        {unblocking ? 'Unblocking...' : 'Unblock User'}
-                      </button>
-                   ) : (
-                      <>
-                        <button
-                          onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${product.seller._id}?productId=${product._id}`); }}
-                          disabled={product.status !== 'Available'}
-                          className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all ${
-                            product.status !== 'Available' ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm active:scale-95'
-                          }`}
-                        >
-                          {product.status !== 'Available' ? 'Not Available' : 'Message Seller'}
-                        </button>
-                        <button
-                          onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${product.seller._id}?productId=${product._id}&tab=action&autoMsg=true`); }}
-                          disabled={product.status !== 'Available'}
-                          className={`w-full py-4 border-2 rounded-xl font-bold text-sm tracking-wide transition-all ${
-                            product.status !== 'Available' ? 'border-gray-200 text-gray-400 dark:border-gray-800 dark:text-gray-600' : 'border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 active:scale-95'
-                          }`}
-                        >
-                          Reserve Item
-                        </button>
-                      </>
-                   )}
-                </div>
-
-                {!isOwner && product.status === 'Available' && user && (
-                   <button
-                     onClick={toggleWishlist}
-                     className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all border ${liked ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:border-rose-900/50' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 active:scale-95'}`}
-                   >
-                     {liked ? 'Added to Wishlist' : 'Add to Wishlist'}
-                   </button>
-                )}
-             </div>
-          </div>
-
-          <div className="mt-8" id="reviews-section">
-             <ReviewSection 
-                targetId={product.seller._id} 
-                targetName={product.seller.name} 
-                productId={product._id} 
-              />
-          </div>
-
           {/* Sticky Mobile Action Bar */}
-          <div className="fixed bottom-0 left-0 right-0 sm:hidden z-[150] p-4 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl border-t border-gray-100 dark:border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] animate-in slide-in-from-bottom-full duration-500">
+          <div className="fixed bottom-[76px] sm:bottom-0 left-0 right-0 sm:hidden z-[150] p-4 bg-white/95 dark:bg-[#111]/90 backdrop-blur-md border-t border-gray-200 dark:border-[#2a2a2a] shadow-[0_-10px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
              <div className="flex gap-3 max-w-lg mx-auto">
                 {!isOwner && (
                    <>
                       <button
                         onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${product.seller._id}?productId=${product._id}`); }}
-                        className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                        className="flex-1 py-4 bg-gray-900 text-white dark:bg-white dark:text-black rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg"
                       >
                         Message
                       </button>
                       <button
                         onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${product.seller._id}?productId=${product._id}&tab=action&autoMsg=true`); }}
-                        className="flex-1 py-4 bg-white dark:bg-white/5 text-indigo-600 dark:text-indigo-400 border-2 border-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all"
+                        className="flex-1 py-4 bg-white text-gray-900 border border-gray-300 dark:bg-transparent dark:text-white dark:border-[#3a3a3a] rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
                       >
-                        Make Offer
+                        Reserve
                       </button>
                    </>
                 )}
-                {isOwner && (
-                    <button onClick={handleDelete} className="w-full py-4 bg-rose-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-rose-500/20">
+                {isOwner && (product.status !== 'Sold' && product.status !== 'Completed') && (
+                    <button onClick={handleDelete} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
                        Delete Listing
                     </button>
                 )}
              </div>
           </div>
           
-          <div className="sm:hidden h-24" /> {/* Spacer for sticky bar */}
+          {/* Reviews Card (Mobile Only) */}
+          <div className="lg:hidden w-full">
+              <ReviewSection 
+                targetId={product.seller._id} 
+                targetName={product.seller.name} 
+                productId={product._id} 
+                className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-[2rem] sm:rounded-3xl p-4 shadow-sm"
+              />
+          </div>
         </div>
       </div>
       
@@ -458,6 +528,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           onClose={() => setReportOpen(false)} 
         />
       )}
+      
     </div>
   );
 }

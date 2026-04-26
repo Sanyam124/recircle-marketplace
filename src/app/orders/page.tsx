@@ -9,10 +9,10 @@ import NextImage from 'next/image';
 import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 import ReviewModal from '@/components/ReviewModal';
 import useSWR from 'swr';
-import RateLimitScreen from '@/components/RateLimitScreen';
+
 
 function OrdersPageContent() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, authFetch } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isFirstRender = useRef(true);
@@ -91,7 +91,7 @@ function OrdersPageContent() {
     setSubmittingOTP(true);
     const action = otpModalData.type === 'Product' ? 'complete_delivery' : 'complete_appointment';
     try {
-      const res = await fetch(`/api/orders/${otpModalData.id}`, {
+      const res = await authFetch(`/api/orders/${otpModalData.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, otp: otpCode }),
@@ -103,7 +103,7 @@ function OrdersPageContent() {
         setOtpCode('');
         showSuccess('Verification Successful', 'Transaction has been completed.');
       } else if (res.status === 429) {
-          showError('Rate Limited', 'Too many attempts. Please wait a minute.');
+          // Handled globally by authFetch
       } else {
           const errData = await res.json();
           showError('Verification Failed', errData.error || 'Check the code and try again.');
@@ -126,7 +126,7 @@ function OrdersPageContent() {
     if (!confirmed) return;
     
     try {
-      const res = await fetch(`/api/orders/${orderId}`, {
+      const res = await authFetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'cancel' }),
@@ -140,9 +140,7 @@ function OrdersPageContent() {
     }
   };
 
-  if (isRateLimited) {
-    return <RateLimitScreen onRetry={() => { mutateBuyer(); mutateSeller(); }} />;
-  }
+
 
   if (authLoading || !user) return <div className="max-w-5xl mx-auto px-4 py-12"><OrderRowSkeleton /><OrderRowSkeleton /><OrderRowSkeleton /></div>;
 

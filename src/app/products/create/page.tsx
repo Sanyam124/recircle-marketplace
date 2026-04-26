@@ -118,8 +118,8 @@ export default function CreateProductPage() {
     setError('');
 
     // Validation for Public listings
-    if (formData.visibility === 'Public' && !location.coordinates) {
-        setError('Please drop a pin on the map to set the meeting location.');
+    if (formData.visibility === 'Public' && (!location.state || !location.city)) {
+        setError('Please select your State and City, or use Auto Detect to set your location.');
         setLoading(false);
         return;
     }
@@ -158,12 +158,12 @@ export default function CreateProductPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
-      <div className="bg-white dark:bg-[#111] rounded-[2.5rem] shadow-2xl shadow-indigo-500/5 border border-gray-100 dark:border-white/5 overflow-hidden">
+      <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl shadow-indigo-500/5 border border-gray-100 dark:border-zinc-800/50 overflow-hidden">
         <div className="p-6 sm:p-10 md:p-12 relative">
           {/* Status Modal Overlay */}
           {(loading || success) && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-white/80 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-              <div className="max-w-sm w-full bg-white dark:bg-[#111] rounded-[3rem] p-10 text-center shadow-2xl border border-gray-100 dark:border-white/5 animate-in zoom-in duration-500">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-white/80 dark:bg-zinc-950/90 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="max-w-sm w-full bg-white dark:bg-zinc-900 rounded-[3rem] p-10 text-center shadow-2xl border border-gray-100 dark:border-zinc-800 animate-in zoom-in duration-500">
                 {success ? (
                   <div className="flex flex-col items-center">
                     <div className="w-24 h-24 bg-green-100 dark:bg-green-500/10 rounded-full flex items-center justify-center mb-6 animate-bounce">
@@ -212,7 +212,7 @@ export default function CreateProductPage() {
                     required
                     maxLength={80}
                     placeholder="What are you selling?"
-                    className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium"
+                    className="w-full bg-gray-50 dark:bg-zinc-900/50 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value.replace(/[\r\n]/g, '') })}
                   />
@@ -220,17 +220,17 @@ export default function CreateProductPage() {
               </div>
 
             {/* Listing Modes */}
-            <div className="sm:col-span-6 bg-gray-50 dark:bg-white/5 p-6 rounded-3xl border border-gray-100 dark:border-white/5">
+            <div className="sm:col-span-6 bg-gray-50 dark:bg-zinc-900/50 p-6 rounded-3xl border border-gray-100 dark:border-zinc-800/50">
               <label className="block text-sm font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest mb-4">Listing Modes <span className="text-red-500">*</span></label>
               <div className="flex flex-wrap gap-4">
-                 <label className={`flex items-center gap-3 px-6 py-3 rounded-2xl border-2 transition-all cursor-pointer group ${formData.forSell ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-transparent bg-white dark:bg-white/5 hover:border-gray-200 dark:hover:border-white/10'}`}>
+                  <label className={`flex items-center gap-3 px-6 py-3 rounded-2xl border-2 transition-all cursor-pointer group ${formData.forSell ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-transparent bg-white dark:bg-zinc-900 hover:border-gray-200 dark:hover:border-zinc-700'}`}>
                     <input type="checkbox" checked={formData.forSell} onChange={(e) => setFormData({...formData, forSell: e.target.checked})} className="sr-only" />
-                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-all ${formData.forSell ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-white/10'}`}>
+                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-all ${formData.forSell ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-zinc-800'}`}>
                        {formData.forSell && <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" /></svg>}
                     </div>
                     <span className={`text-sm font-bold transition-all ${formData.forSell ? 'text-indigo-700 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>For Sell</span>
                  </label>
-                 <label className={`flex items-center gap-3 px-6 py-3 rounded-2xl border-2 transition-all cursor-pointer group ${formData.forRent ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' : 'border-transparent bg-white dark:bg-white/5 hover:border-gray-200 dark:hover:border-white/10'}`}>
+                 <label className={`flex items-center gap-3 px-6 py-3 rounded-2xl border-2 transition-all cursor-pointer group ${formData.forRent ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' : 'border-transparent bg-white dark:bg-zinc-900 hover:border-gray-200 dark:hover:border-zinc-700'}`}>
                     <input type="checkbox" checked={formData.forRent} onChange={(e) => setFormData({...formData, forRent: e.target.checked})} className="sr-only" />
                     <div className={`w-5 h-5 rounded flex items-center justify-center transition-all ${formData.forRent ? 'bg-emerald-600 text-white' : 'bg-gray-200 dark:bg-white/10'}`}>
                        {formData.forRent && <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" /></svg>}
@@ -262,7 +262,7 @@ export default function CreateProductPage() {
                         max={siteConfig?.maxPriceProduct || 1000000}
                         step="1"
                         placeholder="0.00"
-                        className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl pl-10 pr-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-black text-xl"
+                        className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl pl-10 pr-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-black text-xl"
                         onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
                         onChange={(e) => setFormData({ ...formData, price: e.target.value.replace(/\D/g, '') })}
                         value={formData.price}
@@ -321,7 +321,7 @@ export default function CreateProductPage() {
                 required
                 maxLength={2000}
                 placeholder="Describe your item... (features, age, defects, etc.)"
-                className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-3xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium resize-none"
+                className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-3xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium resize-none"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
@@ -346,12 +346,12 @@ export default function CreateProductPage() {
               <select
                 id="condition"
                 name="condition"
-                className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white outline-none transition-all font-bold appearance-none cursor-pointer shadow-sm"
+                className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white outline-none transition-all font-bold appearance-none cursor-pointer shadow-sm"
                 value={formData.condition}
                 onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
               >
-                {(siteConfig?.productConditions || ['New', 'Like New', 'Good', 'Fair', 'Poor']).map((cond: string) => (
-                  <option key={cond} value={cond} className="dark:bg-[#111] dark:text-white">{cond}</option>
+                {(siteConfig?.productConditions || ['Like New', 'Good', 'Fair', 'Poor']).map((cond: string) => (
+                  <option key={cond} value={cond} className="dark:bg-zinc-900 dark:text-white">{cond}</option>
                 ))}
               </select>
             </div>
@@ -380,7 +380,7 @@ export default function CreateProductPage() {
                       communityId: firstComm?._id || firstComm?.id || firstComm || '' 
                     });
                   }}
-                  className={`flex flex-col gap-1 p-5 rounded-2xl border-2 text-left transition-all relative ${formData.visibility === 'Community' ? 'bg-white dark:bg-white/10 border-indigo-500 shadow-xl shadow-indigo-500/10' : 'bg-transparent border-transparent grayscale opacity-60 hover:grayscale-0 hover:opacity-100 hover:border-gray-200 disabled:opacity-30 disabled:cursor-not-allowed'}`}
+                  className={`flex flex-col gap-1 p-5 rounded-2xl border-2 text-left transition-all relative ${formData.visibility === 'Community' ? 'bg-white dark:bg-zinc-800 border-indigo-500 shadow-xl shadow-indigo-500/10' : 'bg-transparent border-transparent grayscale opacity-60 hover:grayscale-0 hover:opacity-100 hover:border-gray-200 disabled:opacity-30 disabled:cursor-not-allowed'}`}
                 >
                   <span className="text-xl">🔒</span>
                   <span className="font-black text-gray-900 dark:text-white uppercase tracking-tight">Campus Circle</span>
@@ -393,14 +393,28 @@ export default function CreateProductPage() {
                 <div className="mt-4 animate-in fade-in slide-in-from-top-4">
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 ml-1">Swap Selected Circle</label>
                   <select
-                    className="w-full h-12 bg-white dark:bg-white/10 rounded-xl px-4 text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={`w-full h-12 bg-white dark:bg-white/10 rounded-xl px-4 text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-500`}
                     value={formData.communityId}
                     onChange={(e) => setFormData({ ...formData, communityId: e.target.value })}
                   >
                     {user.verifiedCommunities.map((c: any) => (
-                      <option key={c._id || c.id || c} value={c._id || c.id || c}>🏢 {c.name || 'Campus'}</option>
+                      <option key={c._id || c.id || c} value={c._id || c.id || c}>
+                        🏢 {c.name || 'Campus'} {(c as any).isActive === false ? ' (Maintenance/Paused)' : ''}
+                      </option>
                     ))}
                   </select>
+                  {(() => {
+                      const selectedComm = user.verifiedCommunities.find((c: any) => (c._id || c.id || c) === formData.communityId);
+                      if (selectedComm && (selectedComm as any).isActive === false) {
+                          return (
+                              <p className="mt-2 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                                  <span>⚠️</span>
+                                  This campus is currently in maintenance mode. Creation is disabled.
+                              </p>
+                          );
+                      }
+                      return null;
+                  })()}
                 </div>
               )}
             </div>
@@ -417,7 +431,7 @@ export default function CreateProductPage() {
                     communityId={formData.communityId}
                     communities={user?.verifiedCommunities || []}
                     locationData={location}
-                    onChange={(newLoc) => setLocation(newLoc)}
+                    onChange={(newLoc) => setLocation(newLoc as any)}
                 />
             </div>
             
@@ -448,8 +462,8 @@ export default function CreateProductPage() {
                   </div>
                 ))}
                 {images.length < (siteConfig?.maxProductImages || 5) && (
-                  <label className="border-3 border-dashed border-gray-200 dark:border-white/10 rounded-[1.5rem] flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-white/5 transition-all aspect-square group">
-                    <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-full mb-2 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 group-hover:text-indigo-600 transition-all">
+                  <label className="border-3 border-dashed border-gray-200 dark:border-zinc-800 rounded-[1.5rem] flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-zinc-900 transition-all aspect-square group">
+                    <div className="bg-gray-100 dark:bg-zinc-800 p-3 rounded-full mb-2 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 group-hover:text-indigo-600 transition-all">
                        <svg className="h-6 w-6 text-gray-400 group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
                        </svg>
@@ -476,7 +490,8 @@ export default function CreateProductPage() {
                 imageProcessing ||
                 (!formData.forSell && !formData.forRent) || 
                 (formData.forSell && (!formData.price || Number(formData.price) < 5)) || 
-                (formData.forRent && (!formData.rentPrice || Number(formData.rentPrice) < 5))
+                (formData.forRent && (!formData.rentPrice || Number(formData.rentPrice) < 5)) ||
+                (formData.visibility === 'Community' && user?.verifiedCommunities?.find((c: any) => (c._id || c.id || c) === formData.communityId)?.isActive === false)
               }
               className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 dark:from-indigo-500 dark:to-indigo-400 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/20 active:scale-95 transition-all disabled:opacity-40"
             >

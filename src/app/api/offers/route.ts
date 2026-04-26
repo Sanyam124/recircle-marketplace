@@ -4,6 +4,7 @@ import Offer from '@/models/Offer';
 import Product from '@/models/Product';
 import Service from '@/models/Service';
 import User from '@/models/User';
+import Community from '@/models/Community';
 import SiteSettings from '@/models/SiteSettings';
 import { verifyToken } from '@/lib/auth';
 import { createNotification } from '@/lib/notifications';
@@ -21,12 +22,40 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Your account is banned. You cannot make offers.' }, { status: 403 });
         }
 
-        const { productId, serviceId, offeredPrice: rawPrice, message: rawMessage, offerType = 'Buy', rentDuration, rentUnit } = await req.json();
+        const body = await req.json();
+        const { productId, serviceId, offeredPrice: rawPrice, message: rawMessage, offerType = 'Buy', rentDuration, rentUnit } = body;
         const offeredPrice = Math.round(rawPrice);
         const message = rawMessage?.trim();
 
         if (!offeredPrice || (!productId && !serviceId)) {
             return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+        }
+
+        // --- 0. MAINTENANCE CHECK (The Hole Fix) ---
+        const itemId = productId || serviceId;
+        const Model: any = productId ? Product : Service;
+        const itemForMaintenance = await Model.findById(itemId).select('community').lean();
+        
+        if (itemForMaintenance?.community) {
+            const comm = await Community.findById(itemForMaintenance.community).select('isActive name').lean();
+            if (comm && !comm.isActive) {
+                return NextResponse.json({ 
+                    error: `The ${comm.name} circle is currently in maintenance mode. New offers are temporarily disabled.` 
+                }, { status: 503 });
+            }
+        }
+
+        // --- ANTI-OFFER SPAM SHIELD ---
+        const { checkRateLimit } = await import('@/lib/rate-limit');
+        const rl = await checkRateLimit(decoded.userId, 'offer-create', 5, 60 * 1000);
+        if (!rl.success) {
+            return NextResponse.json(
+                { 
+                    error: 'You are submitting offers too quickly. Please wait a minute.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 60
+                },
+                { status: 429 }
+            );
         }
 
         let item: any = null;
@@ -35,6 +64,18 @@ export async function POST(req: NextRequest) {
         if (productId) {
             item = await Product.findById(productId);
             if (!item) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+            
+            // --- Visibility Hardening ---
+            if (item.visibility === 'Community') {
+                const currentUser = await User.findById(decoded.userId).select('verifiedCommunities role');
+                const isMember = currentUser?.verifiedCommunities?.some((cId: any) => cId.toString() === item.community?.toString());
+                const isOwner = decoded.userId === item.seller.toString();
+                const isAdmin = currentUser?.role === 'admin';
+                if (!isMember && !isOwner && !isAdmin) {
+                    return NextResponse.json({ error: 'This listing is restricted to campus members.' }, { status: 403 });
+                }
+            }
+
             if (item.status !== 'Available' && item.status !== 'Rented') {
                 return NextResponse.json({ error: `This product is currently ${item.status}.` }, { status: 400 });
             }
@@ -45,6 +86,18 @@ export async function POST(req: NextRequest) {
         } else {
             item = await Service.findById(serviceId);
             if (!item) return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+            
+            // --- Visibility Hardening ---
+            if (item.visibility === 'Community') {
+                const currentUser = await User.findById(decoded.userId).select('verifiedCommunities role');
+                const isMember = currentUser?.verifiedCommunities?.some((cId: any) => cId.toString() === item.community?.toString());
+                const isOwner = decoded.userId === item.provider.toString();
+                const isAdmin = currentUser?.role === 'admin';
+                if (!isMember && !isOwner && !isAdmin) {
+                    return NextResponse.json({ error: 'This service is restricted to campus members.' }, { status: 403 });
+                }
+            }
+
             if (item.status !== 'Active') {
                 return NextResponse.json({ error: 'This service is no longer active.' }, { status: 400 });
             }
@@ -106,6 +159,27 @@ export async function POST(req: NextRequest) {
             message,
         });
 
+        // Notify Seller
+        try {
+            const bidder = await User.findById(decoded.userId).select('name username').lean();
+            await createNotification({
+                recipient: sellerId,
+                sender: decoded.userId,
+                type: 'OFFER_RECEIVED',
+                message: `${bidder?.name || bidder?.username || 'A buyer'} made an offer of ₹${offeredPrice} on "${item.title}"`,
+                link: `/chat/${bidder?._id}?${productId ? `productId=${productId}` : `serviceId=${serviceId}`}`,
+                metadata: {
+                    offerId: offer._id.toString(),
+                    offeredPrice,
+                    itemTitle: item.title,
+                    itemId: (productId || serviceId).toString(),
+                    itemType: productId ? 'product' : 'service'
+                }
+            });
+        } catch (notifErr) {
+            console.error('Failed to notify seller of offer:', notifErr);
+        }
+
         return NextResponse.json({ offer }, { status: 201 });
     } catch (err) {
         console.error('Offer POST error:', err);
@@ -123,7 +197,8 @@ export async function GET(req: NextRequest) {
 
         const { searchParams } = new URL(req.url);
         const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '10');
+        const requestedLimit = parseInt(searchParams.get('limit') || '10');
+        const limit = Math.min(requestedLimit, 50);
         const type = searchParams.get('type');
         const skip = (page - 1) * limit;
 
