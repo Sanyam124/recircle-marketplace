@@ -31,8 +31,14 @@ export async function POST(req: NextRequest) {
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
         const community = await Community.findById(communityId);
-        if (!community || !community.isActive) {
-            return NextResponse.json({ error: 'Community not found or inactive' }, { status: 404 });
+        if (!community) {
+            return NextResponse.json({ error: 'Community not found' }, { status: 404 });
+        }
+        
+        if (!community.isActive) {
+            return NextResponse.json({ 
+                error: `Access Restricted: The "${community.name}" circle is currently under maintenance. New member verification and and marketplace activity are temporarily paused.` 
+            }, { status: 503 });
         }
 
         // Check if already verified
@@ -64,6 +70,12 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Manual Verification Routing (ID Uploads)
+        if (!community.isManualVerificationEnabled) {
+            return NextResponse.json({ 
+                error: 'Manual verification (ID upload) is currently disabled for this community. Please use your official campus email to verify automatically.' 
+            }, { status: 403 });
+        }
+
         if (!proofUrls || !Array.isArray(proofUrls) || proofUrls.length === 0) {
             return NextResponse.json({ 
                 error: 'Email does not match community domain. Please provide proof URLs (ID/documents).' 

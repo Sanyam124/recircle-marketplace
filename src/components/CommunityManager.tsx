@@ -214,7 +214,7 @@ export default function CommunityManager() {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search for a campus or building..."
+                        placeholder="Search for a campus or hostel/building..."
                         className="block w-full bg-slate-50 dark:bg-slate-950/50 border-none rounded-2xl text-[11px] font-black pl-11 pr-4 py-4 focus:ring-2 focus:ring-indigo-100 transition-all outline-none"
                     />
 

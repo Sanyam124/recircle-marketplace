@@ -12,9 +12,10 @@ export async function GET(req: NextRequest) {
         const search = searchParams.get('search');
         const lat = searchParams.get('lat');
         const lng = searchParams.get('lng');
-        const limit = parseInt(searchParams.get('limit') || '10');
+        const requestedLimit = parseInt(searchParams.get('limit') || '10');
+        const limit = Math.min(requestedLimit, 50);
 
-        let query: any = { isActive: true };
+        const query: any = { isActive: true };
 
         // 1. GPS Search (Find nearest communities)
         if (lat && lng) {

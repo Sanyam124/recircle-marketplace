@@ -13,6 +13,7 @@ export interface ICommunity extends Document {
     verifiers: mongoose.Types.ObjectId[];
     image?: string;
     isActive: boolean;
+    isManualVerificationEnabled: boolean;
     hostels: string[]; // List of campus-specific hostels
     createdAt: Date;
     updatedAt: Date;
@@ -33,6 +34,7 @@ const CommunitySchema: Schema<ICommunity> = new Schema(
         verifiers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         image: { type: String },
         isActive: { type: Boolean, default: true },
+        isManualVerificationEnabled: { type: Boolean, default: true },
         hostels: [{ type: String, trim: true }],
     },
     { timestamps: true }

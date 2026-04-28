@@ -4,6 +4,7 @@ export interface IBoardPost extends Document {
     author: mongoose.Types.ObjectId;
     community: mongoose.Types.ObjectId;
     content: string;
+    category: 'General' | 'LostFound' | 'Essentials' | 'Events' | 'Alerts';
     upvotes: mongoose.Types.ObjectId[];
     replies: {
         author: mongoose.Types.ObjectId;
@@ -20,6 +21,11 @@ const BoardPostSchema: Schema<IBoardPost> = new Schema(
         author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
         community: { type: mongoose.Schema.Types.ObjectId, ref: 'Community', required: true },
         content: { type: String, required: true, maxlength: 500, trim: true },
+        category: { 
+            type: String, 
+            enum: ['General', 'LostFound', 'Essentials', 'Events', 'Alerts'],
+            default: 'General'
+        },
         upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     replies: {
         type: [{
@@ -31,13 +37,14 @@ const BoardPostSchema: Schema<IBoardPost> = new Schema(
     },
     expiresAt: { 
         type: Date, 
-        default: () => new Date(+new Date() + 48*60*60*1000), // Default to 48 hours from now
+        default: () => new Date(+new Date() + 48*60*60*1000), 
     },
 },
     { timestamps: true }
 );
 
 // Optimization: Compound indexes for common query + sort patterns
+BoardPostSchema.index({ community: 1, category: 1, createdAt: -1 });
 BoardPostSchema.index({ community: 1, createdAt: -1 });
 BoardPostSchema.index({ author: 1, createdAt: -1 });
 
