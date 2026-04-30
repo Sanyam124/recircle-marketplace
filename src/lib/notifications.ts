@@ -7,15 +7,46 @@ interface NotificationOptions {
   type: 'ORDER_PLACED' | 'SERVICE_REQUEST' | 'DELIVERY_UPDATE' | 'ORDER_UPDATE' | 'ADMIN_ALERT' | 'CHAT_MESSAGE' | 'OFFER_RECEIVED' | 'OFFER_ACCEPTED' | 'OFFER_DECLINED' | 'VERIFICATION_UPDATE';
   message: string;
   link?: string;
+  metadata?: Record<string, any>;
 }
 
 export async function createNotification(options: NotificationOptions) {
   try {
+    // For Chat Messages, we want to update the existing unread notification if it exists to avoid spam
+    if (options.type === 'CHAT_MESSAGE') {
+      const existing = await Notification.findOne({
+        recipient: options.recipient,
+        sender: options.sender,
+        type: 'CHAT_MESSAGE',
+        isRead: false
+      });
+
+      if (existing) {
+        existing.message = options.message;
+        existing.link = options.link || existing.link;
+        existing.metadata = { ...existing.metadata, ...options.metadata };
+        // Update timestamp so it floats to top
+        (existing as any).updatedAt = new Date();
+        await existing.save();
+        
+        // Also trigger Push Notification for the update
+        await sendPushNotification(options.recipient, {
+            title: getTitleForType(options.type),
+            body: options.message,
+            icon: '/icon-192x192.png',
+            data: {
+                url: options.link || '/notifications',
+                notificationId: existing._id
+            }
+        }, 'message');
+        
+        return existing;
+      }
+    }
+
     const notification = await Notification.create(options);
 
     // [TYPE MAPPING]
-    // User wants 'System Alerts' to show: offer received, accepted offer, declined offer, order cancelled, order successful.
-    // User wants 'Messages' to show: ONLY text chat message notifications.
     const pushType = options.type === 'CHAT_MESSAGE' ? 'message' : 'offer';
 
     // Also trigger Push Notification

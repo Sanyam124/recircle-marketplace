@@ -11,6 +11,7 @@ interface NotificationItem {
     type: string;
     message: string;
     link?: string;
+    metadata?: any;
     isRead: boolean;
     createdAt: string;
 }
@@ -19,6 +20,7 @@ export default function NotificationBell() {
     const { user } = useAuth();
     const { mutate: globalMutate } = useSWRConfig();
     const [isOpen, setIsOpen] = useState(false);
+    const [processingId, setProcessingId] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Notifications Fetching via SWR
@@ -194,26 +196,112 @@ export default function NotificationBell() {
                             notifications.map((notif) => (
                                 <div
                                     key={notif._id}
-                                    className={`p-4 border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer relative ${
+                                    className={`p-4 border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors relative group ${
                                         !notif.isRead ? 'bg-indigo-50/30 dark:bg-indigo-900/20' : ''
                                     }`}
-                                    onClick={() => {
-                                        if (!notif.isRead) markAsRead(notif._id);
-                                        if (notif.link) {
-                                            window.location.href = notif.link;
-                                        }
-                                        setIsOpen(false);
-                                    }}
                                 >
-                                    {!notif.isRead && (
-                                        <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full"></div>
-                                    )}
-                                    <div className="ml-2">
-                                        <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">{notif.message}</p>
-                                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-wider font-semibold">
-                                            {new Date(notif.createdAt).toLocaleDateString()} at {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </p>
+                                    <div 
+                                        className="cursor-pointer"
+                                        onClick={() => {
+                                            if (!notif.isRead) markAsRead(notif._id);
+                                            if (notif.link) {
+                                                window.location.href = notif.link;
+                                            }
+                                            setIsOpen(false);
+                                        }}
+                                    >
+                                        {!notif.isRead && (
+                                            <div className="absolute left-2 top-4 w-1.5 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full"></div>
+                                        )}
+                                        <div className="ml-2">
+                                            <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">{notif.message}</p>
+                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-wider font-semibold">
+                                                {new Date(notif.createdAt).toLocaleDateString()} at {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </p>
+                                        </div>
                                     </div>
+
+                                    {/* Action Buttons for Offers */}
+                                    {notif.type === 'OFFER_RECEIVED' && notif.metadata?.offerId && !notif.isRead && (
+                                        <div className="mt-3 ml-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                disabled={processingId === notif._id}
+                                                onClick={async () => {
+                                                    setProcessingId(notif._id);
+                                                    try {
+                                                        const res = await fetch(`/api/offers/${notif.metadata?.offerId}`, {
+                                                            method: 'PATCH',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({ action: 'accept' })
+                                                        });
+                                                        if (res.ok) {
+                                                            showSuccess('Offer Accepted', 'The deal has been scheduled. Check your chat for the handoff code!');
+                                                            markAsRead(notif._id);
+                                                            globalMutate(null, true); // Refresh all data tags
+                                                        } else {
+                                                            const data = await res.json();
+                                                            showError('Action Failed', data.error || 'Could not accept offer');
+                                                        }
+                                                    } catch (err) {
+                                                        showError('Error', 'Network request failed');
+                                                    } finally {
+                                                        setProcessingId(null);
+                                                    }
+                                                }}
+                                                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                                            >
+                                                {processingId === notif._id ? (
+                                                    <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                ) : (
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                )}
+                                                Accept Offer
+                                            </button>
+                                            <button
+                                               disabled={processingId === notif._id}
+                                               onClick={async () => {
+                                                    setProcessingId(notif._id);
+                                                    try {
+                                                        const res = await fetch(`/api/offers/${notif.metadata?.offerId}`, {
+                                                            method: 'PATCH',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({ action: 'decline' })
+                                                        });
+                                                        if (res.ok) {
+                                                            markAsRead(notif._id);
+                                                        } else {
+                                                            const data = await res.json();
+                                                            showError('Action Failed', data.error || 'Could not decline offer');
+                                                        }
+                                                    } catch (err) {
+                                                        showError('Error', 'Network request failed');
+                                                    } finally {
+                                                        setProcessingId(null);
+                                                    }
+                                                }}
+                                                className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 text-gray-600 dark:text-gray-400 text-[11px] font-bold rounded-lg transition-colors border border-gray-200 dark:border-gray-700 hover:border-red-200 dark:hover:border-red-900/30"
+                                            >
+                                                Decline
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Action Button for Messages */}
+                                    {notif.type === 'CHAT_MESSAGE' && notif.link && (
+                                        <div className="mt-2 ml-4">
+                                            <Link 
+                                                href={notif.link}
+                                                onClick={() => {
+                                                    markAsRead(notif._id);
+                                                    setIsOpen(false);
+                                                }}
+                                                className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 flex items-center gap-1 group"
+                                            >
+                                                Reply in Chat
+                                                <svg className="w-3 h-3 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                                            </Link>
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         ) : (

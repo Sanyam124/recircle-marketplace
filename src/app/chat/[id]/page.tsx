@@ -15,7 +15,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const resolvedParams = use(params);
     const userId = resolvedParams.id;
     const router = useRouter();
-    const { user, loading: authLoading, refreshUser } = useAuth();
+    const { user, loading: authLoading, refreshUser, authFetch } = useAuth();
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -76,7 +76,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         if (unblocking) return;
         setUnblocking(true);
         try {
-            const res = await fetch(`/api/user/block?userId=${userId}`, {
+            const res = await authFetch(`/api/user/block?userId=${userId}`, {
                 method: 'DELETE',
             });
             if (res.ok) {
@@ -140,6 +140,21 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         return false;
     }, [referencingItem]);
 
+    const isCampusPaused = useMemo(() => {
+        // Check if the item's community is paused
+        const comm = referencingItem?.data?.communityId;
+        if (typeof comm === 'object' && comm?.isActive === false) return true;
+        
+        // Fallback to otherUser's community if discussing a general chat
+        if (!referencingItem?.data && otherUser?.verifiedCommunities?.[0]?.isActive === false) return true;
+        
+        return false;
+    }, [referencingItem, otherUser]);
+
+    const isShadowBanned = useMemo(() => {
+        return otherUser?.status === 'Banned' && (otherUser?.bio?.includes('moderation review') || otherUser?.bio?.includes('Shadow Lockdown'));
+    }, [otherUser]);
+
     const inVerificationPhase = useMemo(() => {
         return !!(activeAcceptedOffer || (activeOrder && activeOrder.status === 'Scheduled'));
     }, [activeAcceptedOffer, activeOrder]);
@@ -193,7 +208,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         let channelName = '';
         if (user) {
             const currentUserId = user.id || (user as any)._id;
-            channelName = `user-${currentUserId}`;
+            channelName = `private-user-${currentUserId}`;
             const channel = pusherClient.subscribe(channelName);
             
             channel.bind('new-message', (newMsg: any) => {
@@ -222,7 +237,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         }
 
         // Heartbeat: update our own lastSeen every 30 seconds
-        const heartbeat = () => fetch('/api/user/online', { method: 'PATCH' });
+        const heartbeat = () => authFetch('/api/user/online', { method: 'PATCH' });
         heartbeat(); // immediate on mount
         const heartbeatInterval = setInterval(heartbeat, 30_000);
 
@@ -320,7 +335,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             if (before) url.searchParams.append('before', before);
             url.searchParams.append('limit', '20');
 
-            const res = await fetch(url.toString());
+            const res = await authFetch(url.toString());
             if (res.ok) {
                 const data = await res.json();
                 
@@ -406,7 +421,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
     const fetchOtherUser = async () => {
         try {
-            const res = await fetch(`/api/profile/${userId}?limit=5`);
+            const res = await authFetch(`/api/profile/${userId}?limit=5`);
             if (res.ok) {
                 const data = await res.json();
                 setOtherUser(data.user);
@@ -420,14 +435,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
     const fetchItemData = async (type: 'product' | 'service', id: string) => {
         try {
-            const res = await fetch(`/api/${type}s/${id}`);
+            const res = await authFetch(`/api/${type}s/${id}`);
             if (res.ok) {
                 const data = await res.json();
                 const itemData = data[type];
                 setReferencingItem({ type, id, data: { ...itemData, buyerId: data.buyerId } });
                 
                 try {
-                    const orderRes = await fetch(`/api/orders?productId=${type === 'product' ? id : ''}&serviceId=${type === 'service' ? id : ''}&limit=10`);
+                    const orderRes = await authFetch(`/api/orders?productId=${type === 'product' ? id : ''}&serviceId=${type === 'service' ? id : ''}&limit=10`);
                     if (orderRes.ok) {
                         const orderData = await orderRes.json();
                         const active = orderData.orders?.find((o: any) => {
@@ -465,7 +480,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             const pId = searchParams.get('productId');
             const sId = searchParams.get('serviceId');
 
-            const res = await fetch('/api/chat', {
+            const res = await authFetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -500,7 +515,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         if (acceptingOffer) return;
         setAcceptingOffer(true);
         try {
-            const res = await fetch(`/api/offers/${offerId}`, {
+            const res = await authFetch(`/api/offers/${offerId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'accept', override })
@@ -551,7 +566,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         if (decliningOffer) return;
         setDecliningOffer(true);
         try {
-            const res = await fetch(`/api/offers/${offerId}`, {
+            const res = await authFetch(`/api/offers/${offerId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'decline' })
@@ -593,7 +608,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                     setSubmittingAction(false);
                     return;
                 }
-                const res = await fetch('/api/chat/deal', {
+                const res = await authFetch('/api/chat/deal', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -631,7 +646,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 }
             }
 
-            const res = await fetch('/api/offers', {
+            const res = await authFetch('/api/offers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1188,15 +1203,33 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
                              <div className="w-full h-px bg-gray-100 dark:bg-gray-800" />
                         </div>
-                    ) : isBlockedByOther ? (
+                    ) : (isBlockedByOther || isShadowBanned || (otherUser?.status === 'Banned')) ? (
                         <div className="flex flex-col items-center justify-center py-10 px-6 bg-red-50/50 dark:bg-red-950/5 rounded-[2rem] border border-dashed border-red-100 dark:border-red-900/20 animate-in zoom-in-95 duration-500">
                             <div className="w-12 h-12 bg-red-100/50 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-600 dark:text-red-400 mb-4">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m0-6V9m0 12a9 9 0 110-18 9 9 0 010 18z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={isShadowBanned ? "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" : "M12 15v2m0-6V9m0 12a9 9 0 110-18 9 9 0 010 18z"} />
                                 </svg>
                             </div>
-                            <h3 className="text-sm font-black text-red-900 dark:text-red-200 uppercase tracking-widest mb-1">Access Restricted</h3>
-                            <p className="text-[10px] text-red-600/70 dark:text-red-400/60 font-bold text-center leading-relaxed">You cannot send messages to this user because of their privacy settings.</p>
+                            <h3 className="text-sm font-black text-red-900 dark:text-red-200 uppercase tracking-widest mb-1">
+                                {isShadowBanned ? 'Account Frozen' : 'Access Restricted'}
+                            </h3>
+                            <p className="text-[10px] text-red-600/70 dark:text-red-400/60 font-bold text-center leading-relaxed">
+                                {isShadowBanned 
+                                    ? "Your profile is currently under safety review and cannot be re-activated at this time. Please contact ReCircle Support."
+                                    : (otherUser?.status === 'Banned' ? "This account has been permanently suspended for violating community safety guidelines." : "You cannot send messages to this user because of their privacy settings.")}
+                            </p>
+                        </div>
+                    ) : isCampusPaused ? (
+                        <div className="flex flex-col items-center justify-center py-8 px-6 bg-amber-50/50 dark:bg-amber-900/5 rounded-[2rem] border border-dashed border-amber-100 dark:border-amber-900/20 animate-in zoom-in-95 duration-500">
+                             <div className="w-10 h-10 bg-amber-100/50 dark:bg-amber-900/30 rounded-full flex items-center justify-center text-amber-600 dark:text-amber-400 mb-3">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                            </div>
+                            <h3 className="text-[11px] font-black text-amber-900 dark:text-amber-200 uppercase tracking-widest mb-1.5">Marketplace Offline</h3>
+                            <p className="text-[10px] text-amber-700/70 dark:text-amber-400/60 font-black text-center leading-relaxed uppercase tracking-tight">
+                                Access Restricted: This campus circle is currently under maintenance. Marketplace activity is temporarily paused.
+                            </p>
                         </div>
                     ) : (
                         activeTab === 'chat' ? (
@@ -1226,7 +1259,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                             ))}
                                         </div>
                                         <form onSubmit={handleSendMessage} className="flex gap-2 relative bg-gray-50 dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 items-center p-1 px-2 shadow-inner">
-                                            <button type="button" className="p-2 text-gray-400 hover:text-indigo-600 transition-colors shrink-0 rounded-full">
+                                            <button 
+                                                type="button" 
+                                                onClick={() => showSuccess('Coming Soon!', 'Attachments and file sharing will be available in v2.0 🚀')}
+                                                className="p-2 text-gray-400 hover:text-indigo-600 transition-colors shrink-0 rounded-full"
+                                            >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                                             </button>
                                             <input

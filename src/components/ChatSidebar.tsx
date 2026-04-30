@@ -55,7 +55,7 @@ export default function ChatSidebar() {
         let channelName = '';
         const currentUserId = user.id || (user as any)._id;
         if (currentUserId) {
-            channelName = `user-${currentUserId}`;
+            channelName = `private-user-${currentUserId}`;
             const channel = pusherClient.subscribe(channelName);
             
             // Listen for any new messages and instantly refresh the sidebar

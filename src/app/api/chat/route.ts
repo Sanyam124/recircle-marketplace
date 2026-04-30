@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Types, isValidObjectId } from 'mongoose';
+
 import connectToDatabase from '@/lib/db';
 import Message from '@/models/Message';
 import Notification from '@/models/Notification';
@@ -9,7 +10,10 @@ import Product from '@/models/Product';
 import Service from '@/models/Service';
 import { verifyToken } from '@/lib/auth';
 
-// GET history between two users
+/**
+ * GET History between two users
+ * Handles item-specific context (product/service) and marks messages as read.
+ */
 export async function GET(req: NextRequest) {
     try {
         const token = req.cookies.get('token')?.value;
@@ -23,25 +27,19 @@ export async function GET(req: NextRequest) {
         const productId = searchParams.get('productId');
         const serviceId = searchParams.get('serviceId');
 
-        // [CAST ERROR FIX]: Validate IDs before querying database
-        if (recipientId && !isValidObjectId(recipientId)) {
-            return NextResponse.json({ error: 'Invalid User ID' }, { status: 400 });
-        }
-        if (productId && !isValidObjectId(productId)) {
-            return NextResponse.json({ error: 'Invalid Product ID' }, { status: 400 });
-        }
-        if (serviceId && !isValidObjectId(serviceId)) {
-            return NextResponse.json({ error: 'Invalid Service ID' }, { status: 400 });
-        }
-
-        const before = searchParams.get('before'); // Fetch messages before this timestamp
-        const limit = parseInt(searchParams.get('limit') || '20');
+        // ID Validation
+        if (recipientId && !isValidObjectId(recipientId)) return NextResponse.json({ error: 'Invalid User ID' }, { status: 400 });
+        if (productId && !isValidObjectId(productId)) return NextResponse.json({ error: 'Invalid Product ID' }, { status: 400 });
+        if (serviceId && !isValidObjectId(serviceId)) return NextResponse.json({ error: 'Invalid Service ID' }, { status: 400 });
 
         if (!recipientId) return NextResponse.json({ error: 'User ID required' }, { status: 400 });
 
+        const before = searchParams.get('before');
+        const limit = parseInt(searchParams.get('limit') || '20');
+
         await connectToDatabase();
 
-        // Mark messages as read for THIS context specifically
+        // Mark context-specific messages as read
         const itemId = productId || serviceId;
         const itemType = productId ? 'product' : (serviceId ? 'service' : null);
 
@@ -54,10 +52,11 @@ export async function GET(req: NextRequest) {
         }
         await Message.updateMany(readFilter, { isRead: true });
 
+        // Build Query
         const query: any = {
             $or: [
                 { sender: decoded.userId, recipient: recipientId },
-                { sender: recipientId, recipient: decoded.userId }
+                { recipient: decoded.userId, sender: recipientId }
             ],
             deletedBy: { $ne: decoded.userId }
         };
@@ -77,28 +76,23 @@ export async function GET(req: NextRequest) {
         const messages = await Message.find(query)
             .populate('product', 'title price images seller provider')
             .populate('service', 'title price images priceUnit seller provider')
-            .sort({ createdAt: -1 }) // Get newest first for limit
+            .sort({ createdAt: -1 })
             .limit(limit)
             .lean();
 
-        // Reverse to maintain chronological order in UI
-        messages.reverse();
+        messages.reverse(); // Chronological order for UI
 
-        const hasMore = total > messages.length;
-
-        // Find last context if not provided
+        // Resolve item-specific context for the header UI
         let lastContext = null;
         if (messages.length > 0) {
             const lastWithRef = [...messages].reverse().find(m => m.product || m.service);
             if (lastWithRef) {
                 const itemId = lastWithRef.product?._id || lastWithRef.service?._id;
-                const itemType = lastWithRef.product ? 'product' : 'service';
+                const iType = lastWithRef.product ? 'product' : 'service';
 
-                // Fetch buyerId for this specific context
                 const order = await Order.findOne({
-                    [itemType]: itemId,
+                    [iType]: itemId,
                     status: { $in: ['Paid', 'Scheduled', 'Completed', 'Dispute_Pending'] },
-                    // Ensure it's between these two users
                     $or: [
                         { buyer: decoded.userId, seller: recipientId },
                         { buyer: recipientId, seller: decoded.userId }
@@ -106,23 +100,21 @@ export async function GET(req: NextRequest) {
                 }).select('buyer').lean();
 
                 lastContext = {
-                    type: itemType,
+                    type: iType,
                     data: { ...(lastWithRef.product || lastWithRef.service), buyerId: order ? order.buyer : null },
                     messageId: lastWithRef._id
                 };
             }
         }
 
-        // Fetch other user's lastSeen for online status
         const otherUser = await User.findById(recipientId).select('lastSeen name username profilePicture').lean();
 
         return NextResponse.json({
             messages,
             lastContext,
-            pagination: { hasMore },
+            pagination: { hasMore: total > messages.length },
             otherUser: otherUser ? { lastSeen: otherUser.lastSeen, name: (otherUser as any).name } : null,
         }, { status: 200 });
-
 
     } catch (error) {
         console.error('Chat GET Error:', error);
@@ -130,7 +122,10 @@ export async function GET(req: NextRequest) {
     }
 }
 
-// POST new message
+/**
+ * POST New Message
+ * Includes anti-spam protection, blocking checks, and notification triggering.
+ */
 export async function POST(req: NextRequest) {
     try {
         const token = req.cookies.get('token')?.value;
@@ -141,55 +136,37 @@ export async function POST(req: NextRequest) {
 
         const { recipientId, content, productId, serviceId, offer } = await req.json();
 
-        if (!recipientId || !content) {
-            return NextResponse.json({ error: 'Missing recipient or content' }, { status: 400 });
+        if (!recipientId || !content) return NextResponse.json({ error: 'Missing recipient or content' }, { status: 400 });
+
+        // Anti-Spam Protection
+        const { checkRateLimit } = await import('@/lib/rate-limit');
+        const rl = await checkRateLimit(decoded.userId, 'chat-send', 60, 60 * 1000);
+        if (!rl.success) {
+            return NextResponse.json(
+                { error: 'Sending too fast. Please slow down.', retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 10 },
+                { status: 429 }
+            );
         }
 
-        // [CAST ERROR FIX]: Validate IDs before querying database
-        if (recipientId && !isValidObjectId(recipientId)) {
-            return NextResponse.json({ error: 'Invalid Recipient ID' }, { status: 400 });
-        }
-        if (productId && !isValidObjectId(productId)) {
-            return NextResponse.json({ error: 'Invalid Product ID' }, { status: 400 });
-        }
-        if (serviceId && !isValidObjectId(serviceId)) {
-            return NextResponse.json({ error: 'Invalid Service ID' }, { status: 400 });
-        }
-
-        if (content.length > 2000) {
-            return NextResponse.json({ error: 'Message must be 2000 characters or less' }, { status: 400 });
-        }
-
-        if (!productId && !serviceId && !content) {
-            return NextResponse.json({ error: 'Chats must have content or be linked to an item' }, { status: 400 });
-        }
+        if (recipientId && !isValidObjectId(recipientId)) return NextResponse.json({ error: 'Invalid Recipient ID' }, { status: 400 });
+        if (content.length > 2000) return NextResponse.json({ error: 'Message too long (max 2000 chars)' }, { status: 400 });
 
         await connectToDatabase();
 
-        // Check if either user has blocked the other
         const [sender, receiver] = await Promise.all([
-            User.findById(decoded.userId).select('name profilePicture blockedUsers'),
+            User.findById(decoded.userId).select('name profilePicture status blockedUsers'),
             User.findById(recipientId).select('blockedUsers')
         ]);
 
-        if (!sender || !receiver) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
+        if (!sender || !receiver) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        if (sender.status === 'Banned') return NextResponse.json({ error: 'Account banned. Cannot send messages.' }, { status: 403 });
 
-        // [BAN CHECK] Prevent banned users from sending messages
-        if (sender.status === 'Banned') {
-            return NextResponse.json({ error: 'Your account is banned. You cannot send messages.' }, { status: 403 });
-        }
-
+        // Privacy Checks
         const isBlockedBySender = sender.blockedUsers?.some((id: any) => id.toString() === recipientId.toString());
         const isBlockedByReceiver = receiver.blockedUsers?.some((id: any) => id.toString() === decoded.userId.toString());
 
-        if (isBlockedBySender) {
-            return NextResponse.json({ error: 'You have blocked this user. Unblock them to send a message.' }, { status: 403 });
-        }
-        if (isBlockedByReceiver) {
-            return NextResponse.json({ error: 'You cannot message this user.' }, { status: 403 });
-        }
+        if (isBlockedBySender) return NextResponse.json({ error: 'You have blocked this user.' }, { status: 403 });
+        if (isBlockedByReceiver) return NextResponse.json({ error: 'Cannot message this user.' }, { status: 403 });
 
         const message = await Message.create({
             sender: decoded.userId,
@@ -200,28 +177,27 @@ export async function POST(req: NextRequest) {
             offer: offer || undefined
         });
 
-        // 6. [UX FIX]: Trigger Pusher Sync for the deal closed message (Deduplicated)
+        // Pusher Sync
         try {
             const { pusherServer } = await import('@/lib/pusherServer');
-            const recipients = new Set([recipientId.toString(), decoded.userId]);
+            const recipients = Array.from(new Set([recipientId.toString(), decoded.userId]));
             for (const rId of recipients) {
-                await pusherServer.trigger(`user-${rId}`, 'new-message', message);
+                await pusherServer.trigger(`private-user-${rId}`, 'new-message', message);
             }
         } catch (pusherErr) {
-            console.error('Pusher sync error in deal closure:', pusherErr);
+            console.error('Pusher error:', pusherErr);
         }
 
-        // Trigger Push Notification for offline/background users
+        // Trigger Notifications
         try {
-            const { sendPushNotification } = await import('../../../lib/pushNotifications');
+            const { createNotification } = await import('@/lib/notifications');
             const senderName = (sender as any).name || 'Someone';
             
             let notificationTitle = `New message from ${senderName}`;
             let notificationBody = content;
 
-            // If it's an offer, provide context in the notification itself
             if (offer) {
-                let itemName = 'your listing';
+                let itemName = 'listing';
                 if (productId) {
                     const item = await Product.findById(productId).select('title');
                     if (item) itemName = item.title;
@@ -231,30 +207,26 @@ export async function POST(req: NextRequest) {
                 }
                 
                 const isRental = offer.offerType === 'Rent';
-                
                 if (isRental) {
                     notificationTitle = `Rental Offer: ₹${offer.price}/${offer.rentUnit} from ${senderName}`;
                     notificationBody = `Wants to rent "${itemName}" for ${offer.rentDuration} ${offer.rentUnit}(s)`;
-                    if (content && !content.startsWith('Sent an')) {
-                        notificationBody += `. Message: "${content}"`;
-                    }
                 } else {
                     notificationTitle = `${productId ? 'Buy Offer' : 'Service Offer'}: ₹${offer.price} from ${senderName}`;
-                    const isPlaceholder = content === 'Sent an Offer' || content === 'Sent an Appointment Request' || content?.startsWith('Sent an');
+                    const isPlaceholder = content === 'Sent an Offer' || content?.startsWith('Sent an');
                     notificationBody = `On "${itemName}"${content && !isPlaceholder ? `: ${content}` : ''}`;
                 }
             }
 
-            await sendPushNotification(recipientId, {
-                title: notificationTitle,
-                body: notificationBody,
-                icon: (sender as any).profilePicture || '/icon-192x192.png',
-                data: {
-                    url: `/chat/${decoded.userId}${productId ? `?productId=${productId}` : (serviceId ? `?serviceId=${serviceId}` : '')}`
-                }
-            }, (offer && typeof offer === 'object') ? 'offer' : 'message');
-        } catch (pushErr) {
-            console.error('Push notification error:', pushErr);
+            await createNotification({
+                recipient: recipientId,
+                sender: decoded.userId,
+                type: 'CHAT_MESSAGE',
+                message: notificationBody,
+                link: `/chat/${decoded.userId}${productId ? `?productId=${productId}` : (serviceId ? `?serviceId=${serviceId}` : '')}`,
+                metadata: { senderName, offer: !!offer, itemId: productId || serviceId, itemType: productId ? 'product' : 'service' }
+            });
+        } catch (notifErr) {
+            console.error('Notification error:', notifErr);
         }
 
         return NextResponse.json({ success: true, message }, { status: 201 });
@@ -264,4 +236,3 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
-

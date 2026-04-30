@@ -218,3 +218,4 @@ export const ChatItem = React.memo(({
         </div>
     );
 });
+ChatItem.displayName = 'ChatItem';

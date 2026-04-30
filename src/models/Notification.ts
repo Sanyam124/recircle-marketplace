@@ -6,6 +6,7 @@ export interface INotification extends Document {
     type: 'ORDER_PLACED' | 'SERVICE_REQUEST' | 'DELIVERY_UPDATE' | 'ORDER_UPDATE' | 'ADMIN_ALERT' | 'CHAT_MESSAGE' | 'OFFER_RECEIVED' | 'OFFER_ACCEPTED' | 'OFFER_DECLINED' | 'VERIFICATION_UPDATE';
     message: string;
     link?: string;
+    metadata?: Record<string, any>;
     isRead: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -22,6 +23,7 @@ const NotificationSchema: Schema<INotification> = new Schema(
         },
         message: { type: String, required: true },
         link: { type: String },
+        metadata: { type: Schema.Types.Mixed },
         isRead: { type: Boolean, default: false, index: true },
     },
     { timestamps: true }

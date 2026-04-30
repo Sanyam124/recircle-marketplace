@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
             const { pusherServer } = await import('@/lib/pusherServer');
             const recipients = new Set([recipientId.toString(), decoded.userId]);
             for (const rId of recipients) {
-                await pusherServer.trigger(`user-${rId}`, 'new-message', systemMsg);
+                await pusherServer.trigger(`private-user-${rId}`, 'new-message', systemMsg);
             }
         } catch (pusherErr) {
             console.error('Pusher sync error in deal closure:', pusherErr);
