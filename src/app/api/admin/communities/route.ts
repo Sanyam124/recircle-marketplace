@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     try {
         await connectToDatabase();
-        const { name, emailDomains, description, image } = await req.json();
+        const { name, emailDomains, description, image, isManualVerificationEnabled } = await req.json();
 
         if (!name || !emailDomains || !Array.isArray(emailDomains)) {
             return NextResponse.json({ error: 'Name and email domains array are required' }, { status: 400 });
@@ -58,7 +58,8 @@ export async function POST(req: NextRequest) {
                 emailDomains: emailDomains.map(d => d.toLowerCase().trim()),
                 description,
                 image: finalImageUrl,
-                isActive: true
+                isActive: true,
+                isManualVerificationEnabled: isManualVerificationEnabled ?? true
             });
 
             // Auto-add this community to ALL existing users whose email domain matches
@@ -108,25 +109,68 @@ export async function DELETE(req: NextRequest) {
             }
         }
 
+        // --- SAFETY GUARDS ---
+        const Order = (await import('@/models/Order')).default;
+        const Report = (await import('@/models/Report')).default;
+        const VerificationRequest = (await import('@/models/VerificationRequest')).default;
+
+        const [activeOrders, pendingReports, pendingVerifications] = await Promise.all([
+            Order.findOne({ community: id, status: { $in: ['Paid', 'Scheduled', 'Dispute_Pending'] } }),
+            Report.findOne({ itemId: { $in: (await (await import('@/models/Product')).default.find({ community: id }).select('_id')).map(p => p._id) }, status: 'Pending' }),
+            VerificationRequest.findOne({ community: id, status: 'pending' })
+        ]);
+
+        if (activeOrders) {
+            return NextResponse.json({ 
+                error: 'Cannot delete circle: There are active, unfulfilled trades currently linked to this campus. Please wait for completion or cancel the orders first.' 
+            }, { status: 400 });
+        }
+
+        if (pendingReports) {
+            return NextResponse.json({ 
+                error: 'Cannot delete circle: There are active moderation reports against items in this circle. Resolve reports first.' 
+            }, { status: 400 });
+        }
+
+        if (pendingVerifications) {
+            return NextResponse.json({ 
+                error: 'Cannot delete circle: There are pending user verification requests for this campus. Approve or reject them first.' 
+            }, { status: 400 });
+        }
+
         // --- CASCADE CLEANUP ---
         const Product = (await import('@/models/Product')).default;
         const Service = (await import('@/models/Service')).default;
 
+        // Collect all images from items in this community to prevent storage leaks
+        const [commProducts, commServices] = await Promise.all([
+            Product.find({ community: id }).select('images').lean(),
+            Service.find({ community: id }).select('images').lean()
+        ]);
+
+        const leakedImages: string[] = [];
+        commProducts.forEach((p: any) => p.images?.forEach((img: string) => leakedImages.push(img)));
+        commServices.forEach((s: any) => s.images?.forEach((img: string) => leakedImages.push(img)));
+
         await Promise.all([
-            // 1. Pull community from all Users' verified profiles
+            // 1. Delete all images from Cloudinary
+            ...(leakedImages.length > 0 
+                ? [import('@/lib/cloudinary').then(m => Promise.all(leakedImages.map(img => m.deleteFromCloudinary(img).catch(() => null))))] 
+                : []
+            ),
+            // 2. Pull community from all Users' verified profiles
             User.updateMany(
                 { verifiedCommunities: id },
                 { $pull: { verifiedCommunities: id } }
             ),
-            // 2. Delete all products and services in this community (as they can no longer be reached)
-            // Note: In a production app, we might just mark them as 'inactive', but for Zero-Retention we purge.
+            // 3. Delete all products and services in this community
             Product.deleteMany({ community: id }),
             Service.deleteMany({ community: id }),
-            // 3. Finally delete the community
+            // 4. Finally delete the community
             Community.findByIdAndDelete(id)
         ]);
 
-        return NextResponse.json({ message: 'Community and its listings deleted successfully' });
+        return NextResponse.json({ message: 'Community and its listings purged successfully' });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

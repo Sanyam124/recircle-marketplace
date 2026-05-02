@@ -5,8 +5,10 @@ import Link from 'next/link';
 import Loader from '@/components/Loader';
 import { optimizeCloudinaryUrl } from '@/lib/cloudinary-client';
 import { confirmAction, showError, showSuccess } from '@/lib/confirm';
+import { useAuth } from '@/context/AuthContext';
 
 export default function AdminUsersPage() {
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -299,7 +301,7 @@ export default function AdminUsersPage() {
                                         <td className="px-3 py-4">
                                             <select
                                                 value={user.role}
-                                                disabled={updatingRole === user._id}
+                                                disabled={updatingRole === user._id || user._id === currentUser?.id}
                                                 onChange={(e) => handleRoleUpdate(user._id, e.target.value)}
                                                 className={`text-xs font-semibold rounded-lg border px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors cursor-pointer ${
                                                     user.role === 'admin'
@@ -348,8 +350,9 @@ export default function AdminUsersPage() {
                                                 {user.status !== 'Banned' ? (
                                                     <button
                                                         onClick={() => openBanModal(user._id, user.name)}
-                                                        disabled={actionLoading === user._id}
-                                                        className="inline-flex items-center gap-1 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 border border-red-100 dark:border-red-800 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                                                        disabled={actionLoading === user._id || user._id === currentUser?.id || user.role === 'admin'}
+                                                        className="inline-flex items-center gap-1 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 border border-red-100 dark:border-red-800 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        title={user._id === currentUser?.id ? "You cannot ban yourself" : user.role === 'admin' ? "You cannot ban another admin" : ""}
                                                     >
                                                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                                                         Ban
@@ -367,8 +370,9 @@ export default function AdminUsersPage() {
 
                                                 <button
                                                     onClick={() => handleDeleteUser(user._id, user.name)}
-                                                    disabled={actionLoading === user._id}
-                                                    className="inline-flex items-center gap-1 text-xs font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                                                    disabled={actionLoading === user._id || user._id === currentUser?.id || user.role === 'admin'}
+                                                    className="inline-flex items-center gap-1 text-xs font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title={user._id === currentUser?.id ? "You cannot delete yourself" : user.role === 'admin' ? "You cannot delete another admin" : ""}
                                                 >
                                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                     Delete

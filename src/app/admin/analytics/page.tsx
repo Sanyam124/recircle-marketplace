@@ -235,8 +235,11 @@ export default function AdminAnalyticsPage() {
                 <div className="mb-12 grid grid-cols-1 xl:grid-cols-2 gap-8 animate-in slide-in-from-bottom-8 duration-700 delay-150">
                     
                     {/* 1. Registration Velocity (Gradient Line/Bar Hybrid) */}
-                    <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-800 p-8 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-32 bg-indigo-50 dark:bg-indigo-900/10 rounded-full blur-[100px] -mr-16 -mt-16 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100"></div>
+                    <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-800 p-8 relative group">
+                        {/* Decorative background wrapper */}
+                        <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
+                            <div className="absolute top-0 right-0 p-32 bg-indigo-50 dark:bg-indigo-900/10 rounded-full blur-[100px] -mr-16 -mt-16 transition-opacity opacity-50 group-hover:opacity-100"></div>
+                        </div>
                         
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-10 relative z-10">
                             <div>
@@ -343,8 +346,11 @@ export default function AdminAnalyticsPage() {
                     </div>
 
                     {/* 2. Email Delivery Matrix (Stacked Glassmorphism) */}
-                    <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-800 p-8 relative overflow-hidden group">
-                        <div className="absolute bottom-0 left-0 p-32 bg-purple-50 dark:bg-purple-900/10 rounded-full blur-[100px] -ml-16 -mb-16 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100"></div>
+                    <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-800 p-8 relative group">
+                        {/* Decorative background wrapper */}
+                        <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
+                            <div className="absolute bottom-0 left-0 p-32 bg-purple-50 dark:bg-purple-900/10 rounded-full blur-[100px] -ml-16 -mb-16 transition-opacity opacity-50 group-hover:opacity-100"></div>
+                        </div>
 
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4 relative z-10">
                             <div>

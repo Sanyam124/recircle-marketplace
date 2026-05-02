@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mongoose, { isValidObjectId } from 'mongoose';
+import { isValidObjectId } from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
@@ -14,6 +14,19 @@ export async function POST(req: NextRequest) {
 
         await connectToDatabase();
         const { targetUserId } = await req.json();
+
+        // --- ANTI-ABUSE SHIELD ---
+        const { checkRateLimit } = await import('@/lib/rate-limit');
+        const rl = await checkRateLimit(decoded.userId, 'user-block-action', 10, 60 * 60 * 1000); 
+        if (!rl.success) {
+            return NextResponse.json(
+                { 
+                    error: 'You are performing block actions too quickly. Please slow down.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 3600
+                },
+                { status: 429 }
+            );
+        }
 
         if (!targetUserId || !isValidObjectId(targetUserId)) {
             return NextResponse.json({ error: 'Valid target user ID is required' }, { status: 400 });
@@ -51,6 +64,19 @@ export async function DELETE(req: NextRequest) {
         }
 
         await connectToDatabase();
+
+        // --- ANTI-ABUSE SHIELD ---
+        const { checkRateLimit } = await import('@/lib/rate-limit');
+        const rl = await checkRateLimit(decoded.userId, 'user-block-action', 10, 60 * 60 * 1000); 
+        if (!rl.success) {
+            return NextResponse.json(
+                { 
+                    error: 'You are performing block actions too quickly. Please slow down.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 3600
+                },
+                { status: 429 }
+            );
+        }
 
         // Remove from blockedUsers array
         await User.findByIdAndUpdate(decoded.userId, {

@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
 
         const { searchParams } = new URL(req.url);
         const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '10');
+        const requestedLimit = parseInt(searchParams.get('limit') || '10');
+        const limit = Math.min(requestedLimit, 50);
         const skip = (page - 1) * limit;
 
         const totalDisputes = await Order.countDocuments({ status: 'Dispute_Pending' });

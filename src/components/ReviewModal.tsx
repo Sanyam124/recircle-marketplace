@@ -59,10 +59,10 @@ export default function ReviewModal({ order, onClose, onSuccess }: ReviewModalPr
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-700/50">
+        <div className="p-6 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center bg-gray-50/50 dark:bg-zinc-800/50">
           <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">
               {isProduct 
@@ -81,8 +81,8 @@ export default function ReviewModal({ order, onClose, onSuccess }: ReviewModalPr
           <div className="p-6 space-y-6">
             
             {/* Item Info Card */}
-            <div className="flex items-center gap-4 bg-gray-50 dark:bg-gray-900/40 p-3 rounded-2xl border border-gray-100 dark:border-gray-700/50">
-               <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-white dark:bg-gray-800 shrink-0 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-4 bg-gray-50 dark:bg-zinc-950/40 p-3 rounded-2xl border border-gray-100 dark:border-zinc-800/50">
+               <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-white dark:bg-zinc-800 shrink-0 border border-gray-200 dark:border-zinc-800">
                   {item?.images?.[0] ? (
                     <Image src={item.images[0]} alt={item.title} fill className="object-cover" />
                   ) : (
@@ -117,7 +117,7 @@ export default function ReviewModal({ order, onClose, onSuccess }: ReviewModalPr
                     className="group outline-none whitespace-nowrap active:scale-[0.85] transition-transform"
                   >
                     <svg 
-                      className={`w-10 h-10 transition-colors drop-shadow-sm ${rating >= star ? 'text-yellow-400' : 'text-gray-200 dark:text-gray-700 hover:text-gray-300 dark:hover:text-gray-600'}`} 
+                      className={`w-10 h-10 transition-colors drop-shadow-sm ${rating >= star ? 'text-yellow-400' : 'text-gray-200 dark:text-zinc-700 hover:text-gray-300 dark:hover:text-zinc-600'}`} 
                       fill="currentColor" 
                       viewBox="0 0 20 20"
                     >
@@ -154,7 +154,7 @@ export default function ReviewModal({ order, onClose, onSuccess }: ReviewModalPr
 
           </div>
 
-          <div className="p-6 bg-gray-50 dark:bg-gray-700/30 flex gap-3 border-t border-gray-100 dark:border-gray-700/50">
+          <div className="p-6 bg-gray-50 dark:bg-zinc-800/30 flex gap-3 border-t border-gray-100 dark:border-zinc-800/50">
              <button
                type="button"
                onClick={onClose}

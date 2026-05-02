@@ -53,6 +53,7 @@ interface Settings {
     maxOtpPerEmailPerHour: number;
     globalDailyOtpLimit: number;
     activeSmtpIndex: number;
+    maxListingsPerUser: number;
 }
 
 type Tab = 'moderation' | 'categories' | 'visuals' | 'limits' | 'platform' | 'email' | 'security';
@@ -452,6 +453,7 @@ export default function AdminSettingsPage() {
                             <NumberField label="Min Price (₹)" value={settings.minPrice} onChange={v => update({ minPrice: v })} min={1} max={1000} />
                             <NumberField label="Max Product Price (₹)" value={settings.maxPriceProduct} onChange={v => update({ maxPriceProduct: v })} min={100} max={10000000} />
                             <NumberField label="Max Service Price (₹)" value={settings.maxPriceService} onChange={v => update({ maxPriceService: v })} min={100} max={10000000} />
+                            <NumberField label="Max Listings per Account" value={settings.maxListingsPerUser} onChange={v => update({ maxListingsPerUser: v })} min={1} max={1000} />
                         </div>
                     </div>
                     <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 sm:p-8">
@@ -716,7 +718,7 @@ export default function AdminSettingsPage() {
             )}
             
                                 {/* Mobile Sticky Save Button */}
-                                <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom-8 duration-500 pb-safe">
+                                <div className="md:hidden fixed bottom-[76px] left-0 right-0 z-50 animate-in slide-in-from-bottom-8 duration-500 pb-safe">
                                     <button
                                         onClick={saveSettings}
                                         disabled={saving || !dirty}

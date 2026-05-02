@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Types, isValidObjectId } from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import Order from '@/models/Order';
+import Product from '@/models/Product';
+import Service from '@/models/Service';
+import User from '@/models/User';
 import Review from '@/models/Review';
 import SiteSettings from '@/models/SiteSettings';
 import { verifyToken } from '@/lib/auth';
@@ -100,10 +103,37 @@ export async function GET(req: NextRequest) {
         const productId = searchParams.get('productId');
         const serviceId = searchParams.get('serviceId');
         const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '5');
+        const requestedLimit = parseInt(searchParams.get('limit') || '5');
+        const limit = Math.min(requestedLimit, 50);
         const skip = (page - 1) * limit;
 
         await connectToDatabase();
+
+        // --- Visibility Hardening for Reviews ---
+        if (productId || serviceId) {
+            const item = productId 
+                ? await Product.findById(productId).select('visibility community seller')
+                : await Service.findById(serviceId).select('visibility community provider');
+            
+            if (item && item.visibility === 'Community') {
+                const token = req.cookies.get('token')?.value;
+                const decoded = token ? verifyToken(token) : null;
+                let isAuthorized = false;
+
+                if (decoded) {
+                    const currentUser = await User.findById(decoded.userId).select('verifiedCommunities role');
+                    const isMember = currentUser?.verifiedCommunities?.some((cId: any) => cId.toString() === item.community?.toString());
+                    const ownerId = productId ? (item as any).seller : (item as any).provider;
+                    const isOwner = decoded.userId === ownerId?.toString();
+                    const isAdmin = currentUser?.role === 'admin';
+                    isAuthorized = isMember || isOwner || isAdmin;
+                }
+
+                if (!isAuthorized) {
+                    return NextResponse.json({ error: 'Reviews for this campus item are private.' }, { status: 403 });
+                }
+            }
+        }
 
         // 1. Fetch Reviews
         const filter: any = {};

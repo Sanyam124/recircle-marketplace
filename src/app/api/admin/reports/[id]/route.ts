@@ -3,13 +3,26 @@ import connectToDatabase from '@/lib/db';
 import Report from '@/models/Report';
 import { verifyToken } from '@/lib/auth';
 
+import User from '@/models/User';
+
+// Helper to check if user is admin (Database-verified)
+async function isAdmin(req: NextRequest) {
+    const token = req.cookies.get('token')?.value;
+    if (!token) return false;
+    const decoded = verifyToken(token) as { userId: string };
+    if (!decoded) return false;
+
+    await connectToDatabase();
+    const user = await User.findById(decoded.userId);
+    return user?.role === 'admin';
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
+        if (!(await isAdmin(req))) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
         await connectToDatabase();
-        const token = req.cookies.get('token')?.value;
-        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        const decoded = verifyToken(token) as { userId: string; role: string };
-        if (decoded.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
         const { id } = await params;
         const { status, actionType, banDays, sendEmail } = await req.json();
@@ -90,7 +103,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 const Product = (await import('@/models/Product')).default;
                 item = await Product.findById(report.itemId);
                 if (item) {
-                     // Delete image from Cloudinary if exists
                     if (item.images && item.images.length > 0) {
                         const { deleteFromCloudinary } = await import('@/lib/cloudinary');
                         for (const img of item.images) {
@@ -99,11 +111,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                     }
                     await Product.findByIdAndDelete(report.itemId);
                 }
-            } else {
+            } else if (report.itemType === 'service') {
                 const Service = (await import('@/models/Service')).default;
                 item = await Service.findById(report.itemId);
                 if (item) {
-                     // Delete image from Cloudinary if exists
                     if (item.images && item.images.length > 0) {
                         const { deleteFromCloudinary } = await import('@/lib/cloudinary');
                         for (const img of item.images) {
@@ -112,6 +123,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                     }
                     await Service.findByIdAndDelete(report.itemId);
                 }
+            } else if (report.itemType === 'board-post') {
+                const BoardPost = (await import('@/models/BoardPost')).default;
+                await BoardPost.findByIdAndDelete(report.itemId);
             }
             report.status = 'Reviewed';
         }

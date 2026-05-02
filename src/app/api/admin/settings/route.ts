@@ -88,7 +88,7 @@ export async function PUT(req: NextRequest) {
             // Security & Rate Limits
             'loginMaxAttempts', 'loginLockoutMins', 'otpSendCooldownSecs', 'otpVerifyMaxAttempts', 'otpVerifyLockoutMins',
             'ipLimitLoginPerHour', 'ipLimitRegisterPerHour', 'ipLimitOtpSendPerHour', 'ipLimitOtpVerifyPerHour', 'ipLimitCheckEmailPerHour', 'ipLimitResetPasswordPerHour',
-            'maxOtpPerEmailPerHour', 'globalDailyOtpLimit', 'activeSmtpIndex'
+            'maxOtpPerEmailPerHour', 'globalDailyOtpLimit', 'activeSmtpIndex', 'maxListingsPerUser'
         ];
 
         for (const field of allowedFields) {

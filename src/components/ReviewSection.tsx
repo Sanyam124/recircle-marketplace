@@ -24,7 +24,7 @@ interface ReviewSectionProps {
   serviceId?: string;
 }
 
-export default function ReviewSection({ targetId, targetName, productId, serviceId }: ReviewSectionProps) {
+export default function ReviewSection({ targetId, targetName, productId, serviceId, className = "" }: ReviewSectionProps & { className?: string }) {
   const { user } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [average, setAverage] = useState(0);
@@ -174,18 +174,18 @@ export default function ReviewSection({ targetId, targetName, productId, service
   if (loading && page === 1) return <div className="py-4">Loading reviews...</div>;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 mt-8 transition-colors">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+    <div className={`transition-colors ${className}`}>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
         Reviews {productId || serviceId ? 'for this listing' : `for ${targetName}`}
       </h2>
       
-      <div className="flex flex-col md:flex-row gap-8 mb-8 border-b border-gray-100 dark:border-gray-700 pb-8">
+      <div className="flex flex-col md:flex-row gap-4 mb-2 border-b border-gray-50 dark:border-gray-700/50 pb-4">
         
         {/* Left Col: Average */}
-        <div className="flex flex-col items-center justify-center md:w-1/3 bg-gray-50 dark:bg-gray-700/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700">
-           <span className="text-5xl font-extrabold text-indigo-600 dark:text-indigo-400 mb-2 tracking-tighter">{Number(average).toFixed(1)}</span>
+        <div className="flex flex-col items-center justify-center md:w-1/3 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700">
+           <span className="text-4xl font-extrabold text-indigo-600 dark:text-indigo-400 mb-1 tracking-tighter">{Number(average).toFixed(1)}</span>
            <StarRating rating={average} />
-           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-2">{count} {productId || serviceId ? 'listing ratings' : 'seller ratings'}</p>
+           <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 mt-1">{count} {productId || serviceId ? 'listing ratings' : 'seller ratings'}</p>
         </div>
 
         {/* Right Col: Distribution Bars */}
@@ -233,21 +233,21 @@ export default function ReviewSection({ targetId, targetName, productId, service
       </div>
       {/* Review Form or Notices */}
       {!user ? (
-          <p className="mb-8 text-sm text-gray-500 dark:text-gray-400">Please login to write a review.</p>
+          <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">Please login to write a review.</p>
       ) : user.id === targetId ? (
-          <p className="mb-8 text-sm text-gray-500 dark:text-gray-400">You cannot review yourself.</p>
+          <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">You cannot review yourself.</p>
       ) : hasReviewed ? (
-          <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-sm">
-              You've already shared your feedback for this.
+          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-sm">
+              You&apos;ve already shared your feedback for this.
           </div>
       ) : !canReview ? (
-          <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-600">
+          <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-600">
              <p className="font-medium text-gray-900 dark:text-white mb-1">Authentic Reviews Only</p>
              Only users who have completed a verified transaction for this {productId ? 'product' : 'service'} can leave a review. 
-             If you've bought this, ensure the order is marked as "Completed" in your order history.
+             If you&apos;ve bought this, ensure the order is marked as &quot;Completed&quot; in your order history.
           </div>
       ) : (
-          <div className="mb-8 border-b border-gray-100 dark:border-gray-700 pb-8">
+          <div className="mb-0 border-b border-gray-100 dark:border-white/5 pb-4">
             <form onSubmit={handleSubmit}>
               <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Write a Review</h3>
               {error && <div className="text-red-500 text-sm mb-3">{error}</div>}

@@ -25,7 +25,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
         const { id } = await params;
         const { searchParams } = new URL(req.url);
-        const limit = parseInt(searchParams.get('limit') || '8');
+        const requestedLimit = parseInt(searchParams.get('limit') || '8');
+        const limit = Math.min(requestedLimit, 50);
         const productPage = parseInt(searchParams.get('productPage') || '1');
         const servicePage = parseInt(searchParams.get('servicePage') || '1');
         const productSkip = (productPage - 1) * limit;

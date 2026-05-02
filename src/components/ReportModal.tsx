@@ -60,7 +60,7 @@ export default function ReportModal({ targetUserId, itemType, itemId, onClose }:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-colors" onClick={onClose}>
       <div
-        className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 transition-colors"
+        className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-6 transition-colors"
         onClick={e => e.stopPropagation()}
       >
         {done ? (
@@ -91,7 +91,7 @@ export default function ReportModal({ targetUserId, itemType, itemId, onClose }:
 
             <div className="space-y-2 mb-4">
               {REASONS.map(r => (
-                <label key={r} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${reason === r ? 'border-indigo-500 bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-900/30' : 'border-gray-200 dark:border-gray-600 dark:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-500'}`}>
+                <label key={r} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${reason === r ? 'border-indigo-500 bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-900/30' : 'border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 hover:border-gray-300 dark:hover:border-zinc-600'}`}>
                   <input type="radio" name="reason" value={r} checked={reason === r} onChange={() => { setReason(r); setError(''); }} className="accent-indigo-600" />
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{r}</span>
                 </label>
@@ -101,7 +101,7 @@ export default function ReportModal({ targetUserId, itemType, itemId, onClose }:
             {reason === 'Other' && (
               <div className="mb-4">
                 <textarea
-                  className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:text-white transition-all"
+                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-zinc-800 dark:text-white transition-all"
                   rows={4}
                   maxLength={maxChars}
                   placeholder={`Describe the issue in detail (max ${maxChars} characters)...`}
@@ -123,7 +123,7 @@ export default function ReportModal({ targetUserId, itemType, itemId, onClose }:
             {error && <p className="text-sm text-red-500 dark:text-red-400 mb-3">{error}</p>}
 
             <div className="flex gap-3">
-              <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
                 Cancel
               </button>
               <button

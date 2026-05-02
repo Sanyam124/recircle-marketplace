@@ -14,20 +14,22 @@ import Offer from '@/models/Offer';
 import { verifyToken } from '@/lib/auth';
 
 // Helper to check if user is admin
-async function isAdmin(req: NextRequest) {
+async function isAdminCheck(req: NextRequest) {
     const token = req.cookies.get('token')?.value;
-    if (!token) return false;
-    const decoded = verifyToken(token);
-    if (!decoded) return false;
+    if (!token) return { status: false };
+    const decoded = verifyToken(token) as any;
+    if (!decoded) return { status: false };
 
     await connectToDatabase();
     const user = await User.findById(decoded.userId);
-    return user?.role === 'admin';
+    if (!user || user.role !== 'admin') return { status: false };
+    
+    return { status: true, currentUserId: decoded.userId };
 }
 
 export async function GET(req: NextRequest) {
     try {
-        if (!(await isAdmin(req))) {
+        if (!(await isAdminCheck(req)).status) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -35,7 +37,8 @@ export async function GET(req: NextRequest) {
         const search = searchParams.get('search') || '';
         const role = searchParams.get('role') || '';
         const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '20');
+        const requestedLimit = parseInt(searchParams.get('limit') || '20');
+        const limit = Math.min(requestedLimit, 50);
         const skip = (page - 1) * limit;
 
         await connectToDatabase();
@@ -105,7 +108,8 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
     try {
-        if (!(await isAdmin(req))) {
+        const adminCheck = await isAdminCheck(req);
+        if (!adminCheck.status) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -121,6 +125,11 @@ export async function PUT(req: NextRequest) {
         const user = await User.findById(userId);
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        // --- ADMIN SELF-PROTECTION ---
+        if (userId === adminCheck.currentUserId && role !== 'admin') {
+            return NextResponse.json({ error: 'You cannot demote yourself. Another admin must perform this action.' }, { status: 403 });
         }
 
         user.role = role;
@@ -152,7 +161,8 @@ export async function PUT(req: NextRequest) {
 // Ban a user directly from the user list
 export async function PATCH(req: NextRequest) {
     try {
-        if (!(await isAdmin(req))) {
+        const adminCheck = await isAdminCheck(req);
+        if (!adminCheck.status) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -163,11 +173,17 @@ export async function PATCH(req: NextRequest) {
         const user = await User.findById(userId);
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+        // --- ADMIN PROTECTION ---
+        if (userId === adminCheck.currentUserId) {
+            return NextResponse.json({ error: 'You cannot ban yourself' }, { status: 403 });
+        }
+        if (user.role === 'admin') {
+            return NextResponse.json({ error: 'You cannot ban another administrator' }, { status: 403 });
+        }
+
         // UNBAN LOGIC
         if (action === 'unban') {
-            user.status = 'Active'; // Reset to verified/active equivalent structure
-            user.bannedUntil = undefined;
-            // Also enforce removing active suspensions from the document level if required
+            user.status = 'Active'; 
             user.bannedUntil = null as any; 
             await user.save();
             return NextResponse.json({ success: true }, { status: 200 });
@@ -207,7 +223,8 @@ export async function PATCH(req: NextRequest) {
 // Delete a user and all their content
 export async function DELETE(req: NextRequest) {
     try {
-        if (!(await isAdmin(req))) {
+        const adminCheck = await isAdminCheck(req);
+        if (!adminCheck.status) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -219,30 +236,49 @@ export async function DELETE(req: NextRequest) {
         const user = await User.findById(userId);
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        // 0. Permanent Blacklist: Prevent them from ever re-registering
+        // --- ADMIN PROTECTION ---
+        if (userId === adminCheck.currentUserId) {
+            return NextResponse.json({ error: 'You cannot delete yourself. Self-erasure must be initiated from the profile settings.' }, { status: 403 });
+        }
+        if (user.role === 'admin') {
+            return NextResponse.json({ error: 'You cannot delete another administrator account' }, { status: 403 });
+        }
+
+        // --- TRANSACTIONAL SAFETY GUARD ---
+        // Block deletion if there are active, unfulfilled orders to prevent "ghost trades"
+        const Order = (await import('@/models/Order')).default;
+        const activeOrders = await Order.findOne({
+            $or: [{ buyer: userId }, { seller: userId }],
+            status: { $in: ['Paid', 'Scheduled', 'Dispute_Pending'] }
+        });
+
+        if (activeOrders) {
+            return NextResponse.json({ 
+                error: 'Deletion Blocked: This user has active, unfulfilled trades (Orders) currently in progress. Please ensure these orders are completed, cancelled, or disputed before purging the account to protect the other party.' 
+            }, { status: 400 });
+        }
+
+        // 0. Permanent Blacklist
         try {
             const Blacklist = (await import('@/models/Blacklist')).default;
             await Blacklist.create({
                 email: user.email,
                 username: user.username,
-                reason: 'Account deleted by administrator due to guideline violations'
+                reason: 'Account deleted by administrator'
             });
-        } catch (e) { 
-            // In case they are already blacklisted, we just continue
-            console.log('User already blacklisted or duplicate found during erasure.');
-        }
+        } catch (e) { }
 
-        // Step 1: Collect ALL targets for Cloudinary cleanup BEFORE database deletion
+        // Step 1: Collect targets
         const productsFetched = await Product.find({ seller: userId }).select('images');
         const servicesFetched = await Service.find({ provider: userId }).select('images');
         
         const imagesToDelete: string[] = [];
         if (user.profilePicture) imagesToDelete.push(user.profilePicture);
+        if (user.bannerImage) imagesToDelete.push(user.bannerImage);
         productsFetched.forEach(p => p.images?.forEach((img: string) => imagesToDelete.push(img)));
         servicesFetched.forEach(s => s.images?.forEach((img: string) => imagesToDelete.push(img)));
 
-        // Step 2: Perform Shared Records Lifecycle Checks (Orders/Messages)
-        // Only delete if the OTHER participant is also gone
+        // Step 2: Shared Records Lifecycle Checks
         const [privateOrders, privateMessages] = await Promise.all([
             Order.find({ $or: [{ buyer: userId }, { seller: userId }] }).lean(),
             Message.find({ $or: [{ sender: userId }, { recipient: userId }] }).lean()
@@ -266,49 +302,36 @@ export async function DELETE(req: NextRequest) {
             })
         ]);
 
-        // Step 3: Perform ALL Database Deletions (DB FIRST)
+        // Step 3: Database Deletions
         const dbOperations = [
             Product.deleteMany({ seller: userId }),
             Service.deleteMany({ provider: userId }),
             BoardPost.deleteMany({ author: userId }),
             Offer.deleteMany({ $or: [{ buyer: userId }, { seller: userId }] }),
-            Review.deleteMany({ reviewer: userId }), // Remove reviews they WROTE
+            Review.deleteMany({ reviewer: userId }),
             Notification.deleteMany({ $or: [{ recipient: userId }, { sender: userId }] }),
             Report.deleteMany({ $or: [{ reporter: userId }, { targetUser: userId }] }),
             VerificationRequest.deleteMany({ user: userId }),
             User.findByIdAndDelete(userId)
         ];
 
-        if (sharedRecordsToDelete.orders.length > 0) {
-            dbOperations.push(Order.deleteMany({ _id: { $in: sharedRecordsToDelete.orders } }) as any);
-        }
-        if (sharedRecordsToDelete.messages.length > 0) {
-            dbOperations.push(Message.deleteMany({ _id: { $in: sharedRecordsToDelete.messages } }) as any);
-        }
+        if (sharedRecordsToDelete.orders.length > 0) dbOperations.push(Order.deleteMany({ _id: { $in: sharedRecordsToDelete.orders } }) as any);
+        if (sharedRecordsToDelete.messages.length > 0) dbOperations.push(Message.deleteMany({ _id: { $in: sharedRecordsToDelete.messages } }) as any);
 
         await Promise.all(dbOperations);
 
-        // Step 3: Global Board Post Cleanup (Pulling references)
+        // Step 3.5: Board Post Cleanup
         try {
-            await BoardPost.updateMany(
-                { 'replies.author': userId },
-                { $pull: { replies: { author: userId } } }
-            );
-            await BoardPost.updateMany(
-                { upvotes: userId },
-                { $pull: { upvotes: userId } }
-            );
+            await BoardPost.updateMany({ 'replies.author': userId }, { $pull: { replies: { author: userId } } });
+            await BoardPost.updateMany({ upvotes: userId }, { $pull: { upvotes: userId } });
         } catch (e) {}
 
-        // Step 4: Trigger Cloudinary Cleanup AFTER successful DB removal
+        // Step 4: Cloudinary Cleanup
         if (imagesToDelete.length > 0) {
             try {
                 const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-                // Use Promise.all with catch to ensure we attempt to delete all images even if some fail
                 await Promise.all(imagesToDelete.map(img => deleteFromCloudinary(img).catch(() => null)));
-            } catch (e) {
-                console.error('Admin deletion Cloudinary cleanup failed:', e);
-            }
+            } catch (e) { }
         }
 
         return NextResponse.json({ success: true }, { status: 200 });

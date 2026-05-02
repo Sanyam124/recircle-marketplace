@@ -330,7 +330,7 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
 
                 {/* Reviews Section */}
                 <div id="reviews-section">
-                    <ReviewSection targetId={user._id} targetName={user.name} />
+                    <ReviewSection targetId={user._id} targetName={user.name} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors" />
                 </div>
 
             </div>

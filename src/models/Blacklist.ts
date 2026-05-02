@@ -11,7 +11,7 @@ const BlacklistSchema: Schema<IBlacklist> = new Schema(
     {
         email: { type: String, required: true, unique: true, lowercase: true, index: true },
         username: { type: String, required: true, unique: true, lowercase: true, index: true },
-        reason: { type: String, default: 'Violations of college marketplace guidelines' },
+        reason: { type: String, default: 'Violations of community marketplace guidelines' },
         bannedAt: { type: Date, default: Date.now },
     },
     { timestamps: true }

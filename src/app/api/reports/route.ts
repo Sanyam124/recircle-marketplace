@@ -16,6 +16,19 @@ export async function POST(req: NextRequest) {
         const SiteSettings = (await import('@/models/SiteSettings')).default;
         const siteConfig = await SiteSettings.getSingleton();
         const maxChars = siteConfig.maxReportOtherChars || 1000;
+        // --- ANTI-REPORT SPAM SHIELD ---
+        const { checkRateLimit } = await import('@/lib/rate-limit');
+        const rl = await checkRateLimit(decoded.userId, 'report-create', 5, 15 * 60 * 1000);
+        if (!rl.success) {
+            return NextResponse.json(
+                { 
+                    error: 'You have submitted too many reports recently. Please try again later.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 900
+                },
+                { status: 429 }
+            );
+        }
+
         const { targetUserId, itemType, itemId, reason } = await req.json();
 
         if (!targetUserId || !reason || typeof reason !== 'string' || reason.trim().length === 0 || reason.length > maxChars || !['product', 'service', 'none'].includes(itemType)) {

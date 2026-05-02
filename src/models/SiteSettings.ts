@@ -66,6 +66,9 @@ export interface ISiteSettings extends Document {
     maxOtpPerEmailPerHour: number;
     globalDailyOtpLimit: number;
     
+    // User Account Limits
+    maxListingsPerUser: number;
+
     // SMTP Selection
     activeSmtpIndex: number;
 
@@ -86,11 +89,11 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
 
         productCategories: {
             type: [String],
-            default: ['Textbooks', 'Study Notes', 'Stationery', 'Electronics', 'Clothing', 'Bags', 'Hostel Kit', 'Sports', 'Furniture', 'Other'],
+            default: ['Textbooks', 'Study Notes', 'Stationery', 'Electronics', 'Clothing', 'Bags', 'Hostel/Building Kit', 'Sports', 'Furniture', 'Other'],
         },
         serviceCategories: {
             type: [String],
-            default: ['Academic Help', 'Tech Support', 'Graphic Design', 'Photography', 'Dorm Services', 'Fitness Coaching', 'Other'],
+            default: ['Academic Help', 'Tech Support', 'Graphic Design', 'Photography', 'Hostel/Building Services', 'Fitness Coaching', 'Other'],
         },
         serviceAvailability: {
             type: [String],
@@ -160,6 +163,8 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
         maxPriceService: { type: Number, default: 100000 },
         minPrice: { type: Number, default: 5 },
 
+        maxListingsPerUser: { type: Number, default: 100 },
+
         apiRateLimitGeneral: { type: Number, default: 100 },
         apiRateLimitAuth: { type: Number, default: 30 },
 
@@ -193,7 +198,7 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
 
         // Advanced OTP Protection
         maxOtpPerEmailPerHour: { type: Number, default: 5 },
-        globalDailyOtpLimit: { type: Number, default: 1000 },
+        globalDailyOtpLimit: { type: Number, default: 400 },
         
         // SMTP Selection
         activeSmtpIndex: { type: Number, default: 1 },
