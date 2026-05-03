@@ -134,7 +134,7 @@ export default function VerifierDashboard() {
                             <svg className="w-8 h-8 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         </div>
                         <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-2 transition-colors">Queue is Empty</h4>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto transition-colors">Either all residents are auto-verified by email, or you've processed all manual requests. Good job!</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto transition-colors">Either all residents are auto-verified by email, or you&apos;ve processed all manual requests. Good job!</p>
                     </div>
                 ) : (
                     <div className="divide-y divide-gray-100 dark:divide-gray-700/50">

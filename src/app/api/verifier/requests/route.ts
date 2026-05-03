@@ -21,12 +21,25 @@ export async function GET(req: NextRequest) {
         require('@/models/Community');
         require('@/models/VerificationRequest');
         const verifier = await User.findById(decoded.userId);
-        if (!verifier || verifier.role !== 'verifier') {
+        const isAdmin = verifier?.role === 'admin';
+        if (!verifier || (verifier.role !== 'verifier' && !isAdmin)) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 
         // The verifier manages their assigned community (first one in list)
-        const communityId = verifier.verifiedCommunities?.[0];
+        // Admin can pass a communityId filter to see any community
+        const { searchParams } = new URL(req.url);
+        let communityId = searchParams.get('communityId') || verifier.verifiedCommunities?.[0];
+        
+        if (isAdmin && !communityId) {
+             // Admin sees ALL pending requests if no filter
+             const allRequests = await VerificationRequest.find({ status: 'Pending' })
+                 .populate('user', 'name username email profilePicture')
+                 .populate('community', 'name')
+                 .sort({ createdAt: -1 });
+             return NextResponse.json({ requests: allRequests }, { status: 200 });
+        }
+
         if (!communityId) return NextResponse.json({ requests: [] });
 
         const requests = await VerificationRequest.find({
@@ -54,6 +67,21 @@ export async function POST(req: NextRequest) {
         await connectToDatabase();
         
         const { communityId, idProof } = await req.json();
+
+        // --- ANTI-SPAM SHIELD ---
+        const { checkRateLimit } = await import('@/lib/rate-limit');
+        // Limit to 2 attempts per hour globally for this user (to prevent image upload spam)
+        const rl = await checkRateLimit(decoded.userId, 'verification-request-submit', 2, 60 * 60 * 1000);
+        if (!rl.success) {
+            return NextResponse.json(
+                { 
+                    error: 'You are submitting requests too quickly. Please wait an hour.',
+                    retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 3600
+                },
+                { status: 429 }
+            );
+        }
+
         if (!communityId || !idProof) {
             return NextResponse.json({ error: 'Missing community or ID proof' }, { status: 400 });
         }

@@ -5,19 +5,20 @@ import { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap } from 'r
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-
-
 interface LocationMapProps {
     coordinates?: [number, number]; // [lng, lat] expected from db
     isPrecise?: boolean;
+    readOnly?: boolean;
     onChange?: (coords: [number, number], details: { city?: string; state?: string; pincode?: string }) => void;
 }
 
-// Component to handle clicks on the map to drop the marker
+// Component to handle clicks on the map to drop the marker (only in editable mode)
 function LocationPicker({ coordinates, isPrecise, setPosition }: any) {
     useMapEvents({
         click(e) {
-            setPosition([e.latlng.lat, e.latlng.lng]); // Internal state uses [lat, lng]
+            if (setPosition) {
+                setPosition([e.latlng.lat, e.latlng.lng]);
+            }
         },
     });
 
@@ -44,6 +45,61 @@ function LocationPicker({ coordinates, isPrecise, setPosition }: any) {
     ) : null;
 }
 
+// Read-only marker display (no click events)
+function ReadOnlyMarker({ coordinates, isPrecise }: { coordinates: [number, number] | null; isPrecise: boolean }) {
+    const map = useMap();
+
+    const bluePin = L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41]
+    });
+
+    // When switching to approximate mode, fit the map to show the full circle
+    useEffect(() => {
+        try {
+            if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) return;
+            if (isNaN(coordinates[0]) || isNaN(coordinates[1])) return;
+
+            // Invalidate size once to ensure rendering is correct
+            setTimeout(() => map.invalidateSize(), 100);
+
+            if (!isPrecise) {
+                // Use a proper circle to get bounds and fit them
+                const circle = L.circle(coordinates, { radius: 500 });
+                const bounds = circle.getBounds();
+                map.fitBounds(bounds, { padding: [40, 40], animate: true });
+            } else {
+                map.setView(coordinates, 15, { animate: true });
+            }
+        } catch (err) {
+            console.warn('Map view update failed:', err);
+        }
+    }, [coordinates, isPrecise, map]);
+
+    return coordinates ? (
+        <>
+            {isPrecise ? (
+                <Marker position={coordinates} icon={bluePin} />
+            ) : (
+                <Circle 
+                    center={coordinates} 
+                    pathOptions={{ 
+                        fillColor: '#6366f1', 
+                        fillOpacity: 0.2, 
+                        color: '#4f46e5', 
+                        weight: 2,
+                        dashArray: undefined // Solid line for better visibility
+                    }} 
+                    radius={500} 
+                />
+            )}
+        </>
+    ) : null;
+}
+
 // Controller to fly map to specific coordinates programmatically
 function MapController({ center }: { center: [number, number] | null }) {
     const map = useMap();
@@ -55,7 +111,7 @@ function MapController({ center }: { center: [number, number] | null }) {
     return null;
 }
 
-export default function LocationMap({ coordinates, isPrecise = true, onChange }: LocationMapProps) {
+export default function LocationMap({ coordinates, isPrecise = true, readOnly = false, onChange }: LocationMapProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [searching, setSearching] = useState(false);
     
@@ -69,23 +125,35 @@ export default function LocationMap({ coordinates, isPrecise = true, onChange }:
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [showResults, setShowResults] = useState(false);
 
-    // Whenever position changes (and it's not the first load auto-triggering), we reverse geocode it.
+    // Sync position when external coordinates change (from auto-detect or pincode lookup)
+    useEffect(() => {
+        if (coordinates) {
+            const newPos: [number, number] = [coordinates[1], coordinates[0]];
+            setPosition(newPos);
+            setFlyToCenter(newPos);
+        } else {
+            setPosition(null);
+            setFlyToCenter(null);
+        }
+    }, [coordinates]);
+
+    // Whenever position changes (and it's not read-only), we reverse geocode it.
     useEffect(() => {
         if (isFirstRender.current) {
             isFirstRender.current = false;
             return;
         }
         
-        if (position && onChange) {
+        if (position && onChange && !readOnly) {
             reverseGeocode(position[0], position[1]).then(details => {
-                 // Pass back to parent as [lng, lat] (GeoJSON format)
                  onChange([position[1], position[0]], details);
             });
         }
     }, [position]);
 
-    // Live Auto-Search (Debounced)
+    // Live Auto-Search (Debounced) - only in editable mode
     useEffect(() => {
+        if (readOnly) return;
         const timer = setTimeout(() => {
             if (searchQuery.length > 2) {
                 performSearch(searchQuery);
@@ -93,9 +161,9 @@ export default function LocationMap({ coordinates, isPrecise = true, onChange }:
                 setSearchResults([]);
                 setShowResults(false);
             }
-        }, 600); // 600ms debounce
+        }, 600);
         return () => clearTimeout(timer);
-    }, [searchQuery]);
+    }, [searchQuery, readOnly]);
 
     const reverseGeocode = async (lat: number, lng: number) => {
         try {
@@ -143,7 +211,7 @@ export default function LocationMap({ coordinates, isPrecise = true, onChange }:
         setPosition([lat, lon]);
         setFlyToCenter([lat, lon]);
         setShowResults(false);
-        setSearchQuery(result.name || result.display_name.split(',')[0]); // Update input with selected short name
+        setSearchQuery(result.name || result.display_name.split(',')[0]);
     };
 
     const handleLocateMe = () => {
@@ -162,9 +230,39 @@ export default function LocationMap({ coordinates, isPrecise = true, onChange }:
         );
     };
 
+    // ===== READ-ONLY MAP =====
+    if (readOnly) {
+        return (
+            <div className="relative w-full border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                <div className={`w-full ${position ? 'h-64' : 'h-40'} transition-all duration-500`}>
+                    <MapContainer 
+                        center={position || [20.5937, 78.9629]}
+                        zoom={position ? 15 : 5} 
+                        style={{ height: '100%', width: '100%', zIndex: 1 }}
+                        scrollWheelZoom={false}
+                        dragging={true}
+                        zoomControl={true}
+                    >
+                        <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <MapController center={flyToCenter} />
+                        <ReadOnlyMarker coordinates={position} isPrecise={isPrecise} />
+                    </MapContainer>
+                </div>
+                {!position && (
+                    <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 text-center border-t border-gray-200 dark:border-gray-700">
+                        <p className="text-xs text-gray-400 font-bold">Fill your location above to preview it on the map.</p>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // ===== EDITABLE MAP (detail pages / legacy) =====
     return (
         <div className="relative w-full border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm group">
-             {/* Overlay Toolbar */}
              <div className="absolute top-3 left-3 right-3 z-[1000] flex gap-2">
                   <div className="flex-1 relative">
                       <form 
@@ -187,7 +285,6 @@ export default function LocationMap({ coordinates, isPrecise = true, onChange }:
                            </button>
                       </form>
                       
-                      {/* Search Results Dropdown */}
                       {showResults && searchResults.length > 0 && (
                           <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#1a1a1a] rounded-[20px] shadow-2xl border border-gray-100 dark:border-white/10 max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-300">
                               {searchResults.map((result, idx) => (
@@ -216,7 +313,7 @@ export default function LocationMap({ coordinates, isPrecise = true, onChange }:
 
             <div className="h-96 w-full">
                 <MapContainer 
-                    center={position || [20.5937, 78.9629]} // Default to India
+                    center={position || [20.5937, 78.9629]}
                     zoom={position ? 15 : 5} 
                     style={{ height: '100%', width: '100%', zIndex: 1 }}
                     scrollWheelZoom={true} 
@@ -235,7 +332,6 @@ export default function LocationMap({ coordinates, isPrecise = true, onChange }:
                 </MapContainer>
             </div>
             
-            {/* Instruction Footer */}
             <div className="bg-gray-50 dark:bg-gray-800/50 p-2 text-center border-t border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-500 font-medium">Click anywhere on the map to pin your exact trace-off location.</p>
             </div>

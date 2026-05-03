@@ -16,7 +16,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
         await connectToDatabase();
         const verifier = await User.findById(decoded.userId);
-        if (!verifier || verifier.role !== 'verifier') {
+        const isAdmin = verifier?.role === 'admin';
+        if (!verifier || (verifier.role !== 'verifier' && !isAdmin)) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 
@@ -30,14 +31,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const request = await VerificationRequest.findById(id);
         if (!request) return NextResponse.json({ error: 'Request not found' }, { status: 404 });
 
-        // Ensure verifier is in the same community as the requester
+        // Ensure verifier is in the same community as the requester (unless admin)
         const assignedCommunity = verifier.verifiedCommunities?.[0]?.toString();
-        if (request.community.toString() !== assignedCommunity) {
+        if (!isAdmin && request.community.toString() !== assignedCommunity) {
             return NextResponse.json({ error: 'Unauthorized to manage this community' }, { status: 403 });
         }
 
-        let communityObj = await Community.findById(request.community);
-        let communityName = communityObj ? communityObj.name : 'Your Community';
+        const communityObj = await Community.findById(request.community);
+        const communityName = communityObj ? communityObj.name : 'Your Community';
 
         // Decision logic
         if (status === 'Approved') {

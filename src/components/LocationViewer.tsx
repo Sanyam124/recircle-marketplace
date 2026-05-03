@@ -140,7 +140,7 @@ export default function LocationViewer({ visibility, location }: LocationViewerP
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {location.hostel && (
                             <div className="p-4 bg-white dark:bg-white/5 rounded-2xl border border-indigo-100/30 dark:border-white/5 shadow-sm overflow-hidden min-w-0">
-                                <span className="text-[10px] font-black text-gray-400 dark:text-indigo-400/50 uppercase block mb-1 tracking-widest">Hostel</span>
+                                <span className="text-[10px] font-black text-gray-400 dark:text-indigo-400/50 uppercase block mb-1 tracking-widest">Hostel/Building</span>
                                 <span className="text-lg font-black text-gray-900 dark:text-indigo-300 break-all">{location.hostel}</span>
                             </div>
                         )}
