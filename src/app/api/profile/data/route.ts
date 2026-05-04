@@ -24,8 +24,6 @@ export async function GET(req: NextRequest) {
             
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        // TEMP: Automatically drop and reset SiteSettings for production 
-        await require('mongoose').connection.collection('sitesettings').drop().catch(() => {});
         const configData = await SiteSettings.getSingleton();
 
         return NextResponse.json({ user, configData }, { status: 200 });
