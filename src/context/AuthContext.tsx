@@ -188,17 +188,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = (userData: User, newCommunities?: string[]) => {
     setUser(userData);
     localStorage.setItem('recircle_user', JSON.stringify(userData));
-    if (newCommunities && newCommunities.length > 0) {
+    
+    const hasCelebration = newCommunities && newCommunities.length > 0;
+    if (hasCelebration) {
       triggerCelebration(newCommunities);
     }
     
     // Use a small delay for cookie to settle in some browsers, then hard reload
     // to bypass Next.js prefetch cache madness
+    // If celebrating, wait 5s so the user can see the celebration first
     setTimeout(() => {
       const searchParams = new URLSearchParams(window.location.search);
       const redirect = searchParams.get('redirect') || '/explore';
       window.location.href = redirect;
-    }, 100);
+    }, hasCelebration ? 5000 : 100);
   };
 
   const logout = async () => {
