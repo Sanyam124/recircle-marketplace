@@ -61,11 +61,11 @@ export interface ISiteSettings extends Document {
     ipLimitOtpVerifyPerHour: number;
     ipLimitCheckEmailPerHour: number;
     ipLimitResetPasswordPerHour: number;
-    
+
     // Advanced OTP Protection
     maxOtpPerEmailPerHour: number;
     globalDailyOtpLimit: number;
-    
+
     // User Account Limits
     maxListingsPerUser: number;
 
@@ -122,7 +122,8 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775880596/recircle/defaults/avatars/adrlyespwr2nisogppyx.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881528/recircle/defaults/avatars/yybdriyqunh4ja51n9fx.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881545/recircle/defaults/avatars/ygldm1alqtpzmfj0vzyt.webp",
-                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881609/recircle/defaults/avatars/phztoibugb66owdk3qn1.webp",
+                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881609/recircle/defaults/avatars/rx4btjxpgncuq05sxnns.webp",
+                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881609/recircle/defaults/avatars/sp9esvheofyzhix8iymk.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881843/recircle/defaults/avatars/oluqzmzcp6vidvakutsu.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881865/recircle/defaults/avatars/vyll052nx0sn7pkpoy15.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881971/recircle/defaults/avatars/zsvvuu1tl9lftjkvsqts.webp",
@@ -196,7 +197,7 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
         // Advanced OTP Protection
         maxOtpPerEmailPerHour: { type: Number, default: 5 },
         globalDailyOtpLimit: { type: Number, default: 400 },
-        
+
         // SMTP Selection
         activeSmtpIndex: { type: Number, default: 1 },
     },
