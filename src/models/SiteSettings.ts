@@ -102,7 +102,6 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
         defaultAvatars: {
             type: [String],
             default: [
-                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775879627/recircle/defaults/avatars/qgkgztxivymqpykcln9l.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775879647/recircle/defaults/avatars/ziodytpld8wihr98ist3.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775879674/recircle/defaults/avatars/ujoj8pesdwygl7prxhop.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775879713/recircle/defaults/avatars/xlbrrk5k8fwajdg7atrd.webp",
@@ -123,7 +122,6 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775880596/recircle/defaults/avatars/adrlyespwr2nisogppyx.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881528/recircle/defaults/avatars/yybdriyqunh4ja51n9fx.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881545/recircle/defaults/avatars/ygldm1alqtpzmfj0vzyt.webp",
-                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881575/recircle/defaults/avatars/ef0jnz9sj9noihldv0cj.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881609/recircle/defaults/avatars/phztoibugb66owdk3qn1.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881843/recircle/defaults/avatars/oluqzmzcp6vidvakutsu.webp",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775881865/recircle/defaults/avatars/vyll052nx0sn7pkpoy15.webp",
@@ -147,7 +145,6 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884929/recircle/defaults/banners/mnfbvgpadbmzzjmfd7db.jpg",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884930/recircle/defaults/banners/wavqltixgy5dfcnvuv7y.jpg",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884931/recircle/defaults/banners/l1kcurhb3gyrfilaiw8y.jpg",
-                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884932/recircle/defaults/banners/ontd1mq3hvvd4zklnhol.jpg",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884933/recircle/defaults/banners/rnko4ck2wczrv34jzwu2.jpg",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884934/recircle/defaults/banners/ulb2vmptaa6e6gayhzxu.jpg"
             ],
