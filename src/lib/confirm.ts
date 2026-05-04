@@ -21,8 +21,8 @@ export const confirmAction = async ({
     confirmButtonText,
     cancelButtonText,
     reverseButtons: true,
-    background: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff',
-    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+    background: document.documentElement.classList.contains('dark') ? '#0a0a0a' : '#ffffff',
+    color: document.documentElement.classList.contains('dark') ? '#ffffff' : '#111827',
   });
 
   return result.isConfirmed;
@@ -34,8 +34,8 @@ export const showError = async (title: string, text?: string) => {
     text,
     icon: 'error',
     confirmButtonColor: '#4f46e5',
-    background: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff',
-    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+    background: document.documentElement.classList.contains('dark') ? '#0a0a0a' : '#ffffff',
+    color: document.documentElement.classList.contains('dark') ? '#ffffff' : '#111827',
   });
 };
 
@@ -45,8 +45,8 @@ export const showSuccess = async (title: string, text?: string) => {
     text,
     icon: 'success',
     confirmButtonColor: '#4f46e5',
-    background: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff',
-    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+    background: document.documentElement.classList.contains('dark') ? '#0a0a0a' : '#ffffff',
+    color: document.documentElement.classList.contains('dark') ? '#ffffff' : '#111827',
   });
 };
 

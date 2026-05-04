@@ -80,7 +80,7 @@ async function sendMailWithActive(options: any) {
   // Log exactly which SMTP was used for analytics viewing
   try {
       const now = new Date();
-      let log = await RequestLog.findOne({ ip: 'global-system', path: `smtp-${activeSmtp}-usage` });
+      const log = await RequestLog.findOne({ ip: 'global-system', path: `smtp-${activeSmtp}-usage` });
       if (!log) {
           await RequestLog.create({ ip: 'global-system', path: `smtp-${activeSmtp}-usage`, count: 1, lastRequest: now });
       } else {
