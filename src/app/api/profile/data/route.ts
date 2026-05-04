@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
+import SiteSettings from '@/models/SiteSettings';
 import { verifyToken } from '@/lib/auth';
 import { validateProfileUpdate, performAccountDeletion } from '@/lib/profile';
 
@@ -23,7 +24,9 @@ export async function GET(req: NextRequest) {
             
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        return NextResponse.json({ user }, { status: 200 });
+        const configData = await SiteSettings.getSingleton();
+
+        return NextResponse.json({ user, configData }, { status: 200 });
     } catch (error) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }

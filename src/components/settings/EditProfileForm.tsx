@@ -109,6 +109,22 @@ export default function EditProfileForm({ form, setForm, onSubmit, submitting, u
                     </div>
                 </div>
 
+                {/* Banner Selection */}
+                <div className="space-y-6">
+                    <h4 className="text-xl font-black italic tracking-tighter text-zinc-900 dark:text-white ml-2">🖼️ Banners</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-zinc-50 dark:bg-zinc-950/50 rounded-3xl border border-zinc-100 dark:border-zinc-800/50">
+                        {defaults.banners?.map((url: string, idx: number) => (
+                            <button key={idx} type="button" onClick={() => setForm((p: any) => ({ ...p, bannerImage: url }))} className={`relative aspect-video rounded-2xl overflow-hidden border-4 transition-all ${form.bannerImage === url ? 'border-indigo-600 scale-105 shadow-xl' : 'border-transparent hover:border-zinc-200 dark:hover:border-zinc-800'}`}>
+                                <NextImage src={url} alt={`Banner ${idx}`} fill unoptimized className="object-cover" />
+                            </button>
+                        ))}
+                        <div className="relative aspect-video cursor-pointer" onClick={() => (document.querySelectorAll('input[type="file"]')[1] as any)?.click()}>
+                            <ImageUpload label="" folder="recircle/banners" currentImage={!defaults.banners.includes(form.bannerImage) ? form.bannerImage : ''} onUpload={(url) => setForm((p: any) => ({ ...p, bannerImage: url }))} className="w-full h-full" imageClassName="rounded-2xl object-cover" />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xl">+</div></div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Profile Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-3">
