@@ -1,21 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-
-interface Particle {
-  id: number;
-  x: number;
-  y: number;
-  color: string;
-  size: number;
-  speedX: number;
-  speedY: number;
-  rotation: number;
-  rotationSpeed: number;
-  shape: 'circle' | 'square' | 'ribbon';
-  opacity: number;
-}
+import React, { useEffect, useState, useMemo } from 'react';
 
 interface CommunityJoinCelebrationProps {
   communityNames: string[];
@@ -26,93 +11,58 @@ const COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#A78BFA', '#FB923C', '#34D399'
 const DURATION = 5000;
 
 export default function CommunityJoinCelebration({ communityNames, onComplete }: CommunityJoinCelebrationProps) {
-  const [particles, setParticles] = useState<Particle[]>([]);
   const [showContent, setShowContent] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
-  const router = useRouter();
 
-  const createParticles = useCallback(() => {
-    const newParticles: Particle[] = [];
-    for (let i = 0; i < 150; i++) {
-      newParticles.push({
-        id: i,
-        x: Math.random() * 100,
-        y: -10 - Math.random() * 40,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
-        size: 4 + Math.random() * 10,
-        speedX: (Math.random() - 0.5) * 3,
-        speedY: 1.5 + Math.random() * 3,
-        rotation: Math.random() * 360,
-        rotationSpeed: (Math.random() - 0.5) * 15,
-        shape: (['circle', 'square', 'ribbon'] as const)[Math.floor(Math.random() * 3)],
-        opacity: 0.7 + Math.random() * 0.3,
-      });
-    }
-    return newParticles;
+  // Generate confetti pieces once (CSS-animated, no React re-renders)
+  const confetti = useMemo(() => {
+    return Array.from({ length: 50 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      delay: Math.random() * 2.5,
+      duration: 2.5 + Math.random() * 2,
+      color: COLORS[i % COLORS.length],
+      size: 5 + Math.random() * 7,
+      isRibbon: Math.random() > 0.5,
+      sway: (Math.random() - 0.5) * 80,
+    }));
   }, []);
 
   useEffect(() => {
-    setParticles(createParticles());
-    setTimeout(() => setShowContent(true), 300);
-
-    // Add burst particles at intervals
-    const burstInterval = setInterval(() => {
-      setParticles(prev => [...prev.slice(-200), ...createParticles().slice(0, 50)]);
-    }, 1200);
-
+    setTimeout(() => setShowContent(true), 200);
     const fadeTimer = setTimeout(() => setFadeOut(true), DURATION - 800);
-    const completeTimer = setTimeout(() => {
-      onComplete();
-      router.push('/explore');
-    }, DURATION);
+    const completeTimer = setTimeout(onComplete, DURATION);
 
     return () => {
-      clearInterval(burstInterval);
       clearTimeout(fadeTimer);
       clearTimeout(completeTimer);
     };
-  }, [createParticles, onComplete, router]);
-
-  // Animate particles
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setParticles(prev =>
-        prev.map(p => ({
-          ...p,
-          x: p.x + p.speedX * 0.3,
-          y: p.y + p.speedY * 0.3,
-          rotation: p.rotation + p.rotationSpeed,
-          speedX: p.speedX + (Math.random() - 0.5) * 0.2,
-          opacity: p.y > 90 ? Math.max(0, p.opacity - 0.05) : p.opacity,
-        })).filter(p => p.y < 110 && p.opacity > 0)
-      );
-    }, 30);
-    return () => clearInterval(interval);
-  }, []);
+  }, [onComplete]);
 
   return (
     <div
       className={`fixed inset-0 z-[99999] pointer-events-auto transition-opacity duration-700 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
       style={{ background: 'radial-gradient(ellipse at center, rgba(79,70,229,0.95) 0%, rgba(30,27,75,0.98) 100%)' }}
     >
-      {/* Confetti Particles */}
+      {/* CSS-only confetti — no JS animation loop */}
       <div className="absolute inset-0 overflow-hidden">
-        {particles.map(p => (
+        {confetti.map(p => (
           <div
             key={p.id}
-            className="absolute"
+            className="absolute animate-confetti-fall"
             style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              width: p.shape === 'ribbon' ? `${p.size * 0.4}px` : `${p.size}px`,
-              height: p.shape === 'ribbon' ? `${p.size * 2.5}px` : `${p.size}px`,
+              left: `${p.left}%`,
+              top: '-5%',
+              width: p.isRibbon ? `${p.size * 0.4}px` : `${p.size}px`,
+              height: p.isRibbon ? `${p.size * 2.2}px` : `${p.size}px`,
               backgroundColor: p.color,
-              borderRadius: p.shape === 'circle' ? '50%' : p.shape === 'ribbon' ? '2px' : '2px',
-              transform: `rotate(${p.rotation}deg)`,
-              opacity: p.opacity,
-              boxShadow: `0 0 ${p.size}px ${p.color}40`,
-              transition: 'none',
-            }}
+              borderRadius: p.isRibbon ? '2px' : '50%',
+              animationDelay: `${p.delay}s`,
+              animationDuration: `${p.duration}s`,
+              '--sway': `${p.sway}px`,
+              opacity: 0.85,
+              boxShadow: `0 0 ${p.size}px ${p.color}30`,
+            } as React.CSSProperties}
           />
         ))}
       </div>
@@ -124,7 +74,6 @@ export default function CommunityJoinCelebration({ communityNames, onComplete }:
           <div className="w-28 h-28 rounded-full bg-gradient-to-br from-yellow-400 via-orange-400 to-pink-500 flex items-center justify-center shadow-2xl shadow-orange-500/40 animate-bounce">
             <span className="text-6xl">🎉</span>
           </div>
-          {/* Rings */}
           <div className="absolute inset-0 w-28 h-28 rounded-full border-4 border-white/20 animate-ping" style={{ animationDuration: '1.5s' }} />
           <div className="absolute -inset-3 rounded-full border-2 border-yellow-400/30 animate-ping" style={{ animationDuration: '2s' }} />
         </div>
@@ -140,7 +89,6 @@ export default function CommunityJoinCelebration({ communityNames, onComplete }:
             <div
               key={i}
               className="px-5 py-2.5 bg-white/15 backdrop-blur-xl rounded-2xl border border-white/25 text-white font-bold text-lg shadow-lg"
-              style={{ animationDelay: `${i * 200}ms` }}
             >
               🏫 {name}
             </div>
