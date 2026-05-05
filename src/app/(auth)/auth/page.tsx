@@ -178,7 +178,7 @@ export default function AuthPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Login failed');
 
-            login(data.user);
+            login(data.user, data.newCommunityJoined ? data.newCommunityNames : undefined);
         } catch (err: any) {
             setError(err.message);
             setIsLoading(false);
@@ -275,7 +275,7 @@ export default function AuthPage() {
             }
 
             setTimeout(() => {
-                login(data.user);
+                login(data.user, data.newCommunityJoined ? data.newCommunityNames : undefined);
             }, 100);
         } catch (err: any) {
             setError(err.message);

@@ -149,8 +149,21 @@ export default function CommunityJoinCelebration({ communityNames, onComplete }:
 
         {/* Subtitle */}
         <p className="text-indigo-100 text-center text-lg max-w-md leading-relaxed font-medium">
-          Your campus community has been <span className="text-yellow-300 font-black">automatically verified!</span> You now have full access to exclusive campus listings.
+          Your campus community has been <span className="text-yellow-300 font-black">automatically verified!</span>
         </p>
+
+        {/* Unlocked Features */}
+        <div className="mt-5 flex flex-wrap gap-2 justify-center max-w-md">
+          <div className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/15 text-white/90 text-xs font-bold flex items-center gap-2">
+            <span>🏠</span> Hostel & Building Filters
+          </div>
+          <div className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/15 text-white/90 text-xs font-bold flex items-center gap-2">
+            <span>🔒</span> Campus-Only Listings
+          </div>
+          <div className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/15 text-white/90 text-xs font-bold flex items-center gap-2">
+            <span>👥</span> Community Circle Board
+          </div>
+        </div>
 
         {/* Sparkle dots */}
         <div className="flex gap-2 mt-8">
