@@ -59,12 +59,25 @@ export default function SettingsPage() {
     // Default Assets
     const [defaults, setDefaults] = useState({ avatars: [], banners: [] });
 
+    const [viewMode, setViewMode] = useState<'list' | 'content'>('list');
+
     useEffect(() => {
         setMounted(true);
         if (user) fetchUserData();
     }, [user]);
 
+    // Handle initial state and responsiveness
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth >= 768) setViewMode('content');
+        };
+        window.addEventListener('resize', handleResize);
+        handleResize(); // Set initial
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const fetchUserData = async () => {
+        // ... (rest of fetchUserData remains same)
         try {
             const res = await fetch('/api/profile/data');
             if (res.ok) {
@@ -158,103 +171,135 @@ export default function SettingsPage() {
     if (authLoading || loading || !mounted) return <Loader />;
 
     const tabs = [
-        { id: 'profile', label: 'Profile', icon: '👤' },
-        { id: 'notifications', label: 'Alerts', icon: '🔔' },
-        { id: 'circles', label: 'Circles', icon: '🤝' },
-        { id: 'privacy', label: 'Privacy', icon: '🛡️' },
-        { id: 'appearance', label: 'Theme', icon: '🎨' },
-        { id: 'account', label: 'Settings', icon: '⚙️' },
+        { id: 'profile', label: 'Profile', icon: '👤', desc: 'Personal info & Avatar' },
+        { id: 'notifications', label: 'Alerts', icon: '🔔', desc: 'Manage your notifications' },
+        { id: 'circles', label: 'Circles', icon: '🤝', desc: 'Communities & Memberships' },
+        { id: 'privacy', label: 'Privacy', icon: '🛡️', desc: 'Block list & Visibility' },
+        { id: 'appearance', label: 'Theme', icon: '🎨', desc: 'Colors & Display modes' },
+        { id: 'account', label: 'Settings', icon: '⚙️', desc: 'Security & App config' },
     ];
 
     return (
-        <div className="min-h-screen bg-[#FDFDFD] dark:bg-[#0A0A0A] pb-24 md:pb-12 transition-colors duration-500">
+        <div className="min-h-screen-dynamic bg-[#FDFDFD] dark:bg-[#0A0A0A] pb-24 md:pb-12 transition-colors duration-500 no-bounce">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
                 
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row gap-10 mb-12">
-                    <div className="w-full md:w-64 shrink-0">
-                        <h1 className="text-4xl font-black italic tracking-tighter text-slate-900 dark:text-white mb-8">Settings</h1>
+                    
+                    {/* List View (Categories) */}
+                    <div className={`w-full md:w-64 shrink-0 transition-all duration-300 ${viewMode === 'content' ? 'hidden md:block' : 'block'}`}>
+                        <div className="flex items-center justify-between mb-8">
+                            <h1 className="text-4xl font-black italic tracking-tighter text-slate-900 dark:text-white">Settings</h1>
+                            <button onClick={() => window.history.back()} className="md:hidden p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl text-gray-400 hover:text-indigo-600">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
                         
-                        {/* Tab Navigation */}
-                        <div className="flex md:flex-col gap-2 overflow-x-auto pb-4 md:pb-0 scrollbar-hide">
+                        {/* Tab Navigation (Stacked List for Mobile) */}
+                        <div className="flex flex-col gap-3">
                             {tabs.map((tab) => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-4 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                                    onClick={() => {
+                                        setActiveTab(tab.id);
+                                        if (window.innerWidth < 768) setViewMode('content');
+                                    }}
+                                    className={`flex items-center gap-4 px-6 py-5 rounded-[2rem] transition-all group relative border-2 ${
                                         activeTab === tab.id 
-                                        ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 dark:shadow-none' 
-                                        : 'bg-white dark:bg-slate-900 text-slate-400 hover:bg-indigo-50 dark:hover:bg-slate-800'
+                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-200 dark:shadow-none' 
+                                        : 'bg-white dark:bg-slate-900 border-transparent text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 shadow-sm'
                                     }`}
                                 >
-                                    <span className="text-lg">{tab.icon}</span>
-                                    <span>{tab.label}</span>
+                                    <span className="text-2xl">{tab.icon}</span>
+                                    <div className="flex flex-col text-left">
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${activeTab === tab.id ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{tab.label}</span>
+                                        <span className={`text-[9px] font-medium opacity-60 mt-0.5 line-clamp-1`}>{tab.desc}</span>
+                                    </div>
+                                    <div className={`ml-auto md:hidden transition-transform ${activeTab === tab.id ? 'translate-x-1' : 'opacity-20'}`}>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
+                                    </div>
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     {/* Main Content Area */}
-                    <div className="flex-1 min-w-0">
+                    <div className={`flex-1 min-w-0 transition-all duration-500 ${viewMode === 'list' ? 'hidden md:block' : 'block'}`}>
+                        
+                        {/* Mobile Back Button & Section Title */}
+                        <div className="md:hidden flex items-center gap-4 mb-6 sticky top-0 bg-[#FDFDFD]/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl py-2 z-50">
+                            <button 
+                                onClick={() => setViewMode('list')}
+                                className="w-12 h-12 flex items-center justify-center bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 text-indigo-600"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                            <h2 className="text-xl font-black italic tracking-tighter text-slate-900 dark:text-white">
+                                {tabs.find(t => t.id === activeTab)?.label}
+                            </h2>
+                        </div>
+
                         <SettingsHeader user={user} />
                         
-                        {activeTab === 'profile' && (
-                            <div className="space-y-8">
-                                <EditProfileForm 
-                                    form={profileForm} 
-                                    setForm={setProfileForm} 
-                                    onSubmit={handleProfileSubmit} 
-                                    submitting={submitting} 
-                                    user={user} 
-                                    defaults={defaults}
-                                    mascot={{
-                                        style: mascotStyle, setStyle: setMascotStyle,
-                                        seed: mascotSeed, setSeed: setMascotSeed,
-                                        bg: mascotBg, setBg: setMascotBg
-                                    }}
-                                />
-                                {/* Bottom Action Bar for Profile */}
-                                <div className="fixed bottom-20 left-0 right-0 p-4 md:relative md:bottom-0 md:p-0 z-40">
-                                    <button 
-                                        onClick={handleProfileSubmit}
-                                        disabled={submitting}
-                                        className="w-full md:w-auto px-12 py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-3"
-                                    >
-                                        {submitting ? 'Saving Changes...' : 'Save Profile Details'}
-                                    </button>
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {activeTab === 'profile' && (
+                                <div className="space-y-8">
+                                    <EditProfileForm 
+                                        form={profileForm} 
+                                        setForm={setProfileForm} 
+                                        onSubmit={handleProfileSubmit} 
+                                        submitting={submitting} 
+                                        user={user} 
+                                        defaults={defaults}
+                                        mascot={{
+                                            style: mascotStyle, setStyle: setMascotStyle,
+                                            seed: mascotSeed, setSeed: setMascotSeed,
+                                            bg: mascotBg, setBg: setMascotBg
+                                        }}
+                                    />
+                                    {/* Bottom Action Bar for Profile */}
+                                    <div className="fixed bottom-20 left-0 right-0 p-4 md:relative md:bottom-0 md:p-0 z-40">
+                                        <button 
+                                            onClick={handleProfileSubmit}
+                                            disabled={submitting}
+                                            className="w-full md:w-auto px-12 py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                        >
+                                            {submitting ? 'Saving Changes...' : 'Save Profile Details'}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {activeTab === 'notifications' && (
-                            <NotificationsSection prefs={prefs} updatePreference={updatePreference} saving={saving} />
-                        )}
+                            {activeTab === 'notifications' && (
+                                <NotificationsSection prefs={prefs} updatePreference={updatePreference} saving={saving} />
+                            )}
 
-                        {activeTab === 'circles' && <CirclesSection />}
+                            {activeTab === 'circles' && <CirclesSection />}
 
-                        {activeTab === 'privacy' && (
-                            <PrivacySection 
-                                prefs={prefs} 
-                                updatePreference={updatePreference} 
-                                saving={saving} 
-                                blockedUsers={blockedUsers} 
-                                onUnblock={fetchUserData}
-                                phone={profileForm.phone}
-                            />
-                        )}
+                            {activeTab === 'privacy' && (
+                                <PrivacySection 
+                                    prefs={prefs} 
+                                    updatePreference={updatePreference} 
+                                    saving={saving} 
+                                    blockedUsers={blockedUsers} 
+                                    onUnblock={fetchUserData}
+                                    phone={profileForm.phone}
+                                />
+                            )}
 
-                        {activeTab === 'appearance' && (
-                            <AppearanceSection 
-                                theme={theme} 
-                                setTheme={setTheme} 
-                                prefs={prefs} 
-                                updatePreference={updatePreference} 
-                                saving={saving} 
-                                user={user} 
-                            />
-                        )}
+                            {activeTab === 'appearance' && (
+                                <AppearanceSection 
+                                    theme={theme} 
+                                    setTheme={setTheme} 
+                                    prefs={prefs} 
+                                    updatePreference={updatePreference} 
+                                    saving={saving} 
+                                    user={user} 
+                                />
+                            )}
 
-                        {activeTab === 'account' && <AccountSection />}
+                            {activeTab === 'account' && <AccountSection />}
+                        </div>
                     </div>
                 </div>
             </div>

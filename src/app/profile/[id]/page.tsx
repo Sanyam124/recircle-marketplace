@@ -207,7 +207,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const allPagination = pagination?.all;
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-gray-50/30 dark:bg-[#080B14] transition-colors duration-500 pb-20">
+    <div className="min-h-screen-dynamic w-full overflow-x-hidden bg-gray-50/30 dark:bg-[#080B14] transition-colors duration-500 pb-20 no-bounce">
       
       {/* 🔹 Panoramic Immersive Header */}
       <div className="relative w-full h-[220px] sm:h-[280px] lg:h-[320px] overflow-hidden group">

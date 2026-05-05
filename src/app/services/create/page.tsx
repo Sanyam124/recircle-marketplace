@@ -158,8 +158,8 @@ export default function CreateServicePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
-      <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl shadow-indigo-500/5 border border-gray-100 dark:border-zinc-800/50 overflow-hidden">
+    <div className="min-h-screen-dynamic flex items-center justify-center bg-gray-50/50 dark:bg-[#080B14] py-8 sm:py-16 px-4 sm:px-6 lg:px-8 no-bounce -mt-16 sm:mt-0 -mb-24 md:mb-0">
+      <div className="w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl shadow-indigo-500/5 border border-gray-100 dark:border-zinc-800/50 overflow-hidden">
         <div className="p-6 sm:p-10 md:p-12 relative text-left">
           {/* Status Modal Overlay */}
           {(loading || success) && (
