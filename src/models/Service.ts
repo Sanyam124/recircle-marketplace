@@ -12,7 +12,6 @@ export interface IService extends Document {
     community?: mongoose.Types.ObjectId;
     visibility: 'Public' | 'Community';
     location?: { 
-        pincode?: string; 
         city?: string; 
         state?: string;
         coordinates?: number[]; // [lng, lat]
@@ -32,23 +31,22 @@ const ServiceSchema: Schema<IService> = new Schema(
         title: { type: String, required: true, trim: true, maxlength: 80 },
         description: { type: String, required: true, trim: true, maxlength: 2000 },
         price: { type: Number, required: true, min: 0, max: 100000 },
-        priceUnit: { type: String, trim: true, default: 'fixed' },
-        category: { type: String, required: true, trim: true, index: true },
+        priceUnit: { type: String, trim: true, default: 'fixed', maxlength: 30 },
+        category: { type: String, required: true, trim: true, index: true, maxlength: 50 },
         images: { type: [String] },
         status: { type: String, enum: ['Active', 'Inactive'], default: 'Active', index: true },
         community: { type: Schema.Types.ObjectId, ref: 'Community', index: true },
         visibility: { type: String, enum: ['Public', 'Community'], default: 'Public', index: true },
         location: {
-            pincode: { type: String, trim: true },
-            city: { type: String, trim: true },
-            state: { type: String, trim: true },
+            city: { type: String, trim: true, maxlength: 50 },
+            state: { type: String, trim: true, maxlength: 50 },
             coordinates: { type: [Number], index: '2dsphere' }, // [longitude, latitude]
             isPrecise: { type: Boolean, default: true },
-            hostel: { type: String, trim: true },
+            hostel: { type: String, trim: true, maxlength: 50 },
             room: { type: Number, min: 1, max: 1000 },
             bed: { type: Number, min: 1, max: 19 }
         },
-        availability: { type: String, trim: true },
+        availability: { type: String, trim: true, maxlength: 100 },
     },
     { timestamps: true }
 );

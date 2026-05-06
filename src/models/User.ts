@@ -10,7 +10,9 @@ export interface IUser extends Document {
     bannerImage?: string;
     bio?: string;
     role: 'user' | 'admin' | 'verifier';
-    address?: string;
+    state?: string;
+    city?: string;
+    landmark?: string;
     isVerified: boolean;
     phone?: string; // [NEW] Optional phone
     isPhoneVerified: boolean; // [NEW] Level 2 verification
@@ -65,15 +67,17 @@ const UserSchema: Schema<IUser> = new Schema(
         profilePicture: { type: String },
         bannerImage: { type: String },
         bio: { type: String, trim: true, maxlength: 500, default: '' },
-        gender: { type: String, enum: ['male', 'female', 'other', 'none'], default: 'none' },
+        gender: { type: String, enum: ['male', 'female', 'other', 'none'], default: 'none', maxlength: 15 },
         allowEmailContact: { type: Boolean, default: false },
-        phone: { type: String, trim: true },
+        phone: { type: String, trim: true, maxlength: 15 },
         isPhoneVerified: { type: Boolean, default: false },
         allowPhoneContact: { type: Boolean, default: false },
         status: { type: String, enum: ['Active', 'Banned', 'Deactivated'], default: 'Active', index: true },
         bannedUntil: { type: Date },
         role: { type: String, enum: ['user', 'admin', 'verifier'], default: 'user' },
-        address: { type: String, trim: true, maxlength: 150 },
+        state: { type: String, trim: true, maxlength: 50 },
+        city: { type: String, trim: true, maxlength: 50 },
+        landmark: { type: String, trim: true, maxlength: 100 },
         isVerified: { type: Boolean, default: false },
         isOnVacation: { type: Boolean, default: false, index: true },
         wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
@@ -96,7 +100,7 @@ const UserSchema: Schema<IUser> = new Schema(
         showOnlineStatus: { type: Boolean, default: true },
         compactView: { type: Boolean, default: false },
         defaultCommunity: { type: mongoose.Schema.Types.ObjectId, ref: 'Community' },
-        defaultHostel: { type: String },
+        defaultHostel: { type: String, maxlength: 50 },
         failedLoginAttempts: { type: Number, default: 0, select: false },
         lockUntil: { type: Date, select: false },
     },
@@ -106,7 +110,7 @@ const UserSchema: Schema<IUser> = new Schema(
 // Workaround for Next.js HMR: Delete cached model if it lacks the new fields or has old constraints
 if (mongoose.models.User) {
     const currentSchema = mongoose.models.User.schema;
-    if (!currentSchema.path('pushSubscription') || !currentSchema.path('bannerImage') || !currentSchema.path('notifyNewsletter') || !currentSchema.path('notifySecurity') || !currentSchema.path('notifyOffers') || !currentSchema.path('notifyCommunity') || !currentSchema.path('notifyMessages') || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('status') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || !currentSchema.path('isOnVacation') || !currentSchema.path('showOnlineStatus') || !currentSchema.path('compactView') || !currentSchema.path('defaultCommunity') || !currentSchema.path('defaultHostel')) {
+    if (!currentSchema.path('pushSubscription') || !currentSchema.path('bannerImage') || !currentSchema.path('notifyNewsletter') || !currentSchema.path('notifySecurity') || !currentSchema.path('notifyOffers') || !currentSchema.path('notifyCommunity') || !currentSchema.path('notifyMessages') || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('status') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || !currentSchema.path('isOnVacation') || !currentSchema.path('showOnlineStatus') || !currentSchema.path('compactView') || !currentSchema.path('defaultCommunity') || !currentSchema.path('defaultHostel') || !currentSchema.path('state') || !currentSchema.path('city') || !currentSchema.path('landmark')) {
         delete mongoose.models.User;
     }
 }

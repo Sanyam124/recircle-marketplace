@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
         const communities = await Community.find(query)
             .limit(limit)
-            .select('name description location image emailDomains createdAt');
+            .select('name description location image emailDomains hostels createdAt');
 
         return NextResponse.json({ communities }, { status: 200 });
 

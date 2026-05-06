@@ -46,7 +46,16 @@ function PaginationControls({ page, totalPages, onPageChange, scrollTargetId }: 
 function ItemCard({ item, type }: { item: any; type: 'product' | 'service' }) {
     const href = type === 'product' ? `/products/${item._id}` : `/services/${item._id}`;
     const image = item.images?.[0];
-    const price = type === 'product' ? `₹${item.price}` : `₹${item.price}${item.priceUnit ? `/${item.priceUnit.split(' ').pop()}` : ''}`;
+    let priceStr = '';
+    if (type === 'product') {
+        const parts = [];
+        if (item.forSell !== false && item.price !== undefined && item.price !== null) parts.push(`₹${item.price.toLocaleString()}`);
+        if (item.forRent && item.rentPrice !== undefined && item.rentPrice !== null) parts.push(`₹${item.rentPrice.toLocaleString()} per ${item.rentUnit?.split(' ').pop() || 'item'}`);
+        priceStr = parts.join(' / ');
+    } else {
+        priceStr = `₹${item.price?.toLocaleString()}${item.priceUnit ? ` per ${item.priceUnit.split(' ').pop()}` : ''}`;
+    }
+    const price = priceStr;
 
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all duration-200">

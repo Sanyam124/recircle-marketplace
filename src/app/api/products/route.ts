@@ -86,6 +86,12 @@ export async function POST(req: NextRequest) {
         if (title.length > 80) return NextResponse.json({ error: 'Title must be 80 characters or less' }, { status: 400 });
         if (description.length > 2000) return NextResponse.json({ error: 'Description must be 2000 characters or less' }, { status: 400 });
 
+        if (location) {
+            if (location.city && location.city.length > 50) return NextResponse.json({ error: 'City name too long' }, { status: 400 });
+            if (location.state && location.state.length > 50) return NextResponse.json({ error: 'State name too long' }, { status: 400 });
+            if (location.hostel && location.hostel.length > 50) return NextResponse.json({ error: 'Hostel name too long' }, { status: 400 });
+        }
+
         const imageUrls: string[] = [];
         const newlyUploadedUrls: string[] = [];
 
@@ -112,7 +118,6 @@ export async function POST(req: NextRequest) {
                 sanitizedLocation = {
                     city: location.city,
                     state: location.state,
-                    pincode: location.pincode,
                     coordinates: location.coordinates,
                     isPrecise: location.isPrecise,
                     hostel: location.hostel,
@@ -157,7 +162,6 @@ export async function POST(req: NextRequest) {
                 location: location ? {
                     city: location.city?.trim() || 'Generic',
                     state: location.state?.trim() || 'Global',
-                    pincode: location.pincode?.trim() || '',
                     coordinates: Array.isArray(location.coordinates) ? location.coordinates.map(Number) : undefined,
                     isPrecise: location.isPrecise !== false,
                     hostel: location.hostel?.trim() || '',

@@ -21,7 +21,7 @@ export interface ICommunity extends Document {
 
 const CommunitySchema: Schema<ICommunity> = new Schema(
     {
-        name: { type: String, required: true, trim: true, unique: true },
+        name: { type: String, required: true, trim: true, unique: true, maxlength: 100 },
         description: { type: String, trim: true, maxlength: 500 },
         location: {
             // GeoJSON format for the center of the community (e.g., center of campus)
@@ -29,13 +29,13 @@ const CommunitySchema: Schema<ICommunity> = new Schema(
             coordinates: { type: [Number], index: '2dsphere' }, // [longitude, latitude]
         },
         gpsRadius: { type: Number, default: 1000 }, // Default 1km detection radius
-        emailDomains: [{ type: String, lowercase: true, trim: true }],
+        emailDomains: [{ type: String, lowercase: true, trim: true, maxlength: 100 }],
         admins: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         verifiers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         image: { type: String },
         isActive: { type: Boolean, default: true },
         isManualVerificationEnabled: { type: Boolean, default: true },
-        hostels: [{ type: String, trim: true }],
+        hostels: [{ type: String, trim: true, maxlength: 50 }],
     },
     { timestamps: true }
 );

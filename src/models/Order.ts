@@ -47,13 +47,13 @@ const OrderSchema: Schema<IOrder> = new Schema(
             default: 'Scheduled',
             index: true,
         },
-        pickupAddress: { type: String },
-        deliveryAddress: { type: String },
+        pickupAddress: { type: String, maxlength: 200 },
+        deliveryAddress: { type: String, maxlength: 200 },
         verificationCode: { type: String },
         otpAttempts: { type: Number, default: 0 },
         lastOtpAttemptAt: { type: Date },
         paymentMethod: { type: String, enum: ['Cash', 'Online'], default: 'Cash' },
-        disputeReason: { type: String },
+        disputeReason: { type: String, maxlength: 500 },
     },
     { timestamps: true }
 );

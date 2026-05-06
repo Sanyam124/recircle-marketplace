@@ -16,7 +16,6 @@ export interface IProduct extends Document {
     community?: mongoose.Types.ObjectId;
     visibility: 'Public' | 'Community';
     location?: { 
-        pincode?: string; 
         city?: string; 
         state?: string;
         coordinates?: number[]; // [lng, lat]
@@ -40,7 +39,7 @@ const ProductSchema: Schema<IProduct> = new Schema(
         rentPrice: { type: Number, min: 0, max: 1000000 },
         rentUnit: { type: String, enum: ['hour', 'day', 'week', 'month', 'year'] },
         images: { type: [String], required: true }, // Array of image URLs
-        category: { type: String, required: true, trim: true, index: true },
+        category: { type: String, required: true, trim: true, index: true, maxlength: 50 },
         condition: {
             type: String,
             enum: ['New', 'Like New', 'Good', 'Fair', 'Poor'],
@@ -55,12 +54,11 @@ const ProductSchema: Schema<IProduct> = new Schema(
         community: { type: Schema.Types.ObjectId, ref: 'Community', index: true },
         visibility: { type: String, enum: ['Public', 'Community'], default: 'Public', index: true },
         location: {
-            pincode: { type: String, trim: true },
-            city: { type: String, trim: true },
-            state: { type: String, trim: true },
+            city: { type: String, trim: true, maxlength: 50 },
+            state: { type: String, trim: true, maxlength: 50 },
             coordinates: { type: [Number], index: '2dsphere' }, // [longitude, latitude]
             isPrecise: { type: Boolean, default: true },
-            hostel: { type: String, trim: true },
+            hostel: { type: String, trim: true, maxlength: 50 },
             room: { type: Number, min: 1, max: 1000 },
             bed: { type: Number, min: 1, max: 19 }
         }

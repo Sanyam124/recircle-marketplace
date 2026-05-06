@@ -20,7 +20,7 @@ const ReviewSchema: Schema<IReview> = new Schema(
         product: { type: Schema.Types.ObjectId, ref: 'Product', index: true },
         service: { type: Schema.Types.ObjectId, ref: 'Service', index: true },
         rating: { type: Number, required: true, min: 1, max: 5 },
-        comment: { type: String, trim: true },
+        comment: { type: String, trim: true, maxlength: 1000 },
     },
     { timestamps: true }
 );
