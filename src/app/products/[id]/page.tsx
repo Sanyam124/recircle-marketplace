@@ -317,22 +317,28 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </h1>
 
             {/* Pricing Section */}
-            <div className="flex flex-wrap items-center gap-4 py-2">
-                <span className="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white tracking-tighter">
-                  ₹{product.price?.toLocaleString()}
-                </span>
-                <div className="flex flex-wrap gap-2 mt-1 sm:mt-0">
+            <div className="flex flex-col gap-2 py-2">
+                <div className="flex flex-wrap items-baseline gap-4">
+                  <span className="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white tracking-tighter">
+                    ₹{product.price?.toLocaleString()}
+                  </span>
                   {product.forSell !== false && (
                     <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-md text-[10px] font-black uppercase tracking-tight">
                       Sale price
                     </span>
                   )}
-                  {product.forRent && (
-                    <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-md text-[10px] font-black uppercase tracking-tight">
-                      ₹{product.rentPrice?.toLocaleString()} / {product.rentUnit}
-                    </span>
-                  )}
                 </div>
+
+                {product.forRent && (
+                  <div className="flex flex-wrap items-baseline gap-4 mt-2">
+                    <span className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400 tracking-tighter">
+                      ₹{product.rentPrice?.toLocaleString()}
+                    </span>
+                    <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-md text-[10px] font-black uppercase tracking-tight">
+                      Per {product.rentUnit}
+                    </span>
+                  </div>
+                )}
             </div>
             
             <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-y-3 gap-x-6 pt-2 border-t border-gray-100 dark:border-[#2a2a2a] mt-2">

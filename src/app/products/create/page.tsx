@@ -157,7 +157,7 @@ export default function CreateProductPage() {
   };
 
   return (
-    <div className="min-h-screen-dynamic flex items-center justify-center bg-gray-50/50 dark:bg-[#080B14] py-8 sm:py-16 px-4 sm:px-6 lg:px-8 no-bounce -mt-16 sm:mt-0 -mb-24 md:mb-0">
+    <div className="min-h-screen-dynamic flex items-center justify-center bg-gray-50/50 dark:bg-[#080B14] py-8 sm:py-16 px-4 sm:px-6 lg:px-8 -mt-16 sm:mt-0 -mb-24 md:mb-0">
       <div className="w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl shadow-indigo-500/5 border border-gray-100 dark:border-zinc-800/50 overflow-hidden">
         <div className="p-6 sm:p-10 md:p-12 relative">
           {/* Status Modal Overlay */}
@@ -212,7 +212,7 @@ export default function CreateProductPage() {
                     required
                     maxLength={80}
                     placeholder="What are you selling?"
-                    className="w-full bg-gray-50 dark:bg-zinc-900/50 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium"
+                    className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value.replace(/[\r\n]/g, '') })}
                   />
@@ -285,7 +285,7 @@ export default function CreateProductPage() {
                             min={siteConfig?.minPrice || 5}
                             max={siteConfig?.maxPriceProduct || 100000}
                             placeholder="0.00"
-                            className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-emerald-500 dark:focus:border-emerald-400 rounded-l-2xl rounded-r-none pl-10 pr-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-black text-xl"
+                            className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-emerald-500 dark:focus:border-emerald-400 rounded-l-2xl rounded-r-none pl-10 pr-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-black text-xl"
                             onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
                             onChange={(e) => setFormData({ ...formData, rentPrice: e.target.value.replace(/\D/g, '') })}
                             value={formData.rentPrice}
@@ -332,7 +332,7 @@ export default function CreateProductPage() {
               <select
                 id="category"
                 name="category"
-                className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white outline-none transition-all font-bold appearance-none cursor-pointer shadow-sm"
+                className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white outline-none transition-all font-bold appearance-none cursor-pointer shadow-sm"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               >

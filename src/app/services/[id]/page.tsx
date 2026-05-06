@@ -316,11 +316,11 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
             </h1>
 
             {/* Pricing Section */}
-            <div className="flex flex-wrap items-center gap-4 py-2">
+            <div className="flex flex-wrap items-baseline gap-4 py-2">
                 <span className="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white tracking-tighter">
                   ₹{service.price?.toLocaleString()}
                 </span>
-                <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-md text-[10px] font-black uppercase tracking-tight mt-1 sm:mt-0">
+                <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-md text-[10px] font-black uppercase tracking-tight">
                   Per {service.priceUnit}
                 </span>
             </div>

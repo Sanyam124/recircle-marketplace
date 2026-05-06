@@ -158,7 +158,7 @@ export default function CreateServicePage() {
   };
 
   return (
-    <div className="min-h-screen-dynamic flex items-center justify-center bg-gray-50/50 dark:bg-[#080B14] py-8 sm:py-16 px-4 sm:px-6 lg:px-8 no-bounce -mt-16 sm:mt-0 -mb-24 md:mb-0">
+    <div className="min-h-screen-dynamic flex items-center justify-center bg-gray-50/50 dark:bg-[#080B14] py-8 sm:py-16 px-4 sm:px-6 lg:px-8 -mt-16 sm:mt-0 -mb-24 md:mb-0">
       <div className="w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl shadow-indigo-500/5 border border-gray-100 dark:border-zinc-800/50 overflow-hidden">
         <div className="p-6 sm:p-10 md:p-12 relative text-left">
           {/* Status Modal Overlay */}
@@ -211,7 +211,7 @@ export default function CreateServicePage() {
                 required
                 maxLength={80}
                 placeholder="e.g. Calculus Tutoring, Graphic Design"
-                className="w-full bg-gray-50 dark:bg-zinc-900/50 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium"
+                className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value.replace(/[\r\n]/g, '') })}
               />
@@ -338,7 +338,7 @@ export default function CreateServicePage() {
                 <div className="mt-4 animate-in fade-in slide-in-from-top-4">
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 ml-1">Swap Selected Circle</label>
                   <select
-                    className="w-full h-12 bg-white dark:bg-white/10 rounded-xl px-4 text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full h-12 bg-white dark:bg-zinc-800 rounded-xl px-4 text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white"
                     value={formData.communityId}
                     onChange={(e) => setFormData({ ...formData, communityId: e.target.value })}
                   >
