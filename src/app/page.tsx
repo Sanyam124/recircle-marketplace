@@ -97,7 +97,8 @@ export default function Home() {
                   <span className="px-5 py-2.5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-transform cursor-default">Sell</span>
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>
                   <span className="px-5 py-2.5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-transform cursor-default">Rent</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                  <span className="hidden sm:block w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                  <div className="w-full sm:hidden"></div>
                   <span className="px-5 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl shadow-sm border border-indigo-100 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-400 hover:-translate-y-1 transition-transform cursor-default">Freelance</span>
               </div>
               

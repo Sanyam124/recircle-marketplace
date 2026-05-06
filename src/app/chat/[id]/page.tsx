@@ -776,7 +776,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         <>
             {/* Unified Context Header */}
             <div 
-                className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-10 transition-colors shrink-0 shadow-[0_2px_4px_-1px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                className="relative z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 transition-colors shrink-0 shadow-[0_2px_4px_-1px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
                 onClick={() => window.location.href = `/profile/${userId}`}
             >
                 <div className="px-4 py-3 flex items-center gap-4">

@@ -63,6 +63,14 @@ function BoardPageContent() {
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const [replyContent, setReplyContent] = useState('');
     const [replySubmitting, setReplySubmitting] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Reset textarea height when content is cleared
+    useEffect(() => {
+        if (!newPostContent && textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+        }
+    }, [newPostContent]);
 
     const { data: siteConfig } = useSWR('/api/site-config');
     const maxPostChars = siteConfig?.maxBoardPostChars || 500;
@@ -196,6 +204,7 @@ function BoardPageContent() {
             if (res.ok) {
                 mutate(); 
                 setNewPostContent('');
+                if (textareaRef.current) textareaRef.current.style.height = 'auto';
             } else {
                 const data = await res.json();
                 setError(data.error || 'Failed to post.');
@@ -388,24 +397,70 @@ function BoardPageContent() {
                     {/* Main Feed Area */}
                     <div className="flex-1 min-w-0">
                         
-                        {/* Mobile Back Button & Header */}
-                        <div className="md:hidden flex items-center gap-4 mb-6 sticky top-0 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-xl py-2 z-50">
-                            <button 
-                                onClick={() => setViewMode('list')}
-                                className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 text-indigo-600"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
-                            </button>
-                            <div className="flex flex-col">
-                                <h2 className="text-xl font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">
-                                    {categories.find(t => t.id === activeCategory)?.name}
-                                </h2>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">Circle Board</span>
+                        {/* Mobile Sticky Header (Back, Title, Search, Community) */}
+                        <div className="md:hidden sticky top-0 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-xl z-[60] -mx-4 px-4 pt-2 pb-4 mb-6 border-b border-gray-200/50 dark:border-gray-800/50 shadow-sm flex flex-col gap-4">
+                            <div className="flex items-center gap-4">
+                                <button 
+                                    onClick={() => setViewMode('list')}
+                                    className="w-10 h-10 flex shrink-0 items-center justify-center bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 text-indigo-600 transition-transform active:scale-95"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
+                                </button>
+                                <div className="flex flex-col flex-1 min-w-0">
+                                    <h2 className="text-xl font-black italic tracking-tighter text-slate-900 dark:text-white leading-none truncate">
+                                        {categories.find(t => t.id === activeCategory)?.name}
+                                    </h2>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Circle Board</span>
+                                </div>
                             </div>
+                            
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span className="text-gray-400 group-focus-within:text-indigo-500 transition-colors">🔍</span>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        className="block w-full pl-10 pr-10 py-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 transition-all shadow-sm"
+                                        placeholder={`Search in ${categories.find(c => c.id === activeCategory)?.name}...`}
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    {searchQuery && (
+                                        <button 
+                                            onClick={() => setSearchQuery('')}
+                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 transition-colors"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    )}
+                                </div>
+                                <select
+                                    className="w-24 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 py-3 px-2 focus:ring-2 focus:ring-indigo-500 shadow-sm shrink-0"
+                                    value={selectedCommunityId}
+                                    onChange={(e) => {
+                                        const params = new URLSearchParams(searchParams.toString());
+                                        params.set('communityId', e.target.value);
+                                        router.push(`/board?${params.toString()}`, { scroll: false });
+                                    }}
+                                >
+                                    {user?.verifiedCommunities?.map((c: any) => (
+                                        <option key={c._id || c.id || c} value={c._id || c.id || c}>🏢 {c.name.split(' ')[0]}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            
+                            {/* Mobile Info Toast */}
+                            {showInfo && (
+                                <div className="bg-indigo-600 text-white rounded-xl py-3 px-4 shadow-xl animate-in fade-in slide-in-from-top-2 duration-300 text-[10px] font-bold leading-relaxed flex items-center gap-3">
+                                    <span className="text-lg">📢</span>
+                                    <p>Campus notice board. All posts vanish after <span className="underline underline-offset-4">48 hours</span> automatically.</p>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Top Utility Bar (Search & Mobile Select) */}
-                        <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] p-4 sm:p-6 mb-8 border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
+                        {/* Top Utility Bar (Desktop Only) */}
+                        <div className="hidden md:block bg-white dark:bg-gray-800 rounded-[2.5rem] p-4 sm:p-6 mb-8 border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
                             <div className="flex items-center justify-between gap-4">
                                 <div className="flex-1 relative group">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -436,31 +491,6 @@ function BoardPageContent() {
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 </button>
                             </div>
-                            
-                            {/* Mobile Info Toast */}
-                            {showInfo && (
-                                <div className="bg-indigo-600 text-white rounded-2xl py-3 px-5 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300 text-[10px] font-bold leading-relaxed flex items-center gap-3">
-                                    <span className="text-lg">📢</span>
-                                    <p>Campus notice board. All posts vanish after <span className="underline underline-offset-4">48 hours</span> automatically.</p>
-                                </div>
-                            )}
-
-                            {/* Mobile Only Community Switcher */}
-                            <div className="md:hidden pt-2">
-                                <select
-                                    className="w-full bg-gray-50 dark:bg-gray-900/50 border-none rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 py-3 px-4 focus:ring-2 focus:ring-indigo-500"
-                                    value={selectedCommunityId}
-                                    onChange={(e) => {
-                                        const params = new URLSearchParams(searchParams.toString());
-                                        params.set('communityId', e.target.value);
-                                        router.push(`/board?${params.toString()}`, { scroll: false });
-                                    }}
-                                >
-                                    {user?.verifiedCommunities?.map((c: any) => (
-                                        <option key={c._id || c.id || c} value={c._id || c.id || c}>🏢 {c.name}</option>
-                                    ))}
-                                </select>
-                            </div>
                         </div>
 
                         {/* Post Creation Form */}
@@ -473,45 +503,48 @@ function BoardPageContent() {
                                 <p className="text-sm font-bold text-amber-700 dark:text-amber-500/80 max-w-sm mx-auto">Circle maintenance. Posting is temporarily disabled.</p>
                             </div>
                         ) : (
-                            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-gray-700 p-6 sm:p-8 mb-8 transition-all hover:shadow-md relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl -mr-24 -mt-24 group-hover:bg-indigo-500/10 transition-colors"></div>
+                            <div className="fixed bottom-[72px] left-0 right-0 z-[40] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/50 p-4 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] md:relative md:bg-white md:dark:bg-gray-800 md:rounded-[2.5rem] md:shadow-sm md:border md:border-gray-100 md:dark:border-gray-700 md:p-6 lg:p-8 md:mb-8 md:bottom-auto md:left-auto md:right-auto md:z-auto md:backdrop-blur-none transition-all hover:shadow-md group">
+                                <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl -mr-24 -mt-24 group-hover:bg-indigo-500/10 transition-colors hidden md:block"></div>
                                 <form onSubmit={handleCreatePost}>
-                                    <div className="space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-xl">
-                                                    {categories.find(c => c.id === (activeCategory === 'All' ? 'General' : activeCategory))?.icon || '💬'}
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Launch a Post</span>
-                                                    <span className="text-[9px] font-bold text-gray-400">In {categories.find(c => c.id === postCategory)?.name}</span>
-                                                </div>
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-sm md:text-xl">
+                                                {categories.find(c => c.id === (activeCategory === 'All' ? 'General' : activeCategory))?.icon || '💬'}
                                             </div>
-                                            <span className={`text-[10px] font-bold ${newPostContent.length >= (maxPostChars - 50) ? 'text-red-500' : 'text-gray-300'}`}>
-                                                {newPostContent.length}/{maxPostChars}
-                                            </span>
+                                            <div className="flex-1 min-w-0 flex flex-col">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 leading-none">Launch a Post</span>
+                                                    <span className={`text-[9px] md:text-[10px] font-bold ${newPostContent.length >= (maxPostChars - 50) ? 'text-red-500' : 'text-gray-300'}`}>
+                                                        {newPostContent.length}/{maxPostChars}
+                                                    </span>
+                                                </div>
+                                                <textarea
+                                                    ref={textareaRef}
+                                                    className="w-full bg-transparent border-none px-0 py-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-0 focus:outline-none text-sm md:text-base min-h-[40px] md:min-h-[60px] max-h-[150px] overflow-y-auto resize-none transition-all break-all"
+                                                    placeholder={activeCategory === 'All' ? "Share something..." : `Post in ${categories.find(c => c.id === activeCategory)?.name}...`}
+                                                    value={newPostContent}
+                                                    onChange={(e) => {
+                                                        setNewPostContent(e.target.value);
+                                                        e.target.style.height = 'auto';
+                                                        e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
+                                                    }}
+                                                    maxLength={maxPostChars}
+                                                    required
+                                                />
+                                            </div>
                                         </div>
-                                        
-                                        <textarea
-                                            className="w-full bg-transparent border-none text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-0 text-base py-0 min-h-[100px] resize-none"
-                                            placeholder={activeCategory === 'All' ? "Share something with the campus..." : `Post an update to ${categories.find(c => c.id === activeCategory)?.name}...`}
-                                            value={newPostContent}
-                                            onChange={(e) => setNewPostContent(e.target.value)}
-                                            maxLength={maxPostChars}
-                                            required
-                                        />
 
                                         {activeCategory === 'All' && (
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="flex overflow-x-auto gap-2 pb-1 -mx-1 px-1 sm:mx-0 sm:px-0 sm:pb-0 sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                                 {categories.filter(c => c.id !== 'All').map(c => (
                                                     <button
                                                         key={c.id}
                                                         type="button"
                                                         onClick={() => setPostCategory(c.id)}
-                                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                                        className={`shrink-0 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${
                                                             postCategory === c.id 
                                                             ? 'bg-indigo-600 text-white shadow-lg' 
-                                                            : 'bg-gray-50 dark:bg-gray-900 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
                                                         }`}
                                                     >
                                                         {c.icon} {c.name}
@@ -522,19 +555,16 @@ function BoardPageContent() {
 
                                         {error && <p className="text-[10px] text-red-500 font-bold">{error}</p>}
                                         
-                                        <div className="flex items-center justify-between pt-6 border-t border-gray-50 dark:border-gray-800">
-                                            <div className="flex items-center gap-3">
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => showSuccess('Coming Soon!', 'Images coming in v2.0 🚀')}
-                                                    className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                                </button>
-                                                <span className="text-[10px] text-gray-400 font-medium italic opacity-60">📌 Visible in {selectedCommunity?.name}</span>
-                                            </div>
-                                            <button type="submit" disabled={submitting || !newPostContent.trim()} className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-[0.98] shadow-xl shadow-indigo-500/20">
-                                                {submitting ? 'Launching...' : 'Post Now'}
+                                        <div className="flex items-center justify-between pt-1">
+                                            <button 
+                                                type="button" 
+                                                onClick={() => showSuccess('Coming Soon!', 'Images coming in v2.0 🚀')}
+                                                className="w-8 h-8 md:w-10 md:h-10 shrink-0 flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg md:rounded-xl transition-all"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                            </button>
+                                            <button type="submit" disabled={submitting || !newPostContent.trim()} className="bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-2 md:px-8 md:py-3 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-[0.98] shadow-lg shadow-indigo-500/20">
+                                                {submitting ? '...' : 'Post Now'}
                                             </button>
                                         </div>
                                     </div>
@@ -543,7 +573,7 @@ function BoardPageContent() {
                         )}
 
                         {/* Posts Feed */}
-                        <div className="space-y-6">
+                        <div className="space-y-6 pb-[240px] md:pb-0">
                             <div className="flex items-baseline justify-between px-2">
                                 <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest italic">{activeCategory === 'All' ? 'Live Activity' : `${categories.find(c => c.id === activeCategory)?.name} Hub`}</h2>
                                 <span className="text-[10px] text-gray-300 font-bold">{allPosts.length} updates found</span>
