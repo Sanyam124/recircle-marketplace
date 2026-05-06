@@ -321,7 +321,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                   ₹{service.price?.toLocaleString()}
                 </span>
                 <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-md text-[10px] font-black uppercase tracking-tight">
-                  Per {service.priceUnit}
+                  {service.priceUnit?.toLowerCase().startsWith('per') ? service.priceUnit : `Per ${service.priceUnit}`}
                 </span>
             </div>
             

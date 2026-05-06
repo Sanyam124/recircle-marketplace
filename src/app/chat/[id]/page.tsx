@@ -905,7 +905,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                         {referencingItem.data?.forRent && (
                                             <span className="text-emerald-600 dark:text-emerald-400 font-black text-xs flex items-center gap-0.5">
                                                 ₹{referencingItem.data.rentPrice?.toLocaleString()}
-                                                <span className="text-[8px] opacity-70 uppercase">/{referencingItem.data.rentUnit}</span>
+                                                <span className="text-[8px] opacity-70 uppercase">/{referencingItem.data.rentUnit?.split(' ').pop()}</span>
                                                 {referencingItem.data?.forSell !== false && <span className="ml-1 text-[8px] font-black opacity-50 uppercase tracking-tighter">Rent</span>}
                                             </span>
                                         )}
@@ -913,7 +913,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                 ) : (
                                     <span className="text-indigo-600 dark:text-indigo-400 font-black text-xs flex items-center gap-0.5">
                                         ₹{referencingItem.data.price?.toLocaleString()}
-                                        <span className="text-[8px] opacity-70">/{referencingItem.data.priceUnit?.split(' ')[0]}</span>
+                                        <span className="text-[8px] opacity-70">/{referencingItem.data.priceUnit?.split(' ').pop()}</span>
                                     </span>
                                 )}
                             </div>
@@ -1066,7 +1066,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                 <div className="flex flex-col items-center">
                                                                     <div className={`text-4xl font-black tracking-tight ${msg.sender === userId ? 'text-gray-900 dark:text-white' : 'text-indigo-600 dark:text-indigo-400'}`}>
                                                                         ₹{msg.offer.price?.toLocaleString()}
-                                                                        {msg.offer.offerType === 'Rent' && <span className="text-xs opacity-60 ml-1 font-bold lowercase">/{msg.offer.rentUnit}</span>}
+                                                                        {msg.offer.offerType === 'Rent' && <span className="text-xs opacity-60 ml-1 font-bold lowercase">/{msg.offer.rentUnit?.split(' ').pop()}</span>}
                                                                     </div>
                                                                     
                                                                     {msg.offer.offerType === 'Rent' && (
@@ -1074,7 +1074,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                              <div className="flex flex-col items-center">
                                                                                 <span className="text-[8px] font-black text-emerald-700/60 dark:text-emerald-400/60 uppercase tracking-widest">Total Duration</span>
                                                                                 <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-300">
-                                                                                    {msg.offer.rentDuration} {msg.offer.rentUnit}{msg.offer.rentDuration > 1 ? 's' : ''}
+                                                                                    {msg.offer.rentDuration} {msg.offer.rentUnit?.split(' ').pop()}{msg.offer.rentDuration > 1 ? 's' : ''}
                                                                                 </span>
                                                                              </div>
                                                                         </div>

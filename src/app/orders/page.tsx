@@ -333,7 +333,7 @@ function OrderRow({ order, role, onCancel, onOpenOtpModal, onOpenReview }: any) 
             <span className="font-black text-gray-950 dark:text-gray-100 italic tracking-tighter text-base">₹{order.itemPrice.toLocaleString()}</span>
             {order.transactionType === 'Rent' && (
               <span className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-[9px] font-black rounded-lg border border-indigo-100 dark:border-indigo-800/50 uppercase italic tracking-tighter">
-                per {order.rentUnit}
+                per {order.rentUnit?.split(' ').pop()}
               </span>
             )}
             <span className="opacity-30">•</span>
@@ -342,7 +342,7 @@ function OrderRow({ order, role, onCancel, onOpenOtpModal, onOpenReview }: any) 
               <>
                 <span className="opacity-30">•</span>
                 <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest rounded-lg border border-gray-200 dark:border-gray-700">
-                  {order.rentDuration} {order.rentUnit}{order.rentDuration > 1 ? 's' : ''}
+                  {order.rentDuration} {order.rentUnit?.split(' ').pop()}{order.rentDuration > 1 ? 's' : ''}
                 </span>
               </>
             )}
