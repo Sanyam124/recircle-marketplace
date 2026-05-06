@@ -24,7 +24,7 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-lg font-bold text-gray-900 dark:text-white !mt-8">1. Information We Collect</h2>
           <p className="text-gray-600 dark:text-gray-300 leading-relaxed">We collect the following types of information:</p>
           <ul className="list-disc pl-6 text-gray-600 dark:text-gray-300 space-y-1">
-            <li><strong>Account Information:</strong> Name, email address, username, profile picture, bio, gender, and address provided during registration or profile editing.</li>
+            <li><strong>Account Information:</strong> Name, email address, username, profile picture, bio, and gender provided during registration or profile editing.</li>
             <li><strong>Authentication Data:</strong> Credentials for email-based login, Google OAuth tokens, and OTP codes for phone and email verification.</li>
             <li><strong>Phone Number:</strong> Optionally provided for enhanced verification (Level 2). Visibility is controlled by your privacy settings.</li>
             <li><strong>Community Affiliation:</strong> University or college name and associated hostel/building when you join a verified campus Circle.</li>
