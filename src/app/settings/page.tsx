@@ -180,7 +180,7 @@ export default function SettingsPage() {
     ];
 
     return (
-        <div className="min-h-screen-dynamic bg-[#FDFDFD] dark:bg-[#0A0A0A] pb-24 md:pb-12 transition-colors duration-500 no-bounce">
+        <div className="min-h-screen-dynamic bg-[#FDFDFD] dark:bg-[#0A0A0A] pb-24 md:pb-12 transition-colors duration-500">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
                 
                 {/* Header Section */}

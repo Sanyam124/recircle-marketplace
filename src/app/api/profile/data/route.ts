@@ -44,6 +44,13 @@ export async function PUT(req: NextRequest) {
 
         await connectToDatabase();
         const body = await req.json();
+        
+        // Strip protected fields to prevent Mongoose validation errors
+        delete body._id;
+        delete body.email;
+        delete body.role;
+        delete body.verifiedCommunities;
+        
         const errors = validateProfileUpdate(body);
         if (errors.length > 0) return NextResponse.json({ error: errors[0] }, { status: 400 });
 

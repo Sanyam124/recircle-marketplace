@@ -41,7 +41,7 @@ function WishlistPageContent() {
 
 
   return (
-    <div className="min-h-screen-dynamic bg-gray-50/50 dark:bg-[#080B14] transition-colors duration-500 no-bounce">
+    <div className="min-h-screen-dynamic bg-gray-50/50 dark:bg-[#080B14] transition-colors duration-500">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-20">
         
         {/* Professional Header Section (Mirrors Explore) */}

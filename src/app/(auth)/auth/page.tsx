@@ -371,7 +371,7 @@ export default function AuthPage() {
     // --- Renderers ---
 
     return (
-        <div className="flex min-h-screen-dynamic items-center justify-center py-4 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-[#050505] transition-colors no-bounce -mt-16 sm:mt-0">
+        <div className="flex min-h-screen-dynamic items-center justify-center py-4 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-[#050505] transition-colors -mt-16 sm:mt-0">
             <div className="w-full max-w-md space-y-8 bg-white dark:bg-zinc-900 p-6 sm:p-10 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-zinc-800 transition-colors animate-in fade-in zoom-in-95 duration-500">
                 
                 {/* Header Phase */}

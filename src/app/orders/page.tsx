@@ -145,7 +145,7 @@ function OrdersPageContent() {
   if (authLoading || !user) return <div className="max-w-5xl mx-auto px-4 py-12"><OrderRowSkeleton /><OrderRowSkeleton /><OrderRowSkeleton /></div>;
 
   return (
-    <div className="min-h-screen-dynamic bg-[#f5f6f9] dark:bg-gray-900 pt-8 pb-20 transition-all duration-300 overflow-x-clip no-bounce">
+    <div className="min-h-screen-dynamic bg-[#f5f6f9] dark:bg-gray-900 pt-8 pb-20 transition-all duration-300 overflow-x-clip">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}

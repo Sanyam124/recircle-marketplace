@@ -296,7 +296,7 @@ function BoardPageContent() {
     const isMaintenance = (selectedCommunity && (selectedCommunity as any).isActive === false) || isAPIMaintenance;
 
     return (
-        <div className="min-h-screen-dynamic bg-gray-50 dark:bg-gray-900 pb-20 transition-colors overflow-x-clip no-bounce">
+        <div className="min-h-screen-dynamic bg-gray-50 dark:bg-gray-900 pb-20 transition-colors overflow-x-clip">
             
             {/* Stage 1: Category List (Mobile Only) */}
             <div className={`max-w-3xl mx-auto px-4 py-8 md:hidden ${viewMode === 'feed' ? 'hidden' : 'block animate-in fade-in slide-in-from-left-4 duration-500'}`}>

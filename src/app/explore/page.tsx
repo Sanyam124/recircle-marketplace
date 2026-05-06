@@ -309,7 +309,7 @@ const MainAreaSkeleton = () => (
 
 export default function ExplorePage() {
   return (
-    <div className="min-h-screen-dynamic bg-[#f5f6f9] dark:bg-gray-900 transition-all duration-500 w-full max-w-[100vw] overflow-x-clip no-bounce">
+    <div className="min-h-screen-dynamic bg-[#f5f6f9] dark:bg-gray-900 transition-all duration-500 w-full max-w-[100vw] overflow-x-clip">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
         <Suspense fallback={
             <div className="flex flex-col md:flex-row gap-8">

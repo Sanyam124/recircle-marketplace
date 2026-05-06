@@ -135,18 +135,35 @@ export async function POST(req: NextRequest) {
                 images: imageUrls,
                 status: 'Available',
                 visibility: visibility === 'Community' ? 'Community' : 'Public',
-                community: (function() {
+                community: (await (async function() {
                     if (visibility !== 'Community') return undefined;
-                    const targetId = communityId || (user.verifiedCommunities?.length > 0 ? user.verifiedCommunities[0] : undefined);
-                    // Security Check: Verify user belongs to this community
-                    const userCommunityIds = (user.verifiedCommunities || []).map((c: any) => (c._id || c.id || c).toString());
-                    const isAdmin = user.role === 'admin';
-                    if (!isAdmin && targetId && !userCommunityIds.includes(targetId.toString())) {
-                        throw new Error('UNAUTHORIZED_COMMUNITY');
+                    
+                    const fullUser = await User.findById(user.userId).select('verifiedCommunities role');
+                    if (!fullUser) return undefined;
+
+                    // Find matching community ID from verified list or fallback
+                    const targetId = communityId || (fullUser.verifiedCommunities?.length > 0 ? (fullUser.verifiedCommunities[0]._id || fullUser.verifiedCommunities[0].id || fullUser.verifiedCommunities[0]) : undefined);
+                    
+                    if (!targetId) return undefined;
+
+                    const userCommunityIds = (fullUser.verifiedCommunities || []).map((c: any) => (c._id || c.id || c || '').toString());
+                    const isAdmin = fullUser.role === 'admin';
+                    
+                    if (!isAdmin && !userCommunityIds.includes(targetId.toString())) {
+                        return undefined;
                     }
                     return targetId;
-                })(),
-                location: sanitizedLocation
+                })()),
+                location: location ? {
+                    city: location.city?.trim() || 'Generic',
+                    state: location.state?.trim() || 'Global',
+                    pincode: location.pincode?.trim() || '',
+                    coordinates: Array.isArray(location.coordinates) ? location.coordinates.map(Number) : undefined,
+                    isPrecise: location.isPrecise !== false,
+                    hostel: location.hostel?.trim() || '',
+                    room: (location.room && !isNaN(Number(location.room))) ? Number(location.room) : undefined,
+                    bed: (location.bed && !isNaN(Number(location.bed))) ? Number(location.bed) : undefined
+                } : undefined
             });
 
             // --- Maintenance Mode Protection (Creation) ---
