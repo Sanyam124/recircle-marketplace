@@ -103,6 +103,13 @@ export async function GET(req: NextRequest) {
         }
 
         if (communityFilter !== 'All' && communityFilter !== 'Public' && isValidObjectId(communityFilter)) {
+            const isAdmin = user?.role === 'admin';
+            const isMember = user?.verifiedCommunities?.some((c: any) => (c._id || c.id || c).toString() === communityFilter);
+            
+            if (!isAdmin && !isMember) {
+                return NextResponse.json({ error: 'You are not a member of this community' }, { status: 403 });
+            }
+
             productQuery.community = new Types.ObjectId(communityFilter);
             productQuery.visibility = 'Community';
             serviceQuery.community = new Types.ObjectId(communityFilter);

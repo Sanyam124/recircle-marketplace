@@ -37,21 +37,25 @@ export function FilterElements({
   activeOverlay, setActiveOverlay, closeOverlays, locationStats
 }: FilterElementsProps) {
   const { data: siteConfig } = useSWR('/api/site-config');
+  const { data: allCommData } = useSWR(user?.role === 'admin' ? '/api/communities?limit=100' : null);
   const productCategories = siteConfig?.productCategories || PRODUCT_CATEGORIES;
   const serviceCategories = siteConfig?.serviceCategories || SERVICE_CATEGORIES;
+  const allCommunities = allCommData?.communities || [];
 
   const communityHostels = useMemo(() => {
       if (filters.communityFilter === 'Public') return [];
       if (filters.communityFilter === 'All') {
-          const allHostels = user?.verifiedCommunities?.reduce((acc: string[], curr: any) => {
+          const source = user?.role === 'admin' ? allCommunities : (user?.verifiedCommunities || []);
+          const allHostels = source.reduce((acc: string[], curr: any) => {
               if (curr.hostels) return [...acc, ...curr.hostels];
               return acc;
           }, []) || [];
           return Array.from(new Set(allHostels)).sort() as string[];
       }
-      const selected = user?.verifiedCommunities?.find((c: any) => (c._id || c.id || c) === filters.communityFilter);
+      const selected = (user?.role === 'admin' ? [...allCommunities, ...(user?.verifiedCommunities || [])] : (user?.verifiedCommunities || []))
+        .find((c: any) => (c._id || c.id || c) === filters.communityFilter);
       return (selected?.hostels || []) as string[];
-  }, [filters.communityFilter, user]);
+  }, [filters.communityFilter, user, allCommunities]);
 
   return (
     <div className="space-y-8">
@@ -81,14 +85,18 @@ export function FilterElements({
                   closeOverlays();
                   if (!isMobileMode) onFilterChange(newFilters);
               }} 
-              disabled={!user || !user.verifiedCommunities?.length}
-              className={`w-full bg-indigo-50/50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-2xl py-4 pl-5 pr-12 text-sm border border-indigo-200 dark:border-indigo-800 font-bold appearance-none outline-none transition-all ${(!user || !user.verifiedCommunities?.length) ? 'opacity-70 pointer-events-none' : 'cursor-pointer'}`}
+              disabled={!user || (!user.verifiedCommunities?.length && user.role !== 'admin')}
+              className={`w-full bg-indigo-50/50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-2xl py-4 pl-5 pr-12 text-sm border border-indigo-200 dark:border-indigo-800 font-bold appearance-none outline-none transition-all ${(!user || (!user.verifiedCommunities?.length && user.role !== 'admin')) ? 'opacity-70 pointer-events-none' : 'cursor-pointer'}`}
             >
-              {user?.verifiedCommunities?.length ? (
+              {(user?.verifiedCommunities?.length || user?.role === 'admin') ? (
                 <>
                   <option value="All" className="dark:bg-gray-900 dark:text-white">🌏 Unified Feed</option>
                   <option value="Public" className="dark:bg-gray-900 dark:text-white">🌐 Public Only</option>
-                  {user.verifiedCommunities.map((c:any) => <option key={c._id} value={c._id} className="dark:bg-gray-900 dark:text-white">🔒 {c.name}</option>)}
+                  {(user?.role === 'admin' ? allCommunities : (user?.verifiedCommunities || [])).map((c:any) => (
+                    <option key={c._id || c.id} value={c._id || c.id} className="dark:bg-gray-900 dark:text-white">
+                      {user?.verifiedCommunities?.some((vc:any) => (vc._id || vc.id) === (c._id || c.id)) ? '🔒' : '👁️'} {c.name}
+                    </option>
+                  ))}
                 </>
               ) : <option value="Public" className="dark:bg-gray-900 dark:text-white">🌐 Public Only</option>}
             </select>
@@ -96,9 +104,9 @@ export function FilterElements({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
             </div>
         </div>
-        <div className="mt-4" onClick={(e) => (!user || !user.verifiedCommunities?.length) && triggerGuestToast(e)}>
+        <div className="mt-4" onClick={(e) => (!user || (!user.verifiedCommunities?.length && user.role !== 'admin')) && triggerGuestToast(e)}>
             <label className="text-[10px] font-black uppercase tracking-widest italic ml-1 mb-1.5 block text-gray-400 dark:text-gray-500">Hostel/Building</label>
-            <div className={`relative group transition-opacity duration-300 ${(filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user?.verifiedCommunities?.length) ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className={`relative group transition-opacity duration-300 ${(filters.communityFilter === 'Public' || filters.communityFilter === 'All' || (!user?.verifiedCommunities?.length && user?.role !== 'admin')) ? 'opacity-50 pointer-events-none' : ''}`}>
                 <select name="hostel" value={filters.hostel || ''} onChange={handleChange} disabled={filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user} className="w-full py-3.5 pl-4 pr-10 text-[11px] border font-bold appearance-none outline-none transition-all rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
                   <option value="" className="dark:bg-gray-900 dark:text-white">All Areas</option>
                   {communityHostels.map(h => <option key={h} value={h} className="dark:bg-gray-900 dark:text-white">🏢 {h}</option>)}

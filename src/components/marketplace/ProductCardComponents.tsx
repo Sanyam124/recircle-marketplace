@@ -87,30 +87,33 @@ export function ProductCardHeader({ product }: any) {
 }
 
 export function ProductCardPricing({ product }: any) {
-  if (product.forSell !== false && product.forRent) {
+  const showBuy = product.forSell !== false && product.price !== undefined && product.price !== null;
+  const showRent = product.forRent && product.rentPrice !== undefined && product.rentPrice !== null;
+
+  if (showBuy && showRent) {
     return (
       <div className="flex flex-col gap-0.5">
         <div className="flex items-baseline gap-1">
-             <span className="text-base sm:text-xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{product.price}</span>
+             <span className="text-base sm:text-xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{product.price.toLocaleString()}</span>
              <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest opacity-50">Buy</span>
         </div>
         <div className="flex items-baseline gap-1">
-             <span className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 italic tracking-tighter leading-none">₹{product.rentPrice}</span>
-             <span className="text-[8px] font-black text-emerald-600/50 uppercase tracking-tighter italic">/{product.rentUnit}</span>
+             <span className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 italic tracking-tighter leading-none">₹{product.rentPrice.toLocaleString()}</span>
+             <span className="text-[8px] font-black text-emerald-600/50 uppercase tracking-tighter italic">/{product.rentUnit?.split(' ').pop()}</span>
         </div>
       </div>
     );
   }
-  if (product.forRent) {
+  if (showRent) {
     return (
       <div className="flex items-baseline gap-1">
-         <span className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 italic tracking-tighter leading-none">₹{product.rentPrice}</span>
-         <span className="text-[9px] font-black text-emerald-600/50 uppercase tracking-tighter italic">/{product.rentUnit}</span>
+         <span className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 italic tracking-tighter leading-none">₹{product.rentPrice.toLocaleString()}</span>
+         <span className="text-[9px] font-black text-emerald-600/50 uppercase tracking-tighter italic">/{product.rentUnit?.split(' ').pop()}</span>
       </div>
     );
   }
-  if (product.forSell !== false && product.price !== undefined && product.price !== null) {
-    return <span className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{product.price}</span>;
+  if (showBuy) {
+    return <span className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{product.price.toLocaleString()}</span>;
   }
   return null;
 }

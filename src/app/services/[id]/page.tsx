@@ -320,9 +320,9 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                 <span className="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white tracking-tighter">
                   ₹{service.price?.toLocaleString()}
                 </span>
-                <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-md text-[10px] font-black uppercase tracking-tight">
-                  {service.priceUnit?.toLowerCase().startsWith('per') ? service.priceUnit : `Per ${service.priceUnit}`}
-                </span>
+                    <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-md text-[10px] font-black uppercase tracking-tight">
+                      per {service.priceUnit?.split(' ').pop()}
+                    </span>
             </div>
             
             <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-y-3 gap-x-6 pt-2 border-t border-gray-100 dark:border-[#2a2a2a] mt-2">

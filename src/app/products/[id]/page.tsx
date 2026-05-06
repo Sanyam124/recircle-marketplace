@@ -335,7 +335,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                       ₹{product.rentPrice?.toLocaleString()}
                     </span>
                     <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-md text-[10px] font-black uppercase tracking-tight">
-                      {product.rentUnit?.toLowerCase().startsWith('per') ? product.rentUnit : `Per ${product.rentUnit}`}
+                      {product.rentUnit?.split(' ').pop()}
                     </span>
                   </div>
                 )}
