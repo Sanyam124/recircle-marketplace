@@ -80,7 +80,10 @@ export async function GET(req: NextRequest) {
                     showOnlineStatus: user.showOnlineStatus ?? true,
                     compactView: user.compactView ?? false,
                     defaultCommunity: user.defaultCommunity,
-                    defaultHostel: user.defaultHostel
+                    defaultHostel: user.defaultHostel,
+                    state: user.state,
+                    city: user.city,
+                    landmark: user.landmark
                 }
             },
             { status: 200 }

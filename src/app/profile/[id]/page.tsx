@@ -311,12 +311,26 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                        </div>
                        Joined {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
                     </span>
-                    {user.address && (
-                      <span className="text-xs sm:text-sm font-bold text-gray-400 dark:text-gray-500 flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gray-100/50 dark:bg-gray-800/50 flex items-center justify-center">
+                    {(user.state || user.city) && (
+                      <span className="text-xs sm:text-sm font-bold text-gray-400 dark:text-gray-500 flex items-start gap-2 max-w-full">
+                        <div className="w-8 h-8 rounded-full bg-gray-100/50 dark:bg-gray-800/50 flex items-center justify-center shrink-0">
                           <svg className="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         </div>
-                        {user.address}
+                        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0 break-words overflow-hidden pt-1.5">
+                          {user.state && <span className="shrink-0">{user.state}</span>}
+                          {user.city && (
+                            <>
+                              <span className="opacity-30 text-[10px] shrink-0">❯</span>
+                              <span className="shrink-0">{user.city}</span>
+                            </>
+                          )}
+                          {user.landmark && (
+                            <>
+                              <span className="opacity-30 text-[10px] shrink-0">❯</span>
+                              <span className="opacity-70 font-medium break-all sm:break-words">{user.landmark}</span>
+                            </>
+                          )}
+                        </span>
                       </span>
                     )}
                   </div>

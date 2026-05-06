@@ -13,26 +13,33 @@ import Report from '@/models/Report';
  * Validates profile update fields
  */
 export function validateProfileUpdate(body: any) {
-    const { name, username, bio, address } = body;
+    const { name, username, bio, phone, state, city, landmark } = body;
     const errors: string[] = [];
 
     if (name !== undefined) {
         const trimmedName = name.trim();
         if (trimmedName && (trimmedName.length < 3 || trimmedName.length > 30)) {
-            errors.push('Name must be between 3 and 30 characters');
+            errors.push('Full name must be 3-30 characters');
         }
     }
 
     if (username !== undefined) {
         const newUsername = username.trim().toLowerCase();
-        if (newUsername && newUsername.length > 20) {
-            errors.push('Username must be 20 characters or less');
+        if (newUsername && (newUsername.length < 3 || newUsername.length > 20)) {
+            errors.push('Username must be 3-20 characters');
         }
     }
 
-    if (address !== undefined && address.length > 150) {
-        errors.push('Address must be 150 characters or less');
+    if (phone !== undefined && phone !== '') {
+        if (!/^\d{10}$/.test(phone)) {
+            errors.push('Phone number must be exactly 10 digits');
+        }
     }
+
+    if (state !== undefined && state.length > 50) errors.push('State name too long');
+    if (city !== undefined && city.length > 50) errors.push('City name too long');
+    if (landmark !== undefined && landmark.length > 100) errors.push('Landmark/Area must be 100 characters or less');
+
 
     if (bio !== undefined && bio.length > 500) {
         errors.push('Bio must be 500 characters or less');

@@ -1,6 +1,7 @@
 import React from 'react';
 import NextImage from 'next/image';
 import ImageUpload from '../ImageUpload';
+import { STATES_CITIES } from '@/lib/locations';
 
 interface EditProfileFormProps {
     form: any;
@@ -128,29 +129,148 @@ export default function EditProfileForm({ form, setForm, onSubmit, submitting, u
                 {/* Profile Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 ml-2 italic">Full Name</label>
-                        <input type="text" required value={form.name} minLength={3} maxLength={30} onChange={(e) => setForm((p:any) => ({ ...p, name: e.target.value }))} className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white" />
+                        <div className="flex items-center justify-between px-2">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 italic">Full Name</label>
+                            <span className={`text-[9px] font-bold ${form.name.length < 3 ? 'text-rose-500' : 'text-zinc-400'}`}>
+                                {form.name.length}/30
+                            </span>
+                        </div>
+                        <input 
+                            type="text" 
+                            required 
+                            value={form.name} 
+                            minLength={3} 
+                            maxLength={30} 
+                            onChange={(e) => setForm((p:any) => ({ ...p, name: e.target.value }))} 
+                            className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100" 
+                        />
                     </div>
                     <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 ml-2 italic">Username</label>
+                        <div className="flex items-center justify-between px-2">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 italic">Username</label>
+                            <div className="flex items-center gap-3">
+                                <span className={`text-[9px] font-bold ${form.username.length < 3 ? 'text-rose-500' : 'text-zinc-400'}`}>
+                                    {form.username.length}/20
+                                </span>
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${(user?.usernameChangeCount || 0) >= 3 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                                    {user?.usernameChangeCount || 0}/3 Changes
+                                </span>
+                            </div>
+                        </div>
                         <div className="relative">
                             <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-indigo-500">@</span>
-                            <input type="text" value={form.username} maxLength={20} disabled={(user?.usernameChangeCount || 0) >= 3} onChange={(e) => setForm((p:any) => ({ ...p, username: e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, '').trim() }))} className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 pl-12 pr-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all disabled:opacity-50 text-zinc-900 dark:text-white" />
+                            <input 
+                                type="text" 
+                                value={form.username} 
+                                maxLength={20} 
+                                disabled={(user?.usernameChangeCount || 0) >= 3} 
+                                onChange={(e) => setForm((p:any) => ({ ...p, username: e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, '').trim() }))} 
+                                className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 pl-12 pr-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all disabled:opacity-50 text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100" 
+                                placeholder="unique_username"
+                            />
+                        </div>
+                        {(user?.usernameChangeCount || 0) >= 3 && (
+                            <p className="text-[8px] font-bold text-rose-500 ml-2 uppercase tracking-widest">Username change limit reached.</p>
+                        )}
+                    </div>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between px-2">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 italic">Phone Number</label>
+                            <span className={`text-[9px] font-bold ${form.phone.length !== 10 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                {form.phone.length === 10 ? '✓ Valid' : `${form.phone.length}/10 digits`}
+                            </span>
+                        </div>
+                        <div className="relative">
+                            <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-gray-400">+91</span>
+                            <input 
+                                type="tel" 
+                                required
+                                value={form.phone} 
+                                maxLength={10}
+                                minLength={10}
+                                onChange={(e) => setForm((p:any) => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} 
+                                className={`w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 pl-14 pr-5 text-[11px] font-black outline-none focus:ring-2 transition-all text-zinc-900 dark:text-white border ${form.phone.length > 0 && form.phone.length < 10 ? 'border-rose-200 ring-rose-50' : 'border-transparent focus:border-indigo-100 focus:ring-indigo-200'}`} 
+                                placeholder="9876543210" 
+                            />
                         </div>
                     </div>
+                    
                     <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 ml-2 italic">Phone</label>
-                        <input type="tel" value={form.phone} onChange={(e) => setForm((p:any) => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white" placeholder="10-digit number" />
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 ml-2 italic">Gender</label>
+                        <select 
+                            value={form.gender} 
+                            onChange={(e) => setForm((p:any) => ({ ...p, gender: e.target.value }))}
+                            className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100 appearance-none"
+                        >
+                            <option value="none">Prefer not to say</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
                     </div>
+
                     <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 ml-2 italic">Location State</label>
-                        <input type="text" value={form.address} maxLength={150} onChange={(e) => setForm((p:any) => ({ ...p, address: e.target.value }))} className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white" placeholder="City, State" />
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 ml-2 italic">State</label>
+                        <select 
+                            value={form.state} 
+                            onChange={(e) => setForm((p:any) => ({ ...p, state: e.target.value, city: '' }))}
+                            className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100 appearance-none"
+                        >
+                            <option value="">Select State</option>
+                            {Object.keys(STATES_CITIES).map(state => (
+                                <option key={state} value={state}>{state}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 ml-2 italic">City</label>
+                        <select 
+                            value={form.city} 
+                            disabled={!form.state}
+                            onChange={(e) => setForm((p:any) => ({ ...p, city: e.target.value }))}
+                            className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100 appearance-none disabled:opacity-40"
+                        >
+                            <option value="">Select City</option>
+                            {form.state && (STATES_CITIES as any)[form.state]?.map((city: string) => (
+                                <option key={city} value={city}>{city}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-3 md:col-span-2">
+                        <div className="flex justify-between items-center ml-2">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 italic">Landmark / Area</label>
+                            <span className={`text-[9px] font-bold ${(form.landmark?.length || 0) > 90 ? 'text-amber-500' : 'text-zinc-400'}`}>
+                                {(form.landmark?.length || 0)}/100
+                            </span>
+                        </div>
+                        <input 
+                            type="text" 
+                            value={form.landmark} 
+                            maxLength={100} 
+                            onChange={(e) => setForm((p:any) => ({ ...p, landmark: e.target.value }))} 
+                            className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100" 
+                            placeholder="e.g., Near City Mall, Opp. Metro Station" 
+                        />
                     </div>
                 </div>
 
                 <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 ml-2 italic">Bio</label>
-                    <textarea rows={4} maxLength={500} value={form.bio} onChange={(e) => setForm((p:any) => ({ ...p, bio: e.target.value }))} className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-3xl py-5 px-6 text-[11px] font-bold outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white" />
+                    <div className="flex items-center justify-between px-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 italic">Bio</label>
+                        <span className={`text-[9px] font-bold ${form.bio.length > 450 ? 'text-amber-500' : 'text-zinc-400'}`}>
+                            {form.bio.length}/500
+                        </span>
+                    </div>
+                    <textarea 
+                        rows={4} 
+                        maxLength={500} 
+                        value={form.bio} 
+                        onChange={(e) => setForm((p:any) => ({ ...p, bio: e.target.value }))} 
+                        className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-3xl py-5 px-6 text-[11px] font-bold outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100" 
+                        placeholder="Tell the community about yourself..."
+                    />
                 </div>
             </div>
         </form>

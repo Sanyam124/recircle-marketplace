@@ -32,7 +32,9 @@ export default function SettingsPage() {
         username: '',
         bio: '',
         phone: '',
-        address: '',
+        state: '',
+        city: '',
+        landmark: '',
         gender: 'none',
         profilePicture: '',
         bannerImage: '',
@@ -87,7 +89,9 @@ export default function SettingsPage() {
                     username: u.username,
                     bio: u.bio || '',
                     phone: u.phone || '',
-                    address: u.address || '',
+                    state: u.state || '',
+                    city: u.city || '',
+                    landmark: u.landmark || '',
                     gender: u.gender || 'none',
                     profilePicture: u.profilePicture || '',
                     bannerImage: u.bannerImage || '',
@@ -262,9 +266,19 @@ export default function SettingsPage() {
                                         <button 
                                             onClick={handleProfileSubmit}
                                             disabled={submitting}
-                                            className="w-full md:w-auto px-12 py-5 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-3xl font-black uppercase tracking-widest shadow-2xl shadow-slate-950/20 dark:shadow-none hover:bg-black dark:hover:bg-slate-100 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                            className="w-full md:w-auto px-12 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 active:scale-95 transition-all flex items-center justify-center gap-3 border border-emerald-400/20"
                                         >
-                                            {submitting ? 'Saving Changes...' : 'Save Profile Details'}
+                                            {submitting ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    Saving Changes...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                                    Save Profile Details
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </div>
