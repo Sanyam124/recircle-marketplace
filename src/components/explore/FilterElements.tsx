@@ -86,11 +86,11 @@ export function FilterElements({
             >
               {user?.verifiedCommunities?.length ? (
                 <>
-                  <option value="All">🌏 Unified Feed</option>
-                  <option value="Public">🌐 Public Only</option>
-                  {user.verifiedCommunities.map((c:any) => <option key={c._id} value={c._id}>🔒 {c.name}</option>)}
+                  <option value="All" className="dark:bg-gray-900 dark:text-white">🌏 Unified Feed</option>
+                  <option value="Public" className="dark:bg-gray-900 dark:text-white">🌐 Public Only</option>
+                  {user.verifiedCommunities.map((c:any) => <option key={c._id} value={c._id} className="dark:bg-gray-900 dark:text-white">🔒 {c.name}</option>)}
                 </>
-              ) : <option value="Public">🌐 Public Only</option>}
+              ) : <option value="Public" className="dark:bg-gray-900 dark:text-white">🌐 Public Only</option>}
             </select>
             <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-400">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
@@ -100,8 +100,8 @@ export function FilterElements({
             <label className="text-[10px] font-black uppercase tracking-widest italic ml-1 mb-1.5 block text-gray-400 dark:text-gray-500">Hostel/Building</label>
             <div className={`relative group transition-opacity duration-300 ${(filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user?.verifiedCommunities?.length) ? 'opacity-50 pointer-events-none' : ''}`}>
                 <select name="hostel" value={filters.hostel || ''} onChange={handleChange} disabled={filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user} className="w-full py-3.5 pl-4 pr-10 text-[11px] border font-bold appearance-none outline-none transition-all rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
-                  <option value="">All Areas</option>
-                  {communityHostels.map(h => <option key={h} value={h}>🏢 {h}</option>)}
+                  <option value="" className="dark:bg-gray-900 dark:text-white">All Areas</option>
+                  {communityHostels.map(h => <option key={h} value={h} className="dark:bg-gray-900 dark:text-white">🏢 {h}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
@@ -113,10 +113,10 @@ export function FilterElements({
       <FilterGroup title="Sort By">
         <div className="relative group">
             <select name="sort" value={filters.sort} onChange={handleChange} className="w-full bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl py-4 pl-5 pr-12 text-sm border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white font-bold appearance-none outline-none cursor-pointer">
-              <option value="newest">Newest First</option>
-              {(filters.communityFilter === 'All' || filters.communityFilter === 'Public') && <option value="distance">Nearest First</option>}
-              <option value="price_asc">Price: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
+              <option value="newest" className="dark:bg-gray-900 dark:text-white">Newest First</option>
+              {(filters.communityFilter === 'All' || filters.communityFilter === 'Public') && <option value="distance" className="dark:bg-gray-900 dark:text-white">Nearest First</option>}
+              <option value="price_asc" className="dark:bg-gray-900 dark:text-white">Price: Low to High</option>
+              <option value="price_desc" className="dark:bg-gray-900 dark:text-white">Price: High to Low</option>
             </select>
             <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
@@ -163,8 +163,8 @@ export function FilterElements({
         <div className="grid grid-cols-1 gap-3">
             <div className="relative group">
                 <select name="state" value={filters.state || ''} onChange={handleChange} className="w-full bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl py-3.5 pl-4 pr-10 text-[11px] border border-gray-100 dark:border-gray-800 text-gray-900 dark:text-white font-bold appearance-none outline-none">
-                    <option value="">All States</option>
-                    {availableStates.map(s => <option key={s} value={s}>{s}</option>)}
+                    <option value="" className="dark:bg-gray-900 dark:text-white">All States</option>
+                    {availableStates.map(s => <option key={s} value={s} className="dark:bg-gray-900 dark:text-white">{s}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
@@ -172,8 +172,8 @@ export function FilterElements({
             </div>
             <div className="relative group">
                 <select name="city" value={filters.city || ''} onChange={handleChange} className="w-full bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl py-3.5 pl-4 pr-10 text-[11px] border border-gray-100 dark:border-gray-800 text-gray-900 dark:text-white font-bold appearance-none outline-none">
-                    <option value="">All Cities</option>
-                    {availableCities.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="" className="dark:bg-gray-900 dark:text-white">All Cities</option>
+                    {availableCities.map(c => <option key={c} value={c} className="dark:bg-gray-900 dark:text-white">{c}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>

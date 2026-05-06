@@ -93,6 +93,67 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         }
     };
 
+    const handleDeleteChat = async () => {
+        const confirmed = await confirmAction({
+            title: 'Delete Chat?',
+            text: "Are you sure you want to delete this chat? This action only hides it for you.",
+            dangerMode: true,
+            confirmButtonText: 'Delete'
+        });
+        if (!confirmed) return;
+
+        try {
+            const pId = referencingItem?.type === 'product' ? referencingItem.id : '';
+            const sId = referencingItem?.type === 'service' ? referencingItem.id : '';
+
+            const res = await authFetch(`/api/chat/conversations?otherUserId=${userId}${pId ? `&productId=${pId}` : (sId ? `&serviceId=${sId}` : '')}`, {
+                method: 'DELETE'
+            });
+            
+            if (res.ok) {
+                router.push('/chat');
+            } else {
+                showError('Action Failed', 'Failed to delete chat.');
+            }
+        } catch (err) {
+            console.error(err);
+            showError('System Error', 'Something went wrong.');
+        }
+    };
+
+    const handleBlockToggle = async () => {
+        const alreadyBlocked = isBlockedByMe;
+        
+        const confirmed = await confirmAction({
+            title: alreadyBlocked ? `Unblock User?` : `Block User?`,
+            text: alreadyBlocked 
+                ? `They will be able to message you again.` 
+                : `They will no longer be able to message you and their listings will be hidden.`,
+            dangerMode: !alreadyBlocked,
+            confirmButtonText: alreadyBlocked ? 'Unblock' : 'Block'
+        });
+        if (!confirmed) return;
+
+        try {
+            const res = await authFetch(alreadyBlocked ? `/api/user/block?userId=${userId}` : '/api/user/block', {
+                method: alreadyBlocked ? 'DELETE' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                ...(alreadyBlocked ? {} : { body: JSON.stringify({ targetUserId: userId }) })
+            });
+            
+            if (res.ok) {
+                await refreshUser();
+                showSuccess(alreadyBlocked ? 'User Unblocked' : 'User Blocked', `User has been ${alreadyBlocked ? 'unblocked' : 'blocked'}.`);
+                setHeaderMenuOpen(false);
+            } else {
+                showError('Action Failed', `Failed to ${alreadyBlocked ? 'unblock' : 'block'} user.`);
+            }
+        } catch (err) {
+            console.error(err);
+            showError('System Error', 'Something went wrong.');
+        }
+    };
+
     const [otherUserLastSeen, setOtherUserLastSeen] = useState<Date | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     // Stores scroll metrics captured BEFORE a prepend so useLayoutEffect can restore position
@@ -784,6 +845,25 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                 className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 z-50 animate-in fade-in zoom-in duration-100"
                                 onClick={(e) => e.stopPropagation()}
                             >
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setHeaderMenuOpen(false); handleDeleteChat(); }}
+                                    className="w-full px-4 py-2.5 text-left text-[11px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2 transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    Delete Chat
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); handleBlockToggle(); }}
+                                    className={`w-full px-4 py-2.5 text-left text-[11px] font-black uppercase tracking-widest flex items-center gap-2 transition-colors border-t border-gray-50 dark:border-gray-700/50 ${isBlockedByMe ? 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                    {isBlockedByMe ? 'Unblock User' : 'Block User'}
+                                </button>
+                                <div className="border-t border-gray-100 dark:border-gray-700/50 my-1"></div>
                                 <button 
                                     onClick={() => { setHeaderMenuOpen(false); setReportMode('user'); setIsReportModalOpen(true); }}
                                     className="w-full px-4 py-2.5 text-left text-[11px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2 transition-colors"

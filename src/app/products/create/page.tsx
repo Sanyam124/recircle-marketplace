@@ -147,7 +147,7 @@ export default function CreateProductPage() {
 
       setSuccess(true);
       setTimeout(() => {
-        router.push('/products');
+        router.push('/profile');
         router.refresh();
       }, 1500);
     } catch (err: any) {
@@ -172,7 +172,7 @@ export default function CreateProductPage() {
                       </svg>
                     </div>
                     <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">Listing Created!</h1>
-                    <p className="text-gray-500 dark:text-gray-400 font-bold">Redirecting you to the marketplace...</p>
+                    <p className="text-gray-500 dark:text-gray-400 font-bold">You can manage your listing from your profile page.</p>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center">

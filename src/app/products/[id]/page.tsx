@@ -318,16 +318,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
             {/* Pricing Section */}
             <div className="flex flex-col gap-2 py-2">
-                <div className="flex flex-wrap items-baseline gap-4">
-                  <span className="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white tracking-tighter">
-                    ₹{product.price?.toLocaleString()}
-                  </span>
-                  {product.forSell !== false && (
+                {product.forSell !== false && product.price !== undefined && product.price !== null && (
+                  <div className="flex flex-wrap items-baseline gap-4">
+                    <span className="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white tracking-tighter">
+                      ₹{product.price?.toLocaleString()}
+                    </span>
                     <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-md text-[10px] font-black uppercase tracking-tight">
                       Sale price
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {product.forRent && (
                   <div className="flex flex-wrap items-baseline gap-4 mt-2">

@@ -109,7 +109,10 @@ export function ProductCardPricing({ product }: any) {
       </div>
     );
   }
-  return <span className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{product.price}</span>;
+  if (product.forSell !== false && product.price !== undefined && product.price !== null) {
+    return <span className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 italic tracking-tighter leading-none">₹{product.price}</span>;
+  }
+  return null;
 }
 
 export function ProductCardRating({ product }: any) {

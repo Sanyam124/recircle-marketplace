@@ -224,9 +224,23 @@ export default function Navbar() {
           </div>
           <div className="-mr-2 flex items-center md:hidden">
             {user && (
-                <div className="mr-2">
-                    <NotificationBell />
-                </div>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <NotificationBell />
+                <Link href="/profile" className="flex items-center justify-center w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-xs font-black border border-indigo-200 dark:border-indigo-800 overflow-hidden shadow-sm active:scale-90 transition-transform">
+                  {user.profilePicture ? (
+                    <Image 
+                      src={user.profilePicture} 
+                      alt={user.name || 'User'} 
+                      width={36} 
+                      height={36} 
+                      className="w-full h-full object-cover" 
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    user.name?.charAt(0).toUpperCase() || 'U'
+                  )}
+                </Link>
+              </div>
             )}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -272,15 +286,10 @@ export default function Navbar() {
               </div>
             ) : user ? (
               <div className="space-y-1">
-                <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm font-bold border border-indigo-200 dark:border-indigo-800">
-                        {user.name?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <div className="text-base font-bold text-gray-900 dark:text-white break-all">{user.name}</div>
-                        <div className="text-xs text-indigo-500 dark:text-indigo-400 font-medium tracking-tight break-words">@{user.username || 'user'}</div>
-                    </div>
-                </Link>
+                <div className="px-3 py-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+                    <div className="text-base font-bold text-gray-900 dark:text-white break-all">{user.name}</div>
+                    <div className="text-xs text-indigo-500 dark:text-indigo-400 font-medium tracking-tight break-words">@{user.username || 'user'}</div>
+                </div>
 
                 <div className="grid grid-cols-1 gap-1 mt-4">
                     <Link href="/wishlist" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 active:scale-[0.98] transition-transform">

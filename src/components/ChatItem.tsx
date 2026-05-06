@@ -162,7 +162,7 @@ export const ChatItem = React.memo(({
                     e.stopPropagation();
                     setActiveMenu(activeMenu === menuKey ? null : menuKey);
                 }}
-                className="absolute top-4 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 z-[20] opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-4 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 z-[20] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
