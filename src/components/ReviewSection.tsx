@@ -199,7 +199,7 @@ export default function ReviewSection({ targetId, targetName, productId, service
                <button 
                   key={star} 
                   onClick={() => handleFilterClick(star)}
-                  className={`flex items-center gap-3 group w-full text-left transition-all px-2 py-1 rounded-lg outline-none active:scale-[0.98] ${isSelected ? 'opacity-100 bg-indigo-50 dark:bg-indigo-900/20' : (filterRating ? 'opacity-50 hover:opacity-100 hover:bg-gray-50 dark:hover:bg-gray-700/50' : 'opacity-100 hover:opacity-80 hover:bg-gray-50 dark:hover:bg-gray-700/50')}`}
+                  className={`flex items-center gap-3 group w-full text-left transition-all px-2 py-1 rounded-lg outline-none active:scale-[0.98] ${isSelected ? 'opacity-100 bg-indigo-50 dark:bg-indigo-900/40' : (filterRating ? 'opacity-50 hover:opacity-100 hover:bg-gray-50 dark:hover:bg-gray-700/50' : 'opacity-100 hover:opacity-80 hover:bg-gray-50 dark:hover:bg-gray-700/50')}`}
                   title={`Filter by ${star} star reviews`}
                 >
                  <div className="w-16 text-sm font-medium text-indigo-600 dark:text-indigo-400 flex items-center justify-end whitespace-nowrap">

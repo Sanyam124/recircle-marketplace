@@ -58,7 +58,7 @@ export function FilterElements({
       {onToggleSidebar && (
         <button 
           onClick={onToggleSidebar}
-          className="hidden md:flex items-center gap-2 mb-2 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors group"
+          className="hidden md:flex items-center gap-2 mb-2 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors group"
         >
           <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M11 19l-7-7 7-7" /></svg>
           Hide Sidebar
@@ -82,7 +82,7 @@ export function FilterElements({
                   if (!isMobileMode) onFilterChange(newFilters);
               }} 
               disabled={!user || !user.verifiedCommunities?.length}
-              className={`w-full bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 rounded-2xl py-4 pl-5 pr-12 text-sm border border-indigo-200 dark:border-indigo-900/50 font-bold appearance-none outline-none transition-all ${(!user || !user.verifiedCommunities?.length) ? 'opacity-70 pointer-events-none' : 'cursor-pointer'}`}
+              className={`w-full bg-indigo-50/50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-2xl py-4 pl-5 pr-12 text-sm border border-indigo-200 dark:border-indigo-800 font-bold appearance-none outline-none transition-all ${(!user || !user.verifiedCommunities?.length) ? 'opacity-70 pointer-events-none' : 'cursor-pointer'}`}
             >
               {user?.verifiedCommunities?.length ? (
                 <>
@@ -99,7 +99,7 @@ export function FilterElements({
         <div className="mt-4" onClick={(e) => (!user || !user.verifiedCommunities?.length) && triggerGuestToast(e)}>
             <label className="text-[10px] font-black uppercase tracking-widest italic ml-1 mb-1.5 block text-gray-400 dark:text-gray-500">Hostel/Building</label>
             <div className={`relative group transition-opacity duration-300 ${(filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user?.verifiedCommunities?.length) ? 'opacity-50 pointer-events-none' : ''}`}>
-                <select name="hostel" value={filters.hostel || ''} onChange={handleChange} disabled={filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user} className="w-full py-3.5 pl-4 pr-10 text-[11px] border font-bold appearance-none outline-none transition-all rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50">
+                <select name="hostel" value={filters.hostel || ''} onChange={handleChange} disabled={filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user} className="w-full py-3.5 pl-4 pr-10 text-[11px] border font-bold appearance-none outline-none transition-all rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
                   <option value="">All Areas</option>
                   {communityHostels.map(h => <option key={h} value={h}>🏢 {h}</option>)}
                 </select>
@@ -112,7 +112,7 @@ export function FilterElements({
 
       <FilterGroup title="Sort By">
         <div className="relative group">
-            <select name="sort" value={filters.sort} onChange={handleChange} className="w-full bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl py-4 pl-5 pr-12 text-sm border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-200 font-bold appearance-none outline-none cursor-pointer">
+            <select name="sort" value={filters.sort} onChange={handleChange} className="w-full bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl py-4 pl-5 pr-12 text-sm border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white font-bold appearance-none outline-none cursor-pointer">
               <option value="newest">Newest First</option>
               {(filters.communityFilter === 'All' || filters.communityFilter === 'Public') && <option value="distance">Nearest First</option>}
               <option value="price_asc">Price: Low to High</option>
@@ -132,7 +132,7 @@ export function FilterElements({
                   setFilters(newFilters);
                   if (!isMobileMode) onFilterChange(newFilters);
                 }}
-                className={`py-3 px-4 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all text-center ${filters.type === t ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm italic' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                className={`py-3 px-4 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all text-center ${filters.type === t ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm italic' : 'text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-white'}`}
               >
                 {t}
               </button>
@@ -149,7 +149,7 @@ export function FilterElements({
                             setFilters(newFilters);
                             if (!isMobileMode) onFilterChange(newFilters);
                         }}
-                        className={`py-2 px-3 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all ${filters.listingType === lt ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm italic' : 'text-gray-400 dark:text-gray-500'}`}
+                        className={`py-2 px-3 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all ${filters.listingType === lt ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm italic' : 'text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-white'}`}
                         >
                             {lt}
                         </button>
@@ -162,7 +162,7 @@ export function FilterElements({
       <FilterGroup title="Region & City">
         <div className="grid grid-cols-1 gap-3">
             <div className="relative group">
-                <select name="state" value={filters.state || ''} onChange={handleChange} className="w-full bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl py-3.5 pl-4 pr-10 text-[11px] border border-gray-100 dark:border-gray-800 text-gray-900 dark:text-gray-200 font-bold appearance-none outline-none">
+                <select name="state" value={filters.state || ''} onChange={handleChange} className="w-full bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl py-3.5 pl-4 pr-10 text-[11px] border border-gray-100 dark:border-gray-800 text-gray-900 dark:text-white font-bold appearance-none outline-none">
                     <option value="">All States</option>
                     {availableStates.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -171,7 +171,7 @@ export function FilterElements({
                 </div>
             </div>
             <div className="relative group">
-                <select name="city" value={filters.city || ''} onChange={handleChange} className="w-full bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl py-3.5 pl-4 pr-10 text-[11px] border border-gray-100 dark:border-gray-800 text-gray-900 dark:text-gray-200 font-bold appearance-none outline-none">
+                <select name="city" value={filters.city || ''} onChange={handleChange} className="w-full bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl py-3.5 pl-4 pr-10 text-[11px] border border-gray-100 dark:border-gray-800 text-gray-900 dark:text-white font-bold appearance-none outline-none">
                     <option value="">All Cities</option>
                     {availableCities.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -185,7 +185,7 @@ export function FilterElements({
       <FilterGroup title="Categories">
         {filters.type !== 'services' && (
           <div className="mb-4">
-            <button onClick={() => setProductDocsOpen(!productDocsOpen)} className="w-full text-[11px] font-black uppercase tracking-widest px-4 py-4 bg-gray-100/50 dark:bg-gray-800/50 rounded-2xl flex justify-between items-center transition-all border border-gray-100 dark:border-gray-700">
+            <button onClick={() => setProductDocsOpen(!productDocsOpen)} className="w-full text-[11px] font-black uppercase tracking-widest px-4 py-4 bg-gray-100/50 dark:bg-gray-800/80 rounded-2xl flex justify-between items-center transition-all border border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white">
               <span>Products</span>
               <div className={`transition-transform duration-300 ${productDocsOpen ? 'rotate-180' : ''}`}><svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg></div>
             </button>
@@ -194,7 +194,7 @@ export function FilterElements({
         )}
         {filters.type !== 'products' && (
           <div>
-            <button onClick={() => setServiceDocsOpen(!serviceDocsOpen)} className="w-full text-[11px] font-black uppercase tracking-widest px-4 py-4 bg-gray-100/50 dark:bg-gray-800/50 rounded-2xl flex justify-between items-center transition-all border border-gray-100 dark:border-gray-700">
+            <button onClick={() => setServiceDocsOpen(!serviceDocsOpen)} className="w-full text-[11px] font-black uppercase tracking-widest px-4 py-4 bg-gray-100/50 dark:bg-gray-800/80 rounded-2xl flex justify-between items-center transition-all border border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white">
               <span>Services</span> 
               <div className={`transition-transform duration-300 ${serviceDocsOpen ? 'rotate-180' : ''}`}><svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg></div>
             </button>
@@ -207,11 +207,11 @@ export function FilterElements({
         <div className="flex flex-col gap-3">
           <div className="relative flex-1">
              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xs">₹</span>
-             <input name="minPrice" value={filters.minPrice} onChange={handleChange} placeholder="Min Price" className="w-full pl-8 pr-4 py-3.5 bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl text-xs border-2 border-gray-100 dark:border-gray-800 outline-none font-black" />
+             <input name="minPrice" value={filters.minPrice} onChange={handleChange} placeholder="Min Price" className="w-full pl-8 pr-4 py-3.5 bg-gray-50/50 dark:bg-gray-800/80 rounded-2xl text-xs border-2 border-gray-100 dark:border-gray-700 outline-none font-black text-gray-900 dark:text-white" />
           </div>
           <div className="relative flex-1">
              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xs">₹</span>
-             <input name="maxPrice" value={filters.maxPrice} onChange={handleChange} placeholder="Max Price" className="w-full pl-8 pr-4 py-3.5 bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl text-xs border-2 border-gray-100 dark:border-gray-800 outline-none font-black" />
+             <input name="maxPrice" value={filters.maxPrice} onChange={handleChange} placeholder="Max Price" className="w-full pl-8 pr-4 py-3.5 bg-gray-50/50 dark:bg-gray-800/80 rounded-2xl text-xs border-2 border-gray-100 dark:border-gray-700 outline-none font-black text-gray-900 dark:text-white" />
           </div>
         </div>
       </FilterGroup>
@@ -244,7 +244,7 @@ function FilterGroup({ id, title, children, info, activeOverlay, setActiveOverla
   return (
     <div className="animate-in fade-in slide-in-from-left-4 duration-500">
       <div className="flex items-center gap-2 mb-4 ml-1">
-        <h4 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest italic">{title}</h4>
+        <h4 className="text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest italic">{title}</h4>
         {info && (
           <div className="relative group/info">
             <button type="button" onClick={() => setActiveOverlay(isOpen ? null : id)} className="p-1 bg-gray-100 dark:bg-gray-800 rounded-lg"><svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></button>

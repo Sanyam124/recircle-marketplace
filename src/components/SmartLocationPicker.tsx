@@ -282,7 +282,7 @@ export default function SmartLocationPicker({
                                     value={locationData.pincode || ''}
                                     onChange={(e) => handlePincodeChange(e.target.value)}
                                     placeholder="Enter 6-digit pincode"
-                                    className="w-full bg-gray-50 dark:bg-white/5 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none transition-all"
+                                    className="w-full bg-gray-50 dark:bg-zinc-800 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none transition-all text-gray-900 dark:text-white"
                                 />
                                 {pincodeLoading && <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />}
                             </div>
@@ -296,10 +296,10 @@ export default function SmartLocationPicker({
                             <select
                                 value={locationData.state || ''}
                                 onChange={(e) => updateLocation({ state: e.target.value, city: '', coordinates: undefined })}
-                                className="w-full bg-gray-50 dark:bg-white/5 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none cursor-pointer"
+                                className="w-full bg-gray-50 dark:bg-zinc-800 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none cursor-pointer text-gray-900 dark:text-white"
                             >
-                                <option value="">Select State</option>
-                                {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                                <option value="" className="dark:bg-zinc-900">Select State</option>
+                                {INDIAN_STATES.map(s => <option key={s} value={s} className="dark:bg-zinc-900">{s}</option>)}
                             </select>
                         </div>
                         <div className="relative" ref={cityInputRef}>
@@ -310,7 +310,7 @@ export default function SmartLocationPicker({
                                 onChange={(e) => handleCitySearchChange(e.target.value)}
                                 disabled={!locationData.state}
                                 placeholder={locationData.state ? 'Search city...' : 'Select state first'}
-                                className={`w-full bg-gray-50 dark:bg-white/5 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none transition-all ${!locationData.state ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`w-full bg-gray-50 dark:bg-zinc-800 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none transition-all text-gray-900 dark:text-white ${!locationData.state ? 'opacity-50 cursor-not-allowed' : ''}`}
                             />
                             {showCityDropdown && cityResults.length > 0 && (
                                 <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-gray-100 dark:border-zinc-800 overflow-hidden z-50">
@@ -389,7 +389,7 @@ export default function SmartLocationPicker({
                                 placeholder="e.g. 1"
                                 value={(locationData[field as 'room' | 'bed'] as string | number) || ''}
                                 onChange={(e) => updateLocation({ [field]: parseInt(e.target.value) || undefined })}
-                                className="w-full h-10 px-3 rounded-md border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm font-medium text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full h-10 px-3 rounded-md border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm font-medium text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-indigo-500"
                             />
                         </div>
                     ))}

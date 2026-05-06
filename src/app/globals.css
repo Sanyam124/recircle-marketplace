@@ -43,12 +43,20 @@ input[type=number] {
   color: #f3f4f6;
 }
 
-/* Ensure global dropdown text is visible */
+/* Ensure global dropdown and input text is visible in dark mode */
 .dark .dropdown-content, 
 .dark select, 
-.dark option {
+.dark option,
+.dark input,
+.dark textarea {
   color-scheme: dark;
-  background-color: #111827;
+  background-color: #111827; /* gray-900 */
+  color: #f3f4f6; /* gray-100 */
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #9ca3af; /* gray-400 */
 }
 
 /* Safe area utilities for mobile devices */
@@ -87,9 +95,6 @@ html, body {
   overflow-x: hidden;
   position: relative;
   width: 100%;
-  height: 100%;
-  height: 100dvh;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Dynamic Viewport Height utility (fixes mobile address bar issues) */
@@ -104,9 +109,7 @@ html, body {
 }
 
 /* Utility to prevent scroll when content is short */
-.no-bounce {
-  overscroll-behavior-y: none;
-}
+
 
 /* Hide scrollbars but keep functionality if needed */
 .no-scrollbar::-webkit-scrollbar {

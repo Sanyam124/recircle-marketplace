@@ -164,7 +164,7 @@ export default function ExploreSidebar({
 
       {/* Desktop Sidebar */}
       <div className="hidden md:block w-full">
-        <div id="desktop-sidebar-inner" className="bg-white/70 dark:bg-gray-800/40 backdrop-blur-xl p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-sm sticky top-24 z-[40]">
+        <div id="desktop-sidebar-inner" className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-xl p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-sm sticky top-24 z-[40]">
            <FilterElements 
               filters={filters} handleChange={handleChange} setFilters={setFilters}
               productDocsOpen={productDocsOpen} setProductDocsOpen={setProductDocsOpen}
