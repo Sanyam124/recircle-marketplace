@@ -262,7 +262,7 @@ export default function SettingsPage() {
                                         <button 
                                             onClick={handleProfileSubmit}
                                             disabled={submitting}
-                                            className="w-full md:w-auto px-12 py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                            className="w-full md:w-auto px-12 py-5 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-3xl font-black uppercase tracking-widest shadow-2xl shadow-slate-950/20 dark:shadow-none hover:bg-black dark:hover:bg-slate-100 active:scale-95 transition-all flex items-center justify-center gap-3"
                                         >
                                             {submitting ? 'Saving Changes...' : 'Save Profile Details'}
                                         </button>
