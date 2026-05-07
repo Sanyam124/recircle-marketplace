@@ -152,7 +152,10 @@ export default function PushNotificationManager() {
         // Fallback: If pushManager fails, it might be heavily stuck, force unregister and retry exactly once
         console.warn('Push subscription failed, forcing clean SW install...', subErr);
         await registration.unregister();
-        registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        
+        // Wait for the fresh SW to fully activate before subscribing
+        registration = await navigator.serviceWorker.ready;
         
         sub = await registration.pushManager.subscribe({
           userVisibleOnly: true,

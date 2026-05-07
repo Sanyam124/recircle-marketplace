@@ -1,4 +1,17 @@
-// --- ReCircle Push Notification Handlers ---
+// --- ReCircle Service Worker ---
+
+// Lifecycle: Immediately activate on install (critical for mobile browsers)
+self.addEventListener('install', function(event) {
+  // Skip the waiting phase — become active immediately
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function(event) {
+  // Claim all open tabs so push works without a page reload
+  event.waitUntil(self.clients.claim());
+});
+
+// --- Push Notification Handlers ---
 
 self.addEventListener('push', function(event) {
   if (event.data) {
