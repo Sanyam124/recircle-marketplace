@@ -188,9 +188,19 @@ function ExploreFiltersAndGrid() {
         </div>
         <div className="flex items-center justify-between w-full px-1">
           <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{totalItems} results</div>
-          <div className="flex items-center gap-1 bg-gray-100/50 dark:bg-gray-900/50 p-0.5 rounded-lg">
-            <button onClick={() => setMobileCols(1)} className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${mobileCols === 1 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400'}`}>1x</button>
-            <button onClick={() => setMobileCols(2)} className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${mobileCols === 2 ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600' : 'text-gray-400'}`}>2x</button>
+          <div className="flex bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-inner">
+            <button 
+              onClick={() => setMobileCols(1)} 
+              className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${mobileCols === 1 ? 'bg-white dark:bg-zinc-900 shadow-md text-indigo-600' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+            >
+              1x
+            </button>
+            <button 
+              onClick={() => setMobileCols(2)} 
+              className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${mobileCols === 2 ? 'bg-white dark:bg-zinc-900 shadow-md text-indigo-600' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+            >
+              2x
+            </button>
           </div>
         </div>
       </div>
@@ -205,11 +215,11 @@ function ExploreFiltersAndGrid() {
           </button>
         </div>
 
-        <div className={`transition-all duration-500 shrink-0 z-[40] ${isSidebarOpen ? 'w-full md:w-64 opacity-100 overflow-visible' : 'w-0 opacity-0 invisible pointer-events-none overflow-hidden'}`}>
+        <div className={`hidden md:block transition-all duration-500 shrink-0 z-[40] ${isSidebarOpen ? 'w-64 opacity-100 overflow-visible' : 'w-0 opacity-0 invisible pointer-events-none overflow-hidden'}`}>
           <ExploreSidebar currentFilters={currentFilters} onFilterChange={handleFilterChange} isSidebarOpen={isSidebarOpen} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
         </div>
 
-        <div className={`flex-1 min-w-0 transition-all duration-500 ${!isSidebarOpen ? 'md:pl-0' : ''}`}>
+        <div className={`flex-1 min-w-0 transition-all duration-500`}>
           <div className="hidden md:flex bg-white/70 dark:bg-gray-800/40 backdrop-blur-md p-5 rounded-3xl border border-gray-200 dark:border-gray-700/50 mb-8 justify-between items-center shadow-sm gap-4">
             <div className="w-1/2 xl:w-1/3 relative group text-left">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div>

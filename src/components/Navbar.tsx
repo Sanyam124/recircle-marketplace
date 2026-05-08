@@ -31,11 +31,6 @@ export default function Navbar() {
   }, [pathname]);
 
   useEffect(() => {
-    setIsMobileMenuOpen(false);
-    setIsCreateMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     if (user) {
       // Pusher real-time subscription for immediate UI updates
       const userId = user.id || (user as any)._id;
@@ -250,9 +245,26 @@ export default function Navbar() {
       {/* Mobile menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shadow-xl animate-in slide-in-from-top-4 duration-200 w-full max-w-[100vw] overflow-x-hidden">
-
           
-          <div className="pt-2 pb-2 border-t border-gray-100 dark:border-gray-800 space-y-1 px-4">
+          <div className="px-4 py-3 space-y-1">
+            <Link href="/explore" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold transition-colors ${pathname === '/explore' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+              <span className="text-xl">🧭</span> Explore
+            </Link>
+            <Link href="/board" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold transition-colors ${pathname === '/board' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+              <span className="text-xl">🏛️</span> Circle Board
+            </Link>
+            <Link href="/chat" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold transition-colors ${pathname === '/chat' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+              <div className="relative">
+                <span className="text-xl">💬</span>
+                {messageUnreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white border-2 border-white dark:border-gray-900 shadow-sm">
+                    {messageUnreadCount > 9 ? '9+' : messageUnreadCount}
+                  </span>
+                )}
+              </div>
+              Messages
+            </Link>
+          </div>
              <Link href="/products/create" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               <span className="text-xl">📦</span> Post a Product
             </Link>

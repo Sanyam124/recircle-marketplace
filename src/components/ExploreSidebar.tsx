@@ -132,7 +132,7 @@ export default function ExploreSidebar({
     <>
       {/* Mobile Drawer */}
       {isMobileOpen && (
-        <div className="fixed inset-0 z-[150] md:hidden">
+        <div className="fixed inset-0 z-[250] md:hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in" onClick={() => setIsMobileOpen(false)} />
           <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-[3rem] h-[85vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom duration-500">
              <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mt-4 mb-1" />
