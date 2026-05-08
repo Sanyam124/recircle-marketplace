@@ -262,9 +262,11 @@ export default function Navbar() {
                   </span>
                 )}
               </div>
-              Messages
+            Messages
             </Link>
           </div>
+          
+          <div className="px-4 py-3 space-y-1">
              <Link href="/products/create" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               <span className="text-xl">📦</span> Post a Product
             </Link>
