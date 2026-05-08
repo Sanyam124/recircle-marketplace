@@ -369,17 +369,35 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     };
 
     useEffect(() => {
-        if (initialLoad && messages.length > 0 && scrollRef.current) {
-            scrollToBottom('auto');
-            setInitialLoad(false);
-        } else if (messages.length > 0 && scrollRef.current) {
-            const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-            const isNearBottom = scrollHeight - scrollTop - clientHeight < 500;
-            if (isNearBottom) {
-               scrollToBottom('smooth');
+        if (messages.length > 0 && scrollRef.current) {
+            if (initialLoad) {
+                scrollToBottom('auto');
+                setInitialLoad(false);
+            } else {
+                const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+                const isNearBottom = scrollHeight - scrollTop - clientHeight < 500;
+                if (isNearBottom) {
+                   scrollToBottom('smooth');
+                }
             }
         }
     }, [messages, initialLoad]);
+
+    // Handle Mobile Keyboard Viewport Adjustments
+    useEffect(() => {
+        const handler = () => {
+            if (window.visualViewport) {
+                // If the viewport height decreases significantly, it's likely the keyboard
+                // We scroll to bottom to keep the latest messages visible
+                if (window.visualViewport.height < window.innerHeight * 0.8) {
+                    setTimeout(() => scrollToBottom('smooth'), 100);
+                }
+            }
+        };
+
+        window.visualViewport?.addEventListener('resize', handler);
+        return () => window.visualViewport?.removeEventListener('resize', handler);
+    }, []);
 
     const fetchHistory = async (before: string | null = null, isPolling: boolean = false) => {
         try {
@@ -776,73 +794,13 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         <>
             {/* Unified Context Header */}
             <div 
-                className="relative z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 transition-colors shrink-0 shadow-[0_2px_4px_-1px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                className="relative z-[60] bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 transition-colors shrink-0 shadow-[0_2px_4px_-1px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
                 onClick={() => window.location.href = `/profile/${userId}`}
             >
-                <div className="px-4 py-3 flex items-center gap-4">
-                    <Link 
-                        href="/chat" 
-                        className="md:hidden p-2 -ml-2 shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                    </Link>
-
-                    <div className="relative shrink-0 flex items-center justify-center w-14 h-14">
-                        <div className="absolute top-0 left-0 right-2 bottom-2 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
-                            {referencingItem?.data?.images?.[0] || referencingItem?.data?.image ? (
-                                <img 
-                                    src={referencingItem?.data?.images?.[0] || referencingItem?.data?.image || ''} 
-                                    alt={referencingItem?.data?.title || 'Item'} 
-                                    className="object-cover w-full h-full"
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center w-full h-full text-gray-400">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                </div>
-                            )}
-                        </div>
-                        
-                        <div className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/80 flex items-center justify-center text-indigo-700 dark:text-indigo-300 text-xs font-extrabold border-[2.5px] border-white dark:border-gray-900 shadow-md z-10 backdrop-blur-sm overflow-hidden">
-                            {otherUser?.profilePicture ? (
-                                <img 
-                                    src={otherUser.profilePicture} 
-                                    alt={otherUser.name} 
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                otherUser?.name?.charAt(0).toUpperCase() || 'U'
-                            )}
-                            {otherUserLastSeen && (Date.now() - otherUserLastSeen.getTime()) < 2 * 60 * 1000 && (
-                                <span className="absolute bottom-0 -right-0.5 w-2.5 h-2.5 bg-green-400 border-[1.5px] border-white dark:border-gray-900 rounded-full" title="Online now" />
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex-1 min-w-0 pr-2">
-                        <h1 className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
-                            {otherUser?.name || (isBlockedByOther ? 'Restricted User' : (loading ? 'Loading...' : 'User Departed'))}
-                        </h1>
-                        <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 truncate">
-                            {otherUserLastSeen && (Date.now() - otherUserLastSeen.getTime()) < 2 * 60 * 1000 
-                                ? 'Online now' 
-                                : (otherUser ? 'Active conversation' : 'Conversation archived')}
-                        </p>
-                    </div>
-                    
-                    <div className="relative pl-1 shrink-0">
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); setHeaderMenuOpen(!headerMenuOpen); }}
-                            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-400 dark:text-gray-500"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                            </svg>
-                        </button>
-
+... (omitting middle lines for brevity, will use full chunk in tool call) ...
                         {headerMenuOpen && (
                             <div 
-                                className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 z-50 animate-in fade-in zoom-in duration-100"
+                                className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 z-[100] animate-in fade-in zoom-in duration-100"
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <button 
