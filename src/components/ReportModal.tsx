@@ -58,7 +58,7 @@ export default function ReportModal({ targetUserId, itemType, itemId, onClose }:
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-colors" onClick={onClose}>
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-colors" onClick={onClose}>
       <div
         className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-6 transition-colors"
         onClick={e => e.stopPropagation()}
