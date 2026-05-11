@@ -185,9 +185,16 @@ export default function CreateProductPage() {
             </div>
           )}
           <>
-            <div className="mb-10 text-center sm:text-left">
-              <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight mb-2">List Item for Sale</h1>
-              <p className="text-gray-500 dark:text-gray-400 font-medium">Fill in the details to reach thousands of buyers.</p>
+            <div className="mb-10 text-center sm:text-left flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight mb-2">List Item for Sale</h1>
+                <p className="text-gray-500 dark:text-gray-400 font-medium">Fill in the details to reach thousands of buyers.</p>
+              </div>
+              <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
+                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                  <span className="text-red-500 mr-1">*</span> Mandatory Fields
+                </p>
+              </div>
             </div>
         
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -200,7 +207,7 @@ export default function CreateProductPage() {
                 {/* Title Section */}
                 <div className="sm:col-span-4">
                   <div className="flex items-center justify-between mb-2">
-                    <label htmlFor="title" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Item Title</label>
+                    <label htmlFor="title" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Item Title <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.title.length >= 70 ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
                       {formData.title.length}/80
                     </span>
@@ -250,7 +257,7 @@ export default function CreateProductPage() {
             <div className="sm:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                {formData.forSell && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label htmlFor="price" className="block text-sm font-bold text-indigo-700 dark:text-indigo-400 mb-2 uppercase tracking-widest">Selling Price (₹)</label>
+                    <label htmlFor="price" className="block text-sm font-bold text-indigo-700 dark:text-indigo-400 mb-2 uppercase tracking-widest">Selling Price (₹) <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
                     <div className="relative group">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</div>
                       <input
@@ -273,7 +280,7 @@ export default function CreateProductPage() {
 
                {formData.forRent && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label htmlFor="rentPrice" className="block text-sm font-bold text-emerald-700 dark:text-emerald-400 mb-2 uppercase tracking-widest">Rent Price (₹)</label>
+                    <label htmlFor="rentPrice" className="block text-sm font-bold text-emerald-700 dark:text-emerald-400 mb-2 uppercase tracking-widest">Rent Price (₹) <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
                     <div className="flex gap-2">
                        <div className="relative flex-1 group">
                           <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</div>
@@ -309,7 +316,7 @@ export default function CreateProductPage() {
 
             <div className="sm:col-span-6">
               <div className="flex items-center justify-between mb-2">
-                <label htmlFor="description" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Detailed Description</label>
+                <label htmlFor="description" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Detailed Description <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.description.length >= 1900 ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
                   {formData.description.length}/2000
                 </span>
@@ -328,7 +335,7 @@ export default function CreateProductPage() {
             </div>
 
             <div className="sm:col-span-3">
-              <label htmlFor="category" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Category</label>
+              <label htmlFor="category" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Category <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
               <select
                 id="category"
                 name="category"
@@ -342,7 +349,7 @@ export default function CreateProductPage() {
               </select>
             </div>
             <div className="sm:col-span-3">
-              <label htmlFor="condition" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Condition</label>
+              <label htmlFor="condition" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Condition <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
               <select
                 id="condition"
                 name="condition"
@@ -385,7 +392,15 @@ export default function CreateProductPage() {
                   <span className="text-xl">🔒</span>
                   <span className="font-black text-gray-900 dark:text-white uppercase tracking-tight">Campus Circle</span>
                   <span className="text-xs text-gray-500 leading-tight">Private to your verified campus. Maximum trust.</span>
-                  {!user?.verifiedCommunities?.length && <div className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-[1px] rounded-2xl flex items-center justify-center p-4 text-center text-[10px] font-bold text-gray-700 dark:text-gray-300">Join a circle to unlock</div>}
+                  {!user?.verifiedCommunities?.length && (
+                    <div className="absolute inset-0 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl rounded-2xl flex flex-col items-center justify-center p-6 text-center z-50 shadow-inner">
+                      <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-500/10 rounded-full flex items-center justify-center mb-3">
+                        <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m0-6V9m0 12a9 9 0 110-18 9 9 0 010 18z" /></svg>
+                      </div>
+                      <span className="text-[12px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest leading-tight mb-1">Circle Access Locked</span>
+                      <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 max-w-[140px]">Verify your campus email to unlock community listings.</p>
+                    </div>
+                  )}
                 </button>
               </div>
               
@@ -423,7 +438,7 @@ export default function CreateProductPage() {
             <div className="sm:col-span-6">
                 <div className="flex items-center gap-2 mb-4">
                    <div className="h-0.5 flex-1 bg-gray-100 dark:bg-white/5"></div>
-                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Convenience Center</span>
+                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Convenience Center <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></span>
                    <div className="h-0.5 flex-1 bg-gray-100 dark:bg-white/5"></div>
                 </div>
                 <SmartLocationPicker 
@@ -437,7 +452,7 @@ export default function CreateProductPage() {
             
 
             <div className="sm:col-span-6">
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-4">Visual Gallery <span className="text-gray-400 font-medium">(MAX {siteConfig?.maxProductImages || 5})</span></label>
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-4">Visual Gallery <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span> <span className="text-gray-400 font-medium ml-1">(MAX {siteConfig?.maxProductImages || 5})</span></label>
               
                <div className="bg-amber-50 dark:bg-amber-500/5 border-l-4 border-amber-400 p-5 rounded-r-3xl mb-8 flex gap-4">
                   <div className="text-xl">⚠️</div>
@@ -473,6 +488,12 @@ export default function CreateProductPage() {
                   </label>
                 )}
               </div>
+              {images.length === 0 && (
+                <p className="mt-4 text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-2 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                  At least one real photo is required to publish
+                </p>
+              )}
             </div>
 
           <div className="pt-10 flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-gray-100 dark:border-white/5">
@@ -488,10 +509,14 @@ export default function CreateProductPage() {
               disabled={
                 loading || 
                 imageProcessing ||
+                !formData.title.trim() ||
+                !formData.description.trim() ||
+                images.length === 0 ||
                 (!formData.forSell && !formData.forRent) || 
                 (formData.forSell && (!formData.price || Number(formData.price) < 5)) || 
                 (formData.forRent && (!formData.rentPrice || Number(formData.rentPrice) < 5)) ||
-                (formData.visibility === 'Community' && user?.verifiedCommunities?.find((c: any) => (c._id || c.id || c) === formData.communityId)?.isActive === false)
+                (formData.visibility === 'Public' && (!location.state || !location.city)) ||
+                (formData.visibility === 'Community' && (!formData.communityId || user?.verifiedCommunities?.find((c: any) => (c._id || c.id || c) === formData.communityId)?.isActive === false))
               }
               className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 dark:from-indigo-500 dark:to-indigo-400 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/20 active:scale-95 transition-all disabled:opacity-40"
             >

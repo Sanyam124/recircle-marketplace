@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import dynamic from 'next/dynamic';
 import { INDIAN_STATES } from '@/constants/location';
 import { reverseGeocode, geocodeLocation, isLocationInIndia } from '@/lib/location';
@@ -72,24 +73,22 @@ export default function SmartLocationPicker({
 
     // --- core Logic ---
 
+    const { refreshLocation } = useAuth();
+
     /**
      * Auto-detect location using browser GPS
      */
     const handleAutoDetect = () => {
-        if (!navigator.geolocation) {
-            setDetectError('Geolocation is not supported by your browser.');
-            return;
-        }
         setDetecting(true);
         setDetectError('');
         
-        navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-                const { latitude: lat, longitude: lng } = pos.coords;
+        refreshLocation(
+            async (loc) => {
+                const { lat, lng } = loc;
                 const details = await reverseGeocode(lat, lng);
                 
                 if (!isLocationInIndia(details.countryCode)) {
-                    setDetectError('ReCircle is currently only available for locations within India.');
+                    setDetectError('ReCircle is currently only available within India.');
                     setDetecting(false);
                     return;
                 }
@@ -103,11 +102,21 @@ export default function SmartLocationPicker({
                 setCitySearch(details.city);
                 setDetecting(false);
             },
-            () => {
-                setDetectError('Unable to detect location. Please allow GPS permission.');
+            (error) => {
+                if (error.code === 1) { // PERMISSION_DENIED
+                    const isPWA = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+                    if (isPWA) {
+                        setDetectError('Location access is blocked. Please enable location permissions for ReCircle in your device or app settings.');
+                    } else {
+                        setDetectError('Location access is blocked. Please enable it by clicking the "lock" or "settings" icon next to the website URL above, then try again.');
+                    }
+                } else if (error.code === 3) { // TIMEOUT
+                    setDetectError('Location detection timed out. Please check your signal and try again.');
+                } else {
+                    setDetectError('Unable to detect location. Please fill manually or try again.');
+                }
                 setDetecting(false);
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
+            }
         );
     };
 
