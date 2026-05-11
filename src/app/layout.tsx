@@ -55,6 +55,7 @@ export const viewport: Viewport = {
   themeColor: '#4F46E5',
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 };
 
 
@@ -88,7 +89,7 @@ export default function RootLayout({
               <MaintenanceGuard>
                 <div className="flex flex-col bg-[#f5f6f9] dark:bg-gray-900 transition-colors duration-500">
                   <Navbar />
-                  <main className="pt-16 pb-24 md:pb-0">
+                  <main className="pt-16 max-md:pb-[calc(76px+env(safe-area-inset-bottom,0px))] md:pb-0">
                     {children}
                   </main>
                   <Footer />

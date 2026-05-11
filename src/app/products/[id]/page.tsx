@@ -368,11 +368,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           {/* Seller Card */}
           <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm group">
             <div className="flex items-center gap-4">
-              <Link href={`/profile/${product.seller._id}`} className="relative h-14 w-14 rounded-full overflow-hidden border border-gray-200 dark:border-[#3a3a3a] shadow-sm flex-shrink-0">
-                  {product.seller.profilePicture ? (
+              <Link href={`/profile/${product.seller._id}`} className="relative h-14 w-14 rounded-full overflow-hidden border border-gray-200 dark:border-[#3a3a3a] shadow-sm flex-shrink-0 flex items-center justify-center">
+                  {product.seller.profilePicture && !product.seller.profilePicture.includes('??') ? (
                     <Image src={product.seller.profilePicture} alt={product.seller.name} fill className="object-cover" referrerPolicy="no-referrer" />
                   ) : (
-                    <div className="h-full w-full bg-indigo-50 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-lg">{product.seller.name?.charAt(0)}</div>
+                    <div className="h-full w-full bg-indigo-50 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-lg">
+                        {(product.seller.name?.[0] || 'U').toUpperCase()}
+                    </div>
                   )}
               </Link>
               <div className="flex-1 min-w-0">
@@ -488,7 +490,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           </div>
           
           {/* Sticky Mobile Action Bar */}
-          <div className="fixed bottom-[76px] sm:bottom-0 left-0 right-0 sm:hidden z-[150] p-4 bg-white/95 dark:bg-[#111]/90 backdrop-blur-md border-t border-gray-200 dark:border-[#2a2a2a] shadow-[0_-10px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+          <div className="fixed bottom-[calc(92px+env(safe-area-inset-bottom,0px))] sm:bottom-0 left-0 right-0 sm:hidden z-[150] p-4 bg-white/95 dark:bg-[#111]/90 backdrop-blur-md border-t border-gray-200 dark:border-[#2a2a2a] shadow-[0_-10px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
              <div className="flex gap-3 max-w-lg mx-auto">
                 {!isOwner && (
                    <>

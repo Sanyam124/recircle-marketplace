@@ -33,7 +33,6 @@ export default function ExploreSidebar({
   isSidebarOpen = true,
   onToggleSidebar
 }: ExploreSidebarProps) {
-  const { user } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [filters, setFilters] = useState<ExploreFilters>(currentFilters);
   const [productDocsOpen, setProductDocsOpen] = useState(false);
@@ -82,8 +81,40 @@ export default function ExploreSidebar({
     toastTimeoutRef.current = setTimeout(closeOverlays, 3000);
   }, [closeOverlays]);
 
+  const { user, userLocation, refreshLocation } = useAuth();
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    
+    // Auto-detect location if "Nearest First" is selected and location is missing
+    if (name === 'sort' && value === 'distance' && !userLocation) {
+        refreshLocation(
+            (loc) => {
+               const newFilters = { ...filters, [name]: value };
+               setFilters(newFilters);
+               if (!isMobileOpen) onFilterChange(newFilters);
+            },
+            (err) => {
+               // If permission denied or failed, we just don't apply the sort
+               // or we can show an alert
+               if (err.code === 1) {
+                   const isPWA = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+                   if (isPWA) {
+                       alert("Location access is required for distance sorting. Please enable location permissions for ReCircle in your device settings.");
+                   } else {
+                       alert("Location access is required for distance sorting. Please enable it by clicking the 'lock' or 'settings' icon next to the website URL above.");
+                   }
+               } else alert("Unable to detect your location.");
+               
+               // Revert sort to 'newest' if detection failed
+               const resetFilters = { ...filters, sort: 'newest' };
+               setFilters(resetFilters);
+               if (!isMobileOpen) onFilterChange(resetFilters);
+            }
+        );
+        return;
+    }
+
     const newFilters = { ...filters, [name]: value };
     setFilters(newFilters);
     if (!isMobileOpen) onFilterChange(newFilters);
@@ -190,9 +221,12 @@ export default function ExploreSidebar({
       {/* Floating Filter Button (Mobile) */}
       <button 
         onClick={() => setIsMobileOpen(true)}
-        className="fixed bottom-[100px] left-1/2 -translate-x-1/2 z-[90] md:hidden flex items-center gap-3 px-8 py-5 bg-gray-950 text-white rounded-[2rem] shadow-2xl"
+        className="fixed bottom-[calc(92px+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 z-[150] md:hidden flex items-center gap-3 px-8 py-5 bg-gray-950 text-white rounded-[2rem] shadow-2xl active:scale-95 transition-transform"
       >
-        <span className="font-black text-xs uppercase tracking-widest italic">Filters</span>
+        <div className="w-5 h-5 flex items-center justify-center bg-white/20 rounded-lg">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+        </div>
+        <span className="font-black text-[10px] uppercase tracking-[0.2em] italic">Filters</span>
       </button>
     </>
   );
