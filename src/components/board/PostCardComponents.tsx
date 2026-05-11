@@ -72,11 +72,13 @@ export function ReplyItem({ reply, user, isAdmin, isAuthor, onDeleteReply, post,
   return (
     <div key={reply._id} className="flex items-start gap-3 animate-in fade-in duration-300">
         <Link href={`/profile/${reply.author._id}`} className="shrink-0 transition-transform hover:scale-105 active:scale-95">
-            <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden">
-                {reply.author?.profilePicture ? (
+            <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden flex items-center justify-center">
+                {reply.author?.profilePicture && !reply.author.profilePicture.includes('??') ? (
                     <Image src={reply.author.profilePicture} alt={reply.author?.name || 'User'} width={24} height={24} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
-                    <span className="text-[8px] flex items-center justify-center h-full font-bold text-gray-400">{reply.author?.name?.[0]?.toUpperCase() || '?'}</span>
+                    <span className="text-[8px] font-bold text-gray-400">
+                        {(reply.author?.name?.[0] || reply.author?.username?.[0] || 'U').toUpperCase()}
+                    </span>
                 )}
             </div>
         </Link>

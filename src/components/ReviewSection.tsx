@@ -298,18 +298,20 @@ export default function ReviewSection({ targetId, targetName, productId, service
              <div className="flex-shrink-0">
                <Link href={`/profile/${review.reviewer?._id || ''}`}>
                  <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold border border-gray-200 dark:border-gray-600 text-base hover:ring-2 hover:ring-indigo-500 transition-all cursor-pointer overflow-hidden uppercase">
-                    {review.reviewer?.profilePicture ? (
-                        <Image 
-                          src={review.reviewer.profilePicture} 
-                          alt={review.reviewer.name} 
-                          width={40} 
-                          height={40} 
-                          className="w-full h-full object-cover" 
-                          referrerPolicy="no-referrer"
-                        />
-                    ) : (
-                        review.reviewer?.name?.charAt(0) || 'U'
-                    )}
+                     {review.reviewer?.profilePicture && !review.reviewer.profilePicture.includes('??') ? (
+                         <Image 
+                           src={review.reviewer.profilePicture} 
+                           alt={review.reviewer.name || 'User'} 
+                           width={40} 
+                           height={40} 
+                           className="w-full h-full object-cover" 
+                           referrerPolicy="no-referrer"
+                         />
+                     ) : (
+                         <span className="flex items-center justify-center h-full w-full bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                            {(review.reviewer?.name?.[0] || 'U').toUpperCase()}
+                         </span>
+                     )}
                  </div>
                </Link>
              </div>

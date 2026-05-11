@@ -92,11 +92,22 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
         <div className="flex flex-col mt-auto shrink-0 pt-2">
             <div className="hidden sm:flex items-end justify-between mb-1">
                 <ServiceCardRating service={service} />
-                {service.availability && <span className="inline-flex items-center rounded-lg bg-indigo-50 dark:bg-indigo-950/30 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-800 italic">{service.availability.split(' ')[0]}</span>}
+                {service.availability && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-800 shadow-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                        {service.availability}
+                    </span>
+                )}
             </div>
             <div className="flex items-end justify-between gap-1 w-full overflow-hidden pt-3 border-t border-gray-50 dark:border-gray-700/50">
                 <ServiceCardPricing service={service} />
-                {service.availability && <div className="sm:hidden mb-1"><span className="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-800 italic">{service.availability.split(' ')[0]}</span></div>}
+                {service.availability && (
+                    <div className="sm:hidden mb-1">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-800 shadow-sm">
+                            {service.availability}
+                        </span>
+                    </div>
+                )}
             </div>
             <div className="mt-3 flex items-center justify-between w-full gap-2 border-t border-gray-50 dark:border-gray-800/50 pt-2.5">
                 <div className="flex items-center gap-1.5 min-w-0">

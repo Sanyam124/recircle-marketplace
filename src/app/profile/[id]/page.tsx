@@ -364,22 +364,30 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                      <button 
                        onClick={handleBlockUser} 
                        disabled={blocking}
-                       className={`h-12 flex-1 flex items-center justify-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:shadow-md disabled:opacity-50 ${
+                       className={`h-12 flex-1 flex items-center justify-center rounded-xl border transition-all hover:shadow-md shrink-0 ${
                          isBlocked 
-                           ? 'bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30' 
-                           : 'bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-red-500 border border-gray-200 dark:border-gray-700'
+                           ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-900/30 text-rose-600 dark:text-rose-400' 
+                           : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 hover:text-rose-600'
                        }`}
+                       title={isBlocked ? 'Unblock User' : 'Block User'}
                      >
                        {blocking ? (
-                         <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                        ) : (
-                         <>
-                           <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
-                           </svg>
-                           <span>{isBlocked ? 'Unblock' : 'Block'}</span>
-                         </>
+                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
+                         </svg>
                        )}
+                     </button>
+
+                     <button 
+                       onClick={() => setReportOpen(true)}
+                       className="h-12 flex-1 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-400 hover:text-rose-600 transition-all hover:shadow-md shrink-0"
+                       title="Report User"
+                     >
+                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                       </svg>
                      </button>
                   </div>
                 )}

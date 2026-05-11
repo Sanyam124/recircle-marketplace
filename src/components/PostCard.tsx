@@ -80,7 +80,13 @@ export default function PostCard({
             <div className="flex items-start gap-3 sm:gap-4">
                 <Link href={`/profile/${post.author?._id}`} className="shrink-0 transition-transform hover:scale-105 active:scale-95">
                     <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600 overflow-hidden shadow-sm">
-                        {post.author?.profilePicture ? <Image src={post.author.profilePicture} alt={post.author?.name || 'User'} width={40} height={40} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-gray-500 dark:text-gray-400 font-bold text-xs">?</span>}
+                        {post.author?.profilePicture && !post.author.profilePicture.includes('??') ? (
+                            <Image src={post.author.profilePicture} alt={post.author?.name || 'User'} width={40} height={40} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                            <span className="text-gray-500 dark:text-gray-400 font-bold text-sm">
+                                {(post.author?.name?.[0] || post.author?.username?.[0] || 'U').toUpperCase()}
+                            </span>
+                        )}
                     </div>
                 </Link>
                 <div className="flex-1 min-w-0">
@@ -92,7 +98,11 @@ export default function PostCard({
                         <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-300">
                             <div className="flex gap-3 items-center">
                                 <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/20 shrink-0 flex items-center justify-center font-bold text-indigo-600 text-[10px] overflow-hidden border border-indigo-100/50">
-                                    {user?.profilePicture ? <Image src={user.profilePicture} alt="You" width={32} height={32} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : '?'}
+                                    {user?.profilePicture && !user.profilePicture.includes('??') ? (
+                                        <Image src={user.profilePicture} alt="You" width={32} height={32} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                    ) : (
+                                        <span>{(user?.name?.[0] || user?.username?.[0] || 'U').toUpperCase()}</span>
+                                    )}
                                 </div>
                                 <input type="text" placeholder="Add a comment..." className="flex-1 bg-gray-50 dark:bg-gray-700/50 border-none rounded-xl text-xs py-2 px-4 focus:ring-1 focus:ring-indigo-500 shadow-inner" value={replyingTo === post._id ? replyContent : ''} onFocus={() => setReplyingTo(post._id)} onChange={(e) => { setReplyingTo(post._id); setReplyContent(e.target.value); }} onKeyDown={(e) => e.key === 'Enter' && handleReply(post._id)} maxLength={maxReplyChars} />
                                 <button onClick={() => handleReply(post._id)} disabled={replySubmitting || !replyContent.trim()} className="text-indigo-600 dark:text-indigo-400 text-xs font-black disabled:opacity-30">POST</button>
