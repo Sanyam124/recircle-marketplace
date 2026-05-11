@@ -210,7 +210,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <div className="hidden lg:grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 lg:mt-0">
                 <div className="space-y-4">
                   <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 border border-white/10 hover:bg-white/15 transition-colors">
                     <p className="text-sm font-bold text-white mb-1">🛡️ Verified Members Only</p>
@@ -221,7 +221,7 @@ export default function Home() {
                     <p className="text-xs text-indigo-200">Trade with people next door</p>
                   </div>
                 </div>
-                <div className="space-y-4 pt-8">
+                <div className="space-y-4 sm:pt-8">
                   <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 border border-white/10 hover:bg-white/15 transition-colors">
                     <p className="text-sm font-bold text-white mb-1">🔔 Smart Defaults</p>
                     <p className="text-xs text-indigo-200">Set your preferred circle &amp; hostel</p>
@@ -428,21 +428,6 @@ export default function Home() {
             </div>
        </div>
 
-      {/* FOOTER - Minimal & Clean */}
-      <footer className="bg-gray-50 dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 transition-colors">
-          <div className="mx-auto max-w-7xl px-6 py-12 flex flex-col items-center justify-center gap-4 lg:px-8">
-             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-medium text-gray-400 dark:text-gray-500">
-               <Link href="/about" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">About</Link>
-               <Link href="/contact" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Contact</Link>
-               <Link href="/terms" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Terms</Link>
-               <Link href="/privacy" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Privacy</Link>
-               <Link href="/disclaimer" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Disclaimer</Link>
-             </div>
-             <p className="text-center text-sm leading-5 text-gray-500 dark:text-gray-400">
-                 &copy; {new Date().getFullYear()} ReCircle. Built with ❤️ for Students.
-             </p>
-          </div>
-      </footer>
 
       {earningModalOpen && (
         <StartEarningModal onClose={() => setEarningModalOpen(false)} />

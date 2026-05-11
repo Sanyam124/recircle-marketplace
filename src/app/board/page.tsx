@@ -218,37 +218,110 @@ function BoardPageContent() {
     // ... all other actions (toggleUpvote, handleReply, handleDeletePost, handleDeleteReply) stay the same ...
 
     const toggleUpvote = async (postId: string) => {
-        try {
-            const res = await authFetch('/api/board', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ postId, action: 'upvote' })
-            });
-            if (res.ok) mutate();
-        } catch (err) {
-            console.error('Upvote error:', err);
-        }
+        if (!user || !selectedCommunityId) return;
+        const userId = user.id || (user as any)._id;
+
+        // Use SWR's native mutate for robust optimistic UI
+        await mutate(
+            async () => {
+                const res = await authFetch('/api/board', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ postId, action: 'upvote' })
+                });
+                if (!res.ok) throw new Error('Failed to upvote');
+                return await res.json();
+            },
+            {
+                optimisticData: (currentData: any) => {
+                    if (!currentData?.posts) return currentData;
+                    return {
+                        ...currentData,
+                        posts: currentData.posts.map((post: Post) => {
+                            if (post._id === postId) {
+                                const hasUpvoted = post.upvotes.includes(userId);
+                                return {
+                                    ...post,
+                                    upvotes: hasUpvoted 
+                                        ? post.upvotes.filter((id: string) => id !== userId) 
+                                        : [...post.upvotes, userId]
+                                };
+                            }
+                            return post;
+                        })
+                    };
+                },
+                rollbackOnError: true,
+                revalidate: true,
+                populateCache: (result, currentData) => {
+                    // Update the specific post in the cache with the server result
+                    if (!currentData?.posts || !result?.post) return currentData;
+                    return {
+                        ...currentData,
+                        posts: currentData.posts.map((p: Post) => p._id === postId ? result.post : p)
+                    };
+                }
+            }
+        );
     };
 
     const handleReply = async (postId: string) => {
-        if (!replyContent.trim()) return;
-        setReplySubmitting(true);
-        try {
-            const res = await authFetch('/api/board', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ postId, action: 'reply', content: replyContent.trim() })
-            });
-            if (res.ok) {
-                mutate();
-                setReplyContent('');
-                setReplyingTo(null);
+        if (!replyContent.trim() || !user) return;
+        
+        const contentToSend = replyContent.trim();
+        const userId = user.id || (user as any)._id;
+        
+        setReplyContent('');
+        setReplyingTo(null);
+
+        await mutate(
+            async () => {
+                const res = await authFetch('/api/board', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ postId, action: 'reply', content: contentToSend })
+                });
+                if (!res.ok) throw new Error('Failed to reply');
+                return await res.json();
+            },
+            {
+                optimisticData: (currentData: any) => {
+                    if (!currentData?.posts) return currentData;
+                    const tempReply = {
+                        _id: `temp-${Date.now()}`,
+                        content: contentToSend,
+                        author: {
+                            _id: userId,
+                            name: user.name || 'You',
+                            username: user.username || '',
+                            profilePicture: user.profilePicture
+                        },
+                        createdAt: new Date().toISOString()
+                    };
+                    return {
+                        ...currentData,
+                        posts: currentData.posts.map((post: Post) => {
+                            if (post._id === postId) {
+                                return {
+                                    ...post,
+                                    replies: [...post.replies, tempReply]
+                                };
+                            }
+                            return post;
+                        })
+                    };
+                },
+                rollbackOnError: true,
+                revalidate: true,
+                populateCache: (result, currentData) => {
+                    if (!currentData?.posts || !result?.post) return currentData;
+                    return {
+                        ...currentData,
+                        posts: currentData.posts.map((p: Post) => p._id === postId ? result.post : p)
+                    };
+                }
             }
-        } catch (err) {
-            console.error('Reply error:', err);
-        } finally {
-            setReplySubmitting(false);
-        }
+        );
     };
 
     const handleDeletePost = async (postId: string) => {
@@ -503,39 +576,59 @@ function BoardPageContent() {
                                 <p className="text-sm font-bold text-amber-700 dark:text-amber-500/80 max-w-sm mx-auto">Circle maintenance. Posting is temporarily disabled.</p>
                             </div>
                         ) : (
-                            <div className="fixed bottom-[72px] left-0 right-0 z-[40] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/50 p-4 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] md:relative md:bg-white md:dark:bg-gray-800 md:rounded-[2.5rem] md:shadow-sm md:border md:border-gray-100 md:dark:border-gray-700 md:p-6 lg:p-8 md:mb-8 md:bottom-auto md:left-auto md:right-auto md:z-auto md:backdrop-blur-none transition-all hover:shadow-md group">
+                            <div className="fixed bottom-[calc(68px+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[150] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/50 p-4 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] md:relative md:bg-white md:dark:bg-gray-800 md:rounded-[2.5rem] md:shadow-sm md:border md:border-gray-100 md:dark:border-gray-700 md:p-6 lg:p-8 md:mb-8 md:bottom-auto md:left-auto md:right-auto md:z-auto md:backdrop-blur-none transition-all hover:shadow-md group">
                                 <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl -mr-24 -mt-24 group-hover:bg-indigo-500/10 transition-colors hidden md:block"></div>
                                 <form onSubmit={handleCreatePost}>
                                     <div className="flex flex-col gap-3">
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-sm md:text-xl">
-                                                {categories.find(c => c.id === (activeCategory === 'All' ? 'General' : activeCategory))?.icon || '💬'}
-                                            </div>
-                                            <div className="flex-1 min-w-0 flex flex-col">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 leading-none">Launch a Post</span>
-                                                    <span className={`text-[9px] md:text-[10px] font-bold ${newPostContent.length >= (maxPostChars - 50) ? 'text-red-500' : 'text-gray-300'}`}>
-                                                        {newPostContent.length}/{maxPostChars}
-                                                    </span>
-                                                </div>
-                                                <textarea
-                                                    ref={textareaRef}
-                                                    className="w-full bg-transparent border-none px-0 py-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-0 focus:outline-none text-sm md:text-base min-h-[40px] md:min-h-[60px] max-h-[150px] overflow-y-auto resize-none transition-all break-all"
-                                                    placeholder={activeCategory === 'All' ? "Share something..." : `Post in ${categories.find(c => c.id === activeCategory)?.name}...`}
-                                                    value={newPostContent}
-                                                    onChange={(e) => {
-                                                        setNewPostContent(e.target.value);
-                                                        e.target.style.height = 'auto';
-                                                        e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
-                                                    }}
-                                                    maxLength={maxPostChars}
-                                                    required
-                                                />
-                                            </div>
+                                        <div className="flex items-center justify-between px-1">
+                                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 leading-none">Launch a Post</span>
+                                            <span className={`text-[9px] md:text-[10px] font-bold ${newPostContent.length >= (maxPostChars - 50) ? 'text-red-500' : 'text-gray-300'}`}>
+                                                {newPostContent.length}/{maxPostChars}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-end gap-2 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-2xl border border-gray-200 dark:border-gray-800 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+                                            <button 
+                                                type="button" 
+                                                onClick={() => showSuccess('Coming Soon!', 'Images coming in v2.0 🚀')}
+                                                className="w-10 h-10 shrink-0 flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-gray-800 rounded-xl transition-all"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                            </button>
+
+                                            <textarea
+                                                ref={textareaRef}
+                                                rows={1}
+                                                style={{ height: newPostContent ? undefined : '40px' }}
+                                                className="flex-1 bg-transparent border-none px-2 py-[10px] text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-0 focus:outline-none text-sm min-h-[40px] max-h-[120px] overflow-y-auto resize-none break-all leading-tight"
+                                                placeholder={activeCategory === 'All' ? "Share something..." : `Post in ${categories.find(c => c.id === activeCategory)?.name}...`}
+                                                value={newPostContent}
+                                                onChange={(e) => {
+                                                    setNewPostContent(e.target.value);
+                                                    e.target.style.height = 'auto';
+                                                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                                                }}
+                                                maxLength={maxPostChars}
+                                                required
+                                            />
+
+                                            <button 
+                                                type="submit" 
+                                                disabled={submitting || !newPostContent.trim()} 
+                                                className="w-10 h-10 shrink-0 flex items-center justify-center bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-95 shadow-sm"
+                                            >
+                                                {submitting ? (
+                                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                ) : (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 ml-0.5">
+                                                      <path d="M3.478 2.404a.75.75 0 00-.926.941l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.404z" />
+                                                    </svg>
+                                                )}
+                                            </button>
                                         </div>
 
                                         {activeCategory === 'All' && (
-                                            <div className="flex overflow-x-auto gap-2 pb-1 -mx-1 px-1 sm:mx-0 sm:px-0 sm:pb-0 sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                            <div className="flex overflow-x-auto gap-2 pb-1 px-1 sm:px-0 sm:pb-0 sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                                 {categories.filter(c => c.id !== 'All').map(c => (
                                                     <button
                                                         key={c.id}
@@ -543,7 +636,7 @@ function BoardPageContent() {
                                                         onClick={() => setPostCategory(c.id)}
                                                         className={`shrink-0 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${
                                                             postCategory === c.id 
-                                                            ? 'bg-indigo-600 text-white shadow-lg' 
+                                                            ? 'bg-indigo-600 text-white shadow-md' 
                                                             : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
                                                         }`}
                                                     >
@@ -553,20 +646,7 @@ function BoardPageContent() {
                                             </div>
                                         )}
 
-                                        {error && <p className="text-[10px] text-red-500 font-bold">{error}</p>}
-                                        
-                                        <div className="flex items-center justify-between pt-1">
-                                            <button 
-                                                type="button" 
-                                                onClick={() => showSuccess('Coming Soon!', 'Images coming in v2.0 🚀')}
-                                                className="w-8 h-8 md:w-10 md:h-10 shrink-0 flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg md:rounded-xl transition-all"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                            </button>
-                                            <button type="submit" disabled={submitting || !newPostContent.trim()} className="bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-2 md:px-8 md:py-3 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-[0.98] shadow-lg shadow-indigo-500/20">
-                                                {submitting ? '...' : 'Post Now'}
-                                            </button>
-                                        </div>
+                                        {error && <p className="text-[10px] text-red-500 font-bold px-1">{error}</p>}
                                     </div>
                                 </form>
                             </div>
