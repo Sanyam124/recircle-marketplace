@@ -69,7 +69,7 @@ export const ChatItem = React.memo(({
                             )}
                         </div>
                         <div className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-700 dark:text-indigo-300 text-[10px] font-black border-2 border-white dark:border-gray-900 shadow-md z-10 transition-transform group-hover:translate-x-0.5 group-hover:translate-y-0.5 overflow-hidden">
-                            {conv.user?.profilePicture ? (
+                            {conv.user?.profilePicture && !conv.user.profilePicture.includes('??') ? (
                                 <Image 
                                     src={conv.user.profilePicture} 
                                     alt={conv.user.name || 'User'} 
@@ -78,7 +78,9 @@ export const ChatItem = React.memo(({
                                     className="object-cover"
                                 />
                             ) : (
-                                conv.user?.name?.charAt(0).toUpperCase() || '?'
+                                <span className="flex items-center justify-center w-full h-full bg-indigo-50 dark:bg-indigo-950/40 text-[10px]">
+                                    {(conv.user?.name?.[0] || conv.user?.username?.[0] || 'U').toUpperCase()}
+                                </span>
                             )}
                         </div>
                     </div>

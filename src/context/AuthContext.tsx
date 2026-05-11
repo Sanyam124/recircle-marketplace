@@ -37,7 +37,7 @@ interface AuthContextType {
   logout: () => void;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   refreshUser: () => Promise<void>;
-  refreshLocation: () => void;
+  refreshLocation: (onSuccess?: (loc: { lat: number, lng: number }) => void, onError?: (err: any) => void) => void;
   celebratingCommunities: string[] | null;
   triggerCelebration: (names: string[]) => void;
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
@@ -79,19 +79,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [rateLimited]);
 
-  const refreshLocation = () => {
+  const refreshLocation = (onSuccess?: (loc: { lat: number, lng: number }) => void, onError?: (err: GeolocationPositionError) => void) => {
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
           setUserLocation(loc);
           sessionStorage.setItem('recircle_location', JSON.stringify(loc));
+          if (onSuccess) onSuccess(loc);
         },
         (error) => {
           console.warn('Geolocation error:', error);
+          if (onError) onError(error);
         },
-        { timeout: 10000, maximumAge: 60000 }
+        { timeout: 10000, maximumAge: 60000, enableHighAccuracy: true }
       );
+    } else {
+       if (onError) onError({ code: 0, message: 'Geolocation not supported', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as any);
     }
   };
 

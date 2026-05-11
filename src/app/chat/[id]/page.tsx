@@ -30,6 +30,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const [otherUser, setOtherUser] = useState<any>(null);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
+    const [userLoading, setUserLoading] = useState(true);
+    const [itemLoading, setItemLoading] = useState(!!(searchParams.get('productId') || searchParams.get('serviceId')));
     const [referencingItem, setReferencingItemState] = useState<{ type: 'product' | 'service', id: string, data?: any, messageId?: string } | null>(null);
     
     // Use refs to avoid stale closures in polling interval
@@ -254,15 +256,19 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         // Update item context
         if (productId) {
             setReferencingItem({ type: 'product', id: productId });
+            setItemLoading(true);
             fetchItemData('product', productId);
         } else if (serviceId) {
             setReferencingItem({ type: 'service', id: serviceId });
+            setItemLoading(true);
             fetchItemData('service', serviceId);
         } else {
             setReferencingItem(null);
+            setItemLoading(false);
         }
 
         fetchHistory(null);
+        setUserLoading(true);
         fetchOtherUser();
 
         // WebSockets Real-time Updates
@@ -501,6 +507,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
     const fetchOtherUser = async () => {
         try {
+            setUserLoading(true);
             const res = await authFetch(`/api/profile/${userId}?limit=5`);
             if (res.ok) {
                 const data = await res.json();
@@ -510,11 +517,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             }
         } catch (error) {
             console.error('Failed to fetch other user', error);
+        } finally {
+            setUserLoading(false);
         }
     };
 
     const fetchItemData = async (type: 'product' | 'service', id: string) => {
         try {
+            setItemLoading(true);
             const res = await authFetch(`/api/${type}s/${id}`);
             if (res.ok) {
                 const data = await res.json();
@@ -545,6 +555,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             }
         } catch (error) {
             console.error(`Failed to fetch ${type} data`, error);
+        } finally {
+            setItemLoading(false);
         }
     };
 
@@ -555,6 +567,24 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
         setSendingMessage(true);
         if (!customContent && !offerPayload) setNewMessage('');
+
+        // Optimistic UI Update
+        const tempId = `temp-${Date.now()}`;
+        const optimisticMessage = {
+            _id: tempId,
+            sender: user?.id || (user as any)?._id,
+            recipient: userId,
+            content: content || 'Sent an Offer',
+            createdAt: new Date().toISOString(),
+            isRead: false,
+            offer: offerPayload || undefined
+        };
+
+        setMessages(prev => {
+            const newMessages = [...prev, optimisticMessage];
+            return newMessages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        });
+        setTimeout(() => scrollToBottom('smooth'), 50);
 
         try {
             const pId = searchParams.get('productId');
@@ -573,11 +603,15 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             });
 
             if (res.ok) {
-                await fetchHistory(); 
+                // Refetch quietly to ensure we have the real ID and any server-side state
+                await fetchHistory(null, true); 
                 setTimeout(() => scrollToBottom('smooth'), 100); 
+            } else {
+                setMessages(prev => prev.filter(m => m._id !== tempId));
             }
         } catch (error) {
             console.error('Failed to send message', error);
+            setMessages(prev => prev.filter(m => m._id !== tempId));
         } finally {
             setSendingMessage(false);
         }
@@ -789,7 +823,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         "I'm interested!"
     ];
 
-    if (authLoading || loading) return <MessageBubbleSkeleton />;
+    if (authLoading || loading || userLoading || itemLoading) return <MessageBubbleSkeleton />;
 
     return (
         <>
@@ -823,14 +857,16 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                         </div>
                         
                         <div className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/80 flex items-center justify-center text-indigo-700 dark:text-indigo-300 text-xs font-extrabold border-[2.5px] border-white dark:border-gray-900 shadow-md z-10 backdrop-blur-sm overflow-hidden">
-                            {otherUser?.profilePicture ? (
+                            {otherUser?.profilePicture && !otherUser.profilePicture.includes('??') ? (
                                 <img 
                                     src={otherUser.profilePicture} 
-                                    alt={otherUser.name} 
+                                    alt={otherUser.name || 'User'} 
                                     className="w-full h-full object-cover"
                                 />
                             ) : (
-                                otherUser?.name?.charAt(0).toUpperCase() || 'U'
+                                <span className="flex items-center justify-center w-full h-full bg-indigo-50 dark:bg-indigo-900/40">
+                                    {(otherUser?.name?.[0] || otherUser?.username?.[0] || 'U').toUpperCase()}
+                                </span>
                             )}
                             {otherUserLastSeen && (Date.now() - otherUserLastSeen.getTime()) < 2 * 60 * 1000 && (
                                 <span className="absolute bottom-0 -right-0.5 w-2.5 h-2.5 bg-green-400 border-[1.5px] border-white dark:border-gray-900 rounded-full" title="Online now" />
@@ -840,12 +876,19 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
                     <div className="flex-1 min-w-0 pr-2">
                         <h1 className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
-                            {otherUser?.name || (isBlockedByOther ? 'Restricted User' : (loading ? 'Loading...' : 'User Departed'))}
+                            {userLoading ? (
+                                <span className="inline-flex items-center gap-2">
+                                    <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+                                    Syncing Profile...
+                                </span>
+                            ) : (
+                                otherUser?.name || (isBlockedByOther ? 'Restricted User' : 'User Departed')
+                            )}
                         </h1>
-                        <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 truncate">
-                            {otherUserLastSeen && (Date.now() - otherUserLastSeen.getTime()) < 2 * 60 * 1000 
-                                ? 'Online now' 
-                                : (otherUser ? 'Active conversation' : 'Conversation archived')}
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 flex items-center gap-1.5 leading-none mt-0.5">
+                            {userLoading 
+                                ? 'Establishing secure connection...' 
+                                : (isBlockedByOther ? 'Messages restricted' : (otherUser ? 'Active conversation' : 'Conversation archived'))}
                         </p>
                     </div>
                     
@@ -908,7 +951,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 <div className="flex text-[11px] font-bold text-gray-500 dark:text-gray-400 divide-x divide-gray-200 dark:divide-gray-800">
                     <div className="flex-1 px-4 py-1.5 truncate flex items-center gap-2">
                         <span className="text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-extrabold shrink-0">Discussing</span>
-                        <span className="text-gray-700 dark:text-gray-200 truncate">{referencingItem?.data?.title || 'Listing Removed from Marketplace'}</span>
+                        <span className="text-gray-700 dark:text-gray-200 truncate">{referencingItem?.data?.title || (itemLoading ? 'Loading Context...' : 'Listing Removed from Marketplace')}</span>
                     </div>
                     {referencingItem?.data && (
                         <div className="px-4 py-1.5 shrink-0 flex items-center gap-3 bg-white/50 dark:bg-gray-900/20">

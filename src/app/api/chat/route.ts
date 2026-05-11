@@ -51,6 +51,13 @@ export async function GET(req: NextRequest) {
             readFilter.service = { $exists: false };
         }
         await Message.updateMany(readFilter, { isRead: true });
+        
+        // Also clear the notification bell for this chat
+        await Notification.deleteMany({
+            recipient: decoded.userId,
+            sender: recipientId,
+            type: 'CHAT_MESSAGE'
+        });
 
         // Build Query
         const query: any = {
@@ -190,41 +197,19 @@ export async function POST(req: NextRequest) {
 
         // Trigger Notifications
         try {
-            const { createNotification } = await import('@/lib/notifications');
-            const senderName = (sender as any).name || 'Someone';
-            
-            let notificationTitle = `New message from ${senderName}`;
-            let notificationBody = content;
-
-            if (offer) {
-                let itemName = 'listing';
-                if (productId) {
-                    const item = await Product.findById(productId).select('title');
-                    if (item) itemName = item.title;
-                } else if (serviceId) {
-                    const item = await Service.findById(serviceId).select('title');
-                    if (item) itemName = item.title;
-                }
+            if (!offer) {
+                const { createNotification } = await import('@/lib/notifications');
+                const senderName = (sender as any).name || 'Someone';
                 
-                const isRental = offer.offerType === 'Rent';
-                if (isRental) {
-                    notificationTitle = `Rental Offer: ₹${offer.price}/${offer.rentUnit} from ${senderName}`;
-                    notificationBody = `Wants to rent "${itemName}" for ${offer.rentDuration} ${offer.rentUnit}(s)`;
-                } else {
-                    notificationTitle = `${productId ? 'Buy Offer' : 'Service Offer'}: ₹${offer.price} from ${senderName}`;
-                    const isPlaceholder = content === 'Sent an Offer' || content?.startsWith('Sent an');
-                    notificationBody = `On "${itemName}"${content && !isPlaceholder ? `: ${content}` : ''}`;
-                }
+                await createNotification({
+                    recipient: recipientId,
+                    sender: decoded.userId,
+                    type: 'CHAT_MESSAGE',
+                    message: content,
+                    link: `/chat/${decoded.userId}${productId ? `?productId=${productId}` : (serviceId ? `?serviceId=${serviceId}` : '')}`,
+                    metadata: { senderName, offer: false, itemId: productId || serviceId, itemType: productId ? 'product' : 'service' }
+                });
             }
-
-            await createNotification({
-                recipient: recipientId,
-                sender: decoded.userId,
-                type: 'CHAT_MESSAGE',
-                message: notificationBody,
-                link: `/chat/${decoded.userId}${productId ? `?productId=${productId}` : (serviceId ? `?serviceId=${serviceId}` : '')}`,
-                metadata: { senderName, offer: !!offer, itemId: productId || serviceId, itemType: productId ? 'product' : 'service' }
-            });
         } catch (notifErr) {
             console.error('Notification error:', notifErr);
         }
