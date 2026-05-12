@@ -24,6 +24,7 @@ interface Post {
         profilePicture?: string;
     };
     upvotes: string[];
+    downvotes?: string[];
     replies: {
         _id: string;
         author: {
@@ -173,9 +174,15 @@ function BoardPageContent() {
                 setInitialLoading(false);
             } else {
                 setAllPosts(prev => {
+                    const dataPostsMap = new Map(data.posts.map((p: any) => [p._id, p]));
+                    // Update existing posts with their freshest versions from data.posts
+                    const updatedPrev = prev.map(p => dataPostsMap.get(p._id) || p);
+                    
+                    // Add any genuinely new posts that aren't in prev
                     const existingIds = new Set(prev.map(p => p._id));
                     const newUnique = data.posts.filter((p: any) => !existingIds.has(p._id));
-                    return [...prev, ...newUnique];
+                    
+                    return [...updatedPrev, ...newUnique];
                 });
             }
             setHasMore(!(data.posts.length < 20 || (data.pagination && page >= data.pagination.totalPages)));
@@ -219,9 +226,24 @@ function BoardPageContent() {
 
     const toggleUpvote = async (postId: string) => {
         if (!user || !selectedCommunityId) return;
-        const userId = user.id || (user as any)._id;
+        const userId = String(user.id || (user as any)._id);
 
-        // Use SWR's native mutate for robust optimistic UI
+        // Immediate local UI update for instantaneous responsiveness
+        setAllPosts(prev => prev.map(p => {
+            if (p._id === postId) {
+                const upvotes = p.upvotes || [];
+                const downvotes = p.downvotes || [];
+                const hasUpvoted = upvotes.includes(userId);
+                return {
+                    ...p,
+                    upvotes: hasUpvoted ? upvotes.filter((id: string) => id !== userId) : [...upvotes, userId],
+                    downvotes: downvotes.filter((id: string) => id !== userId)
+                };
+            }
+            return p;
+        }));
+
+        // Use SWR's native mutate for robust server synchronization
         await mutate(
             async () => {
                 const res = await authFetch('/api/board', {
@@ -239,12 +261,16 @@ function BoardPageContent() {
                         ...currentData,
                         posts: currentData.posts.map((post: Post) => {
                             if (post._id === postId) {
-                                const hasUpvoted = post.upvotes.includes(userId);
+                                const upvotes = post.upvotes || [];
+                                const downvotes = post.downvotes || [];
+                                const hasUpvoted = upvotes.includes(userId);
+                                
                                 return {
                                     ...post,
                                     upvotes: hasUpvoted 
-                                        ? post.upvotes.filter((id: string) => id !== userId) 
-                                        : [...post.upvotes, userId]
+                                        ? upvotes.filter((id: string) => id !== userId) 
+                                        : [...upvotes, userId],
+                                    downvotes: downvotes.filter((id: string) => id !== userId)
                                 };
                             }
                             return post;
@@ -254,8 +280,75 @@ function BoardPageContent() {
                 rollbackOnError: true,
                 revalidate: true,
                 populateCache: (result, currentData) => {
-                    // Update the specific post in the cache with the server result
                     if (!currentData?.posts || !result?.post) return currentData;
+                    // Keep allPosts perfectly in sync with populated post result
+                    setAllPosts(prev => prev.map(p => p._id === postId ? result.post : p));
+                    return {
+                        ...currentData,
+                        posts: currentData.posts.map((p: Post) => p._id === postId ? result.post : p)
+                    };
+                }
+            }
+        );
+    };
+
+    const toggleDownvote = async (postId: string) => {
+        if (!user || !selectedCommunityId) return;
+        const userId = String(user.id || (user as any)._id);
+
+        // Immediate local UI update for instantaneous responsiveness
+        setAllPosts(prev => prev.map(p => {
+            if (p._id === postId) {
+                const upvotes = p.upvotes || [];
+                const downvotes = p.downvotes || [];
+                const hasDownvoted = downvotes.includes(userId);
+                return {
+                    ...p,
+                    downvotes: hasDownvoted ? downvotes.filter((id: string) => id !== userId) : [...downvotes, userId],
+                    upvotes: upvotes.filter((id: string) => id !== userId)
+                };
+            }
+            return p;
+        }));
+
+        await mutate(
+            async () => {
+                const res = await authFetch('/api/board', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ postId, action: 'downvote' })
+                });
+                if (!res.ok) throw new Error('Failed to downvote');
+                return await res.json();
+            },
+            {
+                optimisticData: (currentData: any) => {
+                    if (!currentData?.posts) return currentData;
+                    return {
+                        ...currentData,
+                        posts: currentData.posts.map((post: Post) => {
+                            if (post._id === postId) {
+                                const upvotes = post.upvotes || [];
+                                const downvotes = post.downvotes || [];
+                                const hasDownvoted = downvotes.includes(userId);
+                                
+                                return {
+                                    ...post,
+                                    downvotes: hasDownvoted 
+                                        ? downvotes.filter((id: string) => id !== userId) 
+                                        : [...downvotes, userId],
+                                    upvotes: upvotes.filter((id: string) => id !== userId)
+                                };
+                            }
+                            return post;
+                        })
+                    };
+                },
+                rollbackOnError: true,
+                revalidate: true,
+                populateCache: (result, currentData) => {
+                    if (!currentData?.posts || !result?.post) return currentData;
+                    setAllPosts(prev => prev.map(p => p._id === postId ? result.post : p));
                     return {
                         ...currentData,
                         posts: currentData.posts.map((p: Post) => p._id === postId ? result.post : p)
@@ -274,6 +367,29 @@ function BoardPageContent() {
         setReplyContent('');
         setReplyingTo(null);
 
+        const tempReply = {
+            _id: `temp-${Date.now()}`,
+            content: contentToSend,
+            author: {
+                _id: userId,
+                name: user.name || 'You',
+                username: user.username || '',
+                profilePicture: user.profilePicture
+            },
+            createdAt: new Date().toISOString()
+        };
+
+        // Immediate local UI update for instantaneous responsiveness
+        setAllPosts(prev => prev.map(p => {
+            if (p._id === postId) {
+                return {
+                    ...p,
+                    replies: [...(p.replies || []), tempReply]
+                };
+            }
+            return p;
+        }));
+
         await mutate(
             async () => {
                 const res = await authFetch('/api/board', {
@@ -287,17 +403,6 @@ function BoardPageContent() {
             {
                 optimisticData: (currentData: any) => {
                     if (!currentData?.posts) return currentData;
-                    const tempReply = {
-                        _id: `temp-${Date.now()}`,
-                        content: contentToSend,
-                        author: {
-                            _id: userId,
-                            name: user.name || 'You',
-                            username: user.username || '',
-                            profilePicture: user.profilePicture
-                        },
-                        createdAt: new Date().toISOString()
-                    };
                     return {
                         ...currentData,
                         posts: currentData.posts.map((post: Post) => {
@@ -315,6 +420,7 @@ function BoardPageContent() {
                 revalidate: true,
                 populateCache: (result, currentData) => {
                     if (!currentData?.posts || !result?.post) return currentData;
+                    setAllPosts(prev => prev.map(p => p._id === postId ? result.post : p));
                     return {
                         ...currentData,
                         posts: currentData.posts.map((p: Post) => p._id === postId ? result.post : p)
@@ -326,28 +432,50 @@ function BoardPageContent() {
 
     const handleDeletePost = async (postId: string) => {
         if (!window.confirm('Delete this post?')) return;
+        
+        // Optimistic UI: remove immediately
+        setAllPosts(prev => prev.filter(p => p._id !== postId));
+        
         try {
             const res = await authFetch(`/api/board?postId=${postId}`, { method: 'DELETE' });
             if (res.ok) {
                 mutate();
-                setAllPosts(prev => prev.filter(p => p._id !== postId));
             } else {
                 const data = await res.json();
                 alert(data.error);
+                mutate(); // rollback
             }
         } catch (err) {
             console.error('Delete error');
+            mutate(); // rollback
         }
     };
 
     const handleDeleteReply = async (postId: string, replyId: string) => {
         if (!window.confirm('Delete this reply?')) return;
+        
+        // Optimistic UI: remove reply immediately
+        setAllPosts(prev => prev.map(p => {
+            if (p._id === postId) {
+                return {
+                    ...p,
+                    replies: p.replies.filter(r => r._id !== replyId)
+                };
+            }
+            return p;
+        }));
+
         try {
             const res = await authFetch(`/api/board?postId=${postId}&replyId=${replyId}`, { method: 'DELETE' });
-            if (res.ok) mutate();
-            else alert('Failed to delete.');
+            if (res.ok) {
+                mutate();
+            } else {
+                alert('Failed to delete.');
+                mutate(); // rollback
+            }
         } catch (err) {
             console.error('Delete error');
+            mutate(); // rollback
         }
     };
 
@@ -675,6 +803,7 @@ function BoardPageContent() {
                                             post={post} 
                                             user={user} 
                                             toggleUpvote={toggleUpvote}
+                                            toggleDownvote={toggleDownvote}
                                             handleReply={handleReply}
                                             replyingTo={replyingTo}
                                             setReplyingTo={setReplyingTo}

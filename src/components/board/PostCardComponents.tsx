@@ -35,20 +35,36 @@ export function PostCardHeader({ post, user, canDeletePost, onDeletePost, cat }:
   );
 }
 
-export function PostCardActions({ post, isUpvoted, toggleUpvote, repliesVisible, setRepliesVisible, setReplyingTo }: any) {
+export function PostCardActions({ post, isUpvoted, isDownvoted, toggleUpvote, toggleDownvote, repliesVisible, setRepliesVisible, setReplyingTo }: any) {
   return (
-    <div className="flex items-center gap-6 mt-4 pt-3 border-t border-gray-50 dark:border-gray-700/50">
-        <button
-            onClick={() => toggleUpvote(post._id)}
-            className={`flex items-center gap-2 group transition-all text-xs font-bold ${isUpvoted ? 'text-indigo-600 dark:text-indigo-400 scale-105' : 'text-gray-400 dark:text-gray-500 hover:text-indigo-600'}`}
-        >
-            <div className={`p-1.5 rounded-full transition-colors ${isUpvoted ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/10'}`}>
-                <svg className="w-4 h-4" fill={isUpvoted ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
-                </svg>
-            </div>
-            <span>{post.upvotes?.length || 0}</span>
-        </button>
+    <div className="flex items-center gap-4 sm:gap-6 mt-4 pt-3 border-t border-gray-50 dark:border-gray-700/50">
+        <div className="flex items-center gap-1 sm:gap-2">
+            <button
+                onClick={() => toggleUpvote(post._id)}
+                className={`flex items-center gap-1.5 group transition-all text-xs font-bold ${isUpvoted ? 'text-indigo-600 dark:text-indigo-400 scale-105' : 'text-gray-400 dark:text-gray-500 hover:text-indigo-600'}`}
+                title="Upvote"
+            >
+                <div className={`p-1.5 rounded-full transition-colors ${isUpvoted ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/10'}`}>
+                    <svg className="w-4 h-4" fill={isUpvoted ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
+                    </svg>
+                </div>
+                <span>{post.upvotes?.length || 0}</span>
+            </button>
+
+            <button
+                onClick={() => toggleDownvote(post._id)}
+                className={`flex items-center gap-1.5 group transition-all text-xs font-bold ${isDownvoted ? 'text-rose-600 dark:text-rose-400 scale-105' : 'text-gray-400 dark:text-gray-500 hover:text-rose-600'}`}
+                title="Downvote"
+            >
+                <div className={`p-1.5 rounded-full transition-colors ${isDownvoted ? 'bg-rose-50 dark:bg-rose-900/30' : 'group-hover:bg-rose-50 dark:group-hover:bg-rose-900/10'}`}>
+                    <svg className="w-4 h-4" fill={isDownvoted ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+                <span>{post.downvotes?.length || 0}</span>
+            </button>
+        </div>
 
         <button
             onClick={() => {

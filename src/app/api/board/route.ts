@@ -204,14 +204,15 @@ export async function PATCH(req: NextRequest) {
 
         // --- ANTI-BOARD INTERACTION SPAM SHIELD ---
         const { checkRateLimit } = await import('@/lib/rate-limit');
-        const actionKey = action === 'upvote' ? 'board-upvote' : 'board-reply';
-        const limitPerMinute = action === 'upvote' ? 20 : 10;
+        const isVoteAction = action === 'upvote' || action === 'downvote';
+        const actionKey = isVoteAction ? 'board-upvote' : 'board-reply';
+        const limitPerMinute = isVoteAction ? 20 : 10;
         
         const rl = await checkRateLimit(decoded.userId, actionKey, limitPerMinute, 60 * 1000);
         if (!rl.success) {
             return NextResponse.json(
                 { 
-                    error: `You are ${action === 'upvote' ? 'voting' : 'replying'} too quickly. Please wait a minute.`,
+                    error: `You are ${isVoteAction ? 'voting' : 'replying'} too quickly. Please wait a minute.`,
                     retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 60
                 },
                 { status: 429 }
@@ -240,17 +241,57 @@ export async function PATCH(req: NextRequest) {
         }
 
         if (action === 'upvote') {
-            const upvoteIndex = post.upvotes.indexOf(userId);
-            if (upvoteIndex > -1) {
-                post.upvotes.splice(upvoteIndex, 1);
+            if (!post.upvotes) post.upvotes = [];
+            if (!post.downvotes) post.downvotes = [];
+
+            // Remove from downvotes if present (mutual exclusion)
+            const downIndex = post.downvotes.findIndex((id: any) => id.toString() === decoded.userId);
+            if (downIndex > -1) {
+                post.downvotes.splice(downIndex, 1);
+            }
+
+            // Toggle upvote
+            const upIndex = post.upvotes.findIndex((id: any) => id.toString() === decoded.userId);
+            if (upIndex > -1) {
+                post.upvotes.splice(upIndex, 1);
             } else {
                 post.upvotes.push(userId);
             }
+
             await post.save();
-            return NextResponse.json({ 
-                upvotes: post.upvotes.length,
-                isUpvoted: post.upvotes.includes(userId)
-            }, { status: 200 });
+
+            const updatedPost = await BoardPost.findById(postId)
+                .populate('author', 'name profilePicture username')
+                .populate('replies.author', 'name profilePicture username');
+
+            return NextResponse.json({ success: true, post: updatedPost }, { status: 200 });
+        } 
+        
+        else if (action === 'downvote') {
+            if (!post.upvotes) post.upvotes = [];
+            if (!post.downvotes) post.downvotes = [];
+
+            // Remove from upvotes if present (mutual exclusion)
+            const upIndex = post.upvotes.findIndex((id: any) => id.toString() === decoded.userId);
+            if (upIndex > -1) {
+                post.upvotes.splice(upIndex, 1);
+            }
+
+            // Toggle downvote
+            const downIndex = post.downvotes.findIndex((id: any) => id.toString() === decoded.userId);
+            if (downIndex > -1) {
+                post.downvotes.splice(downIndex, 1);
+            } else {
+                post.downvotes.push(userId);
+            }
+
+            await post.save();
+
+            const updatedPost = await BoardPost.findById(postId)
+                .populate('author', 'name profilePicture username')
+                .populate('replies.author', 'name profilePicture username');
+
+            return NextResponse.json({ success: true, post: updatedPost }, { status: 200 });
         } 
         
         else if (action === 'reply') {

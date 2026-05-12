@@ -6,6 +6,7 @@ export interface IBoardPost extends Document {
     content: string;
     category: 'General' | 'LostFound' | 'Essentials' | 'Events' | 'Alerts';
     upvotes: mongoose.Types.ObjectId[];
+    downvotes: mongoose.Types.ObjectId[];
     replies: {
         author: mongoose.Types.ObjectId;
         content: string;
@@ -27,6 +28,7 @@ const BoardPostSchema: Schema<IBoardPost> = new Schema(
             default: 'General'
         },
         upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        downvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     replies: {
         type: [{
             author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

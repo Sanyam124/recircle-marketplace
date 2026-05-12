@@ -18,6 +18,7 @@ interface Post {
         profilePicture?: string;
     };
     upvotes: string[];
+    downvotes?: string[];
     replies: any[];
     createdAt: string;
 }
@@ -26,6 +27,7 @@ interface PostCardProps {
     post: Post;
     user: any;
     toggleUpvote: (id: string) => void;
+    toggleDownvote: (id: string) => void;
     handleReply: (id: string) => void;
     replyingTo: string | null;
     setReplyingTo: (id: string | null) => void;
@@ -38,7 +40,7 @@ interface PostCardProps {
 }
 
 export default function PostCard({
-    post, user, toggleUpvote, handleReply, replyingTo, setReplyingTo,
+    post, user, toggleUpvote, toggleDownvote, handleReply, replyingTo, setReplyingTo,
     replyContent, setReplyContent, replySubmitting, maxReplyChars,
     onDeletePost, onDeleteReply
 }: PostCardProps) {
@@ -60,7 +62,9 @@ export default function PostCard({
     };
 
     const cat = categories[post.category || 'General'];
-    const isUpvoted = post.upvotes?.includes(user?._id || user?.id);
+    const currentUserIdStr = String(user?._id || user?.id);
+    const isUpvoted = post.upvotes?.includes(currentUserIdStr);
+    const isDownvoted = post.downvotes?.includes(currentUserIdStr);
 
     const scrollPostToTop = () => {
         setTimeout(() => {
@@ -92,7 +96,7 @@ export default function PostCard({
                 <div className="flex-1 min-w-0">
                     <PostCardHeader post={post} user={user} canDeletePost={canDeletePost} onDeletePost={onDeletePost} cat={cat} />
                     <ExpandableText text={post.content} maxLines={5} showReadMore={true} onCollapse={scrollPostToTop} className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed" />
-                    <PostCardActions post={post} isUpvoted={isUpvoted} toggleUpvote={toggleUpvote} repliesVisible={repliesVisible} setRepliesVisible={setRepliesVisible} setReplyingTo={setReplyingTo} />
+                    <PostCardActions post={post} isUpvoted={isUpvoted} isDownvoted={isDownvoted} toggleUpvote={toggleUpvote} toggleDownvote={toggleDownvote} repliesVisible={repliesVisible} setRepliesVisible={setRepliesVisible} setReplyingTo={setReplyingTo} />
                     
                     {repliesVisible && (
                         <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-300">
