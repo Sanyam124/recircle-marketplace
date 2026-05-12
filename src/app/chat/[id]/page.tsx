@@ -32,6 +32,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const [loading, setLoading] = useState(true);
     const [userLoading, setUserLoading] = useState(true);
     const [itemLoading, setItemLoading] = useState(!!(searchParams.get('productId') || searchParams.get('serviceId')));
+    // Tracks whether the initial fetchHistory has resolved context (lastContext)
+    const [contextResolved, setContextResolved] = useState(false);
     const [referencingItem, setReferencingItemState] = useState<{ type: 'product' | 'service', id: string, data?: any, messageId?: string } | null>(null);
     
     // Use refs to avoid stale closures in polling interval
@@ -241,6 +243,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         setHasMore(false);
         setInitialLoad(true);
         setLoading(true);
+        setContextResolved(false);
         setActionPrice('');
         setActionMessage('');
         setActionError('');
@@ -257,14 +260,17 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         if (productId) {
             setReferencingItem({ type: 'product', id: productId });
             setItemLoading(true);
+            setContextResolved(true); // URL has explicit context, no need to wait
             fetchItemData('product', productId);
         } else if (serviceId) {
             setReferencingItem({ type: 'service', id: serviceId });
             setItemLoading(true);
+            setContextResolved(true); // URL has explicit context, no need to wait
             fetchItemData('service', serviceId);
         } else {
             setReferencingItem(null);
             setItemLoading(false);
+            // contextResolved stays false — will be set true once fetchHistory resolves lastContext
         }
 
         fetchHistory(null);
@@ -280,14 +286,32 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             
             channel.bind('new-message', (newMsg: any) => {
                 if (newMsg.sender === userId || newMsg.recipient === userId) {
+                    const currentUserId = user.id || (user as any)._id;
                     setMessages((prev) => {
-                        // UPDATE: Check for existing message ID to support status updates (Accepted/Declined)
+                        // Check for existing message by real ID (status updates like Accepted/Declined)
                         const existingIndex = prev.findIndex(m => m._id === newMsg._id);
                         if (existingIndex !== -1) {
                             const updated = [...prev];
                             updated[existingIndex] = newMsg;
                             return updated;
                         }
+                        
+                        // If the message was sent by us, replace the optimistic temp-* message
+                        if (newMsg.sender === currentUserId || newMsg.sender?.toString() === currentUserId) {
+                            const tempIndex = prev.findIndex(m => 
+                                typeof m._id === 'string' && m._id.startsWith('temp-') &&
+                                m.content === newMsg.content
+                            );
+                            if (tempIndex !== -1) {
+                                const updated = [...prev];
+                                updated[tempIndex] = newMsg;
+                                return updated;
+                            }
+                        }
+                        
+                        // Only add if truly new (prevent duplicates from polling + Pusher race)
+                        const isDuplicate = prev.some(m => m._id === newMsg._id);
+                        if (isDuplicate) return prev;
                         
                         return [...prev, newMsg].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
                     });
@@ -468,8 +492,19 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                     setOtherUserLastSeen(new Date(data.otherUser.lastSeen));
                 }
                 
-                if (!searchParams.get('productId') && !searchParams.get('serviceId') && data.lastContext) {
-                    setReferencingItem(data.lastContext);
+                if (!searchParams.get('productId') && !searchParams.get('serviceId')) {
+                    if (data.lastContext) {
+                        setReferencingItem(data.lastContext);
+                        // Also fetch full item data for status bars / price display
+                        if (data.lastContext.type && (data.lastContext.data?._id || data.lastContext.id)) {
+                            const ctxId = data.lastContext.data?._id || data.lastContext.id;
+                            setItemLoading(true);
+                            fetchItemData(data.lastContext.type, ctxId).finally(() => setContextResolved(true));
+                            return; // Don't set contextResolved here, let fetchItemData do it
+                        }
+                    }
+                    // No context found or context has no valid ID — mark resolved
+                    setContextResolved(true);
                 }
             }
         } catch (error) {
@@ -603,8 +638,12 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             });
 
             if (res.ok) {
-                // Refetch quietly to ensure we have the real ID and any server-side state
-                await fetchHistory(null, true); 
+                const data = await res.json();
+                // Replace the optimistic message with the real server message immediately
+                // This prevents duplicates: Pusher will see the real _id already exists and skip it
+                if (data.message?._id) {
+                    setMessages(prev => prev.map(m => m._id === tempId ? data.message : m));
+                }
                 setTimeout(() => scrollToBottom('smooth'), 100); 
             } else {
                 setMessages(prev => prev.filter(m => m._id !== tempId));
@@ -823,7 +862,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         "I'm interested!"
     ];
 
-    if (authLoading || loading || userLoading || itemLoading) return <MessageBubbleSkeleton />;
+    if (authLoading || loading || userLoading || itemLoading || !contextResolved) return <MessageBubbleSkeleton />;
 
     return (
         <>
@@ -951,7 +990,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 <div className="flex text-[11px] font-bold text-gray-500 dark:text-gray-400 divide-x divide-gray-200 dark:divide-gray-800">
                     <div className="flex-1 px-4 py-1.5 truncate flex items-center gap-2">
                         <span className="text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-extrabold shrink-0">Discussing</span>
-                        <span className="text-gray-700 dark:text-gray-200 truncate">{referencingItem?.data?.title || (itemLoading ? 'Loading Context...' : 'Listing Removed from Marketplace')}</span>
+                        <span className="text-gray-700 dark:text-gray-200 truncate">{referencingItem?.data?.title || (itemLoading || !contextResolved ? 'Loading Context...' : 'Listing Removed from Marketplace')}</span>
                     </div>
                     {referencingItem?.data && (
                         <div className="px-4 py-1.5 shrink-0 flex items-center gap-3 bg-white/50 dark:bg-gray-900/20">
