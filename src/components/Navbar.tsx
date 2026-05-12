@@ -30,11 +30,12 @@ export default function Navbar() {
     setIsCreateMenuOpen(false);
   }, [pathname]);
 
+  const currentUserId = user?.id || (user as any)?._id;
+
   useEffect(() => {
-    if (user) {
+    if (currentUserId) {
       // Pusher real-time subscription for immediate UI updates
-      const userId = user.id || (user as any)._id;
-      const channelName = `private-user-${userId}`;
+      const channelName = `private-user-${currentUserId}`;
       const channel = pusherClient.subscribe(channelName);
       
       channel.bind('new-message', () => {
@@ -47,7 +48,7 @@ export default function Navbar() {
         pusherClient.unsubscribe(channelName);
       };
     }
-  }, [user]);
+  }, [currentUserId]);
 
   return (
     <>

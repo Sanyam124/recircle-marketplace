@@ -140,6 +140,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                         link: '/orders'
                     });
 
+                    const service = await Service.findById(updatedOrder.service);
+                    const msgContent = `📅 Appointment confirmed for "${service?.title || 'Service'}"! Secret code is ${verificationCode}.`;
+                    const systemMsg = await Message.create({
+                        sender: decoded.userId,
+                        recipient: updatedOrder.buyer,
+                        content: msgContent,
+                        service: updatedOrder.service
+                    });
+                    try {
+                        const { pusherServer } = await import('@/lib/pusherServer');
+                        const recipients = new Set([updatedOrder.buyer.toString(), decoded.userId]);
+                        for (const rId of recipients) {
+                            await pusherServer.trigger(`private-user-${rId}`, 'new-message', systemMsg);
+                        }
+                    } catch (pusherErr) {
+                        console.error('Pusher sync error in accept appointment:', pusherErr);
+                    }
+
                     return NextResponse.json({ success: true, order: updatedOrder }, { status: 200 });
                 } else if (action === 'reject' || action === 'cancel') {
                     const updatedOrder = await Order.findOneAndUpdate(
@@ -214,6 +232,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                         message: `Buyer has confirmed completion of service.`,
                         link: '/orders'
                     });
+
+                    const service = await Service.findById(updatedOrder.service);
+                    const msgContent = `🤝 SERVICE COMPLETED! Buyer has confirmed successful service execution for "${service?.title || 'Service'}". Thanks!`;
+                    const systemMsg = await Message.create({
+                        sender: decoded.userId,
+                        recipient: updatedOrder.seller,
+                        content: msgContent,
+                        service: updatedOrder.service
+                    });
+                    try {
+                        const { pusherServer } = await import('@/lib/pusherServer');
+                        const recipients = new Set([updatedOrder.seller.toString(), decoded.userId]);
+                        for (const rId of recipients) {
+                            await pusherServer.trigger(`private-user-${rId}`, 'new-message', systemMsg);
+                        }
+                    } catch (pusherErr) {
+                        console.error('Pusher sync error in complete appointment:', pusherErr);
+                    }
+
                     return NextResponse.json({ success: true, message: 'Appointment Completed', order: updatedOrder }, { status: 200 });
                 } else if (action === 'cancel') {
                     const updatedOrder = await Order.findOneAndUpdate(
@@ -312,13 +349,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                         return NextResponse.json({ error: 'Order status changed or already confirmed' }, { status: 409 });
                     }
 
-                    await Product.findByIdAndUpdate(updatedOrder.product, { status: 'Sold' });
+                    const product = await Product.findByIdAndUpdate(updatedOrder.product, { status: 'Sold' });
                     await createNotification({
                         recipient: updatedOrder.buyer.toString(),
                         type: 'ORDER_UPDATE',
                         message: `Handoff confirmed! Your product purchase is now marked Completed.`,
                         link: '/orders'
                     });
+
+                    const msgContent = `🤝 HANDOFF SUCCESSFUL! Delivery confirmed using secret code. "${product?.title || 'Product'}" is now marked as Sold/Completed. Thanks!`;
+                    const systemMsg = await Message.create({
+                        sender: decoded.userId,
+                        recipient: updatedOrder.buyer,
+                        content: msgContent,
+                        product: updatedOrder.product
+                    });
+                    try {
+                        const { pusherServer } = await import('@/lib/pusherServer');
+                        const recipients = new Set([updatedOrder.buyer.toString(), decoded.userId]);
+                        for (const rId of recipients) {
+                            await pusherServer.trigger(`private-user-${rId}`, 'new-message', systemMsg);
+                        }
+                    } catch (pusherErr) {
+                        console.error('Pusher sync error in complete delivery:', pusherErr);
+                    }
+
                     return NextResponse.json({ success: true, message: 'Delivery Confirmed', order: updatedOrder }, { status: 200 });
                 } else if (action === 'cancel') {
                     const updatedOrder = await Order.findOneAndUpdate(

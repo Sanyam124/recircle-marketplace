@@ -236,6 +236,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
     const productId = searchParams.get('productId');
     const serviceId = searchParams.get('serviceId');
+    const currentUserId = user?.id || (user as any)?._id;
 
     useEffect(() => {
         // Reset state on conversation switch
@@ -279,14 +280,12 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
         // WebSockets Real-time Updates
         let channelName = '';
-        if (user) {
-            const currentUserId = user.id || (user as any)._id;
+        if (currentUserId) {
             channelName = `private-user-${currentUserId}`;
             const channel = pusherClient.subscribe(channelName);
             
             channel.bind('new-message', (newMsg: any) => {
                 if (newMsg.sender === userId || newMsg.recipient === userId) {
-                    const currentUserId = user.id || (user as any)._id;
                     setMessages((prev) => {
                         // Check for existing message by real ID (status updates like Accepted/Declined)
                         const existingIndex = prev.findIndex(m => m._id === newMsg._id);
@@ -336,7 +335,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             clearInterval(heartbeatInterval); 
             if (channelName) pusherClient.unsubscribe(channelName);
         };
-    }, [userId, productId, serviceId, user]);
+    }, [userId, productId, serviceId, currentUserId]);
 
     // Handle mobile keyboard layout issues
     useEffect(() => {

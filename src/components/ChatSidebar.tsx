@@ -49,11 +49,10 @@ export default function ChatSidebar() {
         }
     }, [initialData, page]);
 
+    const currentUserId = user?.id || (user as any)?._id;
+
     useEffect(() => {
-        if (!user) return;
-        
         let channelName = '';
-        const currentUserId = user.id || (user as any)._id;
         if (currentUserId) {
             channelName = `private-user-${currentUserId}`;
             const channel = pusherClient.subscribe(channelName);
@@ -72,7 +71,7 @@ export default function ChatSidebar() {
             if (channelName) pusherClient.unsubscribe(channelName);
             window.removeEventListener('click', handleClickOutside);
         };
-    }, [user, mutateConversations]);
+    }, [currentUserId, mutateConversations]);
 
     const fetchConversations = async (pageNum: number, append: boolean = false) => {
         try {
