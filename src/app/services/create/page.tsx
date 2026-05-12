@@ -206,7 +206,7 @@ export default function CreateServicePage() {
               <div className="grid grid-cols-1 gap-y-8 gap-x-6 sm:grid-cols-6">
             <div className="sm:col-span-4">
               <div className="flex items-center justify-between mb-2">
-                <label htmlFor="title" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Service Title <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
+                <label htmlFor="title" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Service Title <span className="text-red-500 font-black">*</span></label>
                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.title.length >= 70 ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
                   {formData.title.length}/80
                 </span>
@@ -225,7 +225,7 @@ export default function CreateServicePage() {
             </div>
 
             <div className="sm:col-span-2">
-              <label htmlFor="price" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Pricing <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
+              <label htmlFor="price" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Pricing <span className="text-red-500 font-black">*</span></label>
               <div className="flex gap-2">
                   <div className="relative flex-1 group">
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</div>
@@ -260,7 +260,7 @@ export default function CreateServicePage() {
 
             <div className="sm:col-span-6">
               <div className="flex items-center justify-between mb-2">
-                <label htmlFor="description" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Service Details <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
+                <label htmlFor="description" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Service Details <span className="text-red-500 font-black">*</span></label>
                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.description.length >= 1900 ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
                   {formData.description.length}/2000
                 </span>
@@ -279,7 +279,7 @@ export default function CreateServicePage() {
             </div>
 
             <div className="sm:col-span-3">
-              <label htmlFor="category" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Category <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
+              <label htmlFor="category" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Category <span className="text-red-500 font-black">*</span></label>
               <select
                 id="category"
                 name="category"
@@ -294,7 +294,7 @@ export default function CreateServicePage() {
             </div>
 
             <div className="sm:col-span-3">
-              <label htmlFor="availability" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Availability <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
+              <label htmlFor="availability" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Availability <span className="text-red-500 font-black">*</span></label>
               <select
                 id="availability"
                 name="availability"
@@ -383,7 +383,7 @@ export default function CreateServicePage() {
             <div className="sm:col-span-6">
                 <div className="flex items-center gap-2 mb-4">
                    <div className="h-0.5 flex-1 bg-gray-100 dark:bg-white/5"></div>
-                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Service Location <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></span>
+                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Service Location <span className="text-red-500 font-black">*</span></span>
                    <div className="h-0.5 flex-1 bg-gray-100 dark:bg-white/5"></div>
                 </div>
                 <SmartLocationPicker 

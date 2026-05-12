@@ -207,7 +207,7 @@ export default function CreateProductPage() {
                 {/* Title Section */}
                 <div className="sm:col-span-4">
                   <div className="flex items-center justify-between mb-2">
-                    <label htmlFor="title" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Item Title <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
+                    <label htmlFor="title" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Item Title <span className="text-red-500 font-black">*</span></label>
                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.title.length >= 70 ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
                       {formData.title.length}/80
                     </span>
@@ -257,7 +257,7 @@ export default function CreateProductPage() {
             <div className="sm:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                {formData.forSell && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label htmlFor="price" className="block text-sm font-bold text-indigo-700 dark:text-indigo-400 mb-2 uppercase tracking-widest">Selling Price (₹) <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
+                    <label htmlFor="price" className="block text-sm font-bold text-indigo-700 dark:text-indigo-400 mb-2 uppercase tracking-widest">Selling Price (₹) <span className="text-red-500 font-black">*</span></label>
                     <div className="relative group">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</div>
                       <input
@@ -280,7 +280,7 @@ export default function CreateProductPage() {
 
                {formData.forRent && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label htmlFor="rentPrice" className="block text-sm font-bold text-emerald-700 dark:text-emerald-400 mb-2 uppercase tracking-widest">Rent Price (₹) <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
+                    <label htmlFor="rentPrice" className="block text-sm font-bold text-emerald-700 dark:text-emerald-400 mb-2 uppercase tracking-widest">Rent Price (₹) <span className="text-red-500 font-black">*</span></label>
                     <div className="flex gap-2">
                        <div className="relative flex-1 group">
                           <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</div>
@@ -316,7 +316,7 @@ export default function CreateProductPage() {
 
             <div className="sm:col-span-6">
               <div className="flex items-center justify-between mb-2">
-                <label htmlFor="description" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Detailed Description <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
+                <label htmlFor="description" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Detailed Description <span className="text-red-500 font-black">*</span></label>
                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.description.length >= 1900 ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
                   {formData.description.length}/2000
                 </span>
@@ -335,7 +335,7 @@ export default function CreateProductPage() {
             </div>
 
             <div className="sm:col-span-3">
-              <label htmlFor="category" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Category <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
+              <label htmlFor="category" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Category <span className="text-red-500 font-black">*</span></label>
               <select
                 id="category"
                 name="category"
@@ -349,7 +349,7 @@ export default function CreateProductPage() {
               </select>
             </div>
             <div className="sm:col-span-3">
-              <label htmlFor="condition" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Condition <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></label>
+              <label htmlFor="condition" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Condition <span className="text-red-500 font-black">*</span></label>
               <select
                 id="condition"
                 name="condition"
@@ -438,7 +438,7 @@ export default function CreateProductPage() {
             <div className="sm:col-span-6">
                 <div className="flex items-center gap-2 mb-4">
                    <div className="h-0.5 flex-1 bg-gray-100 dark:bg-white/5"></div>
-                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Convenience Center <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span></span>
+                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Convenience Center <span className="text-red-500 font-black">*</span></span>
                    <div className="h-0.5 flex-1 bg-gray-100 dark:bg-white/5"></div>
                 </div>
                 <SmartLocationPicker 
@@ -452,7 +452,7 @@ export default function CreateProductPage() {
             
 
             <div className="sm:col-span-6">
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-4">Visual Gallery <span className="text-indigo-600 dark:text-indigo-400 font-black">*</span> <span className="text-gray-400 font-medium ml-1">(MAX {siteConfig?.maxProductImages || 5})</span></label>
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-4">Visual Gallery <span className="text-red-500 font-black">*</span> <span className="text-gray-400 font-medium ml-1">(MAX {siteConfig?.maxProductImages || 5})</span></label>
               
                <div className="bg-amber-50 dark:bg-amber-500/5 border-l-4 border-amber-400 p-5 rounded-r-3xl mb-8 flex gap-4">
                   <div className="text-xl">⚠️</div>

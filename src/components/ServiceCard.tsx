@@ -94,7 +94,6 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 <ServiceCardRating service={service} />
                 {service.availability && (
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-800 shadow-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
                         {service.availability}
                     </span>
                 )}
