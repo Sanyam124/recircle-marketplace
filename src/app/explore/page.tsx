@@ -35,6 +35,7 @@ function ExploreFiltersAndGrid() {
     maxPrice: searchParams.get('maxPrice') || '',
     categories: Array.from(new Set(catsFromUrl)),
     conditions: searchParams.getAll('conditions[]') || [],
+    availabilities: searchParams.getAll('availabilities[]') || [],
     communityFilter: searchParams.get('communityFilter') || (!hasAnyParams ? (user?.defaultCommunity || (user ? 'All' : 'Public')) : (user ? 'All' : 'Public')),
     hostel: searchParams.get('hostel') || (!hasAnyParams && !!user?.defaultHostel ? user.defaultHostel : ''),
     state: searchParams.get('state') || '',
@@ -55,6 +56,7 @@ function ExploreFiltersAndGrid() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState(currentFilters.search);
   const isFirstRender = useRef(true);
+  const prevScrollY = useRef<number | null>(null);
 
   const { data: siteConfig } = useSWR('/api/site-config');
   const maxSearchChars = siteConfig?.maxSearchChars || 100;
@@ -99,6 +101,7 @@ function ExploreFiltersAndGrid() {
     
     newFilters.categories.forEach(c => params.append('categories[]', c));
     newFilters.conditions.forEach(c => params.append('conditions[]', c));
+    newFilters.availabilities.forEach(a => params.append('availabilities[]', a));
     
     if (newPage > 1) params.set('page', newPage.toString());
 
@@ -138,6 +141,7 @@ function ExploreFiltersAndGrid() {
     
     currentFilters.categories.forEach(c => params.append('categories[]', c));
     currentFilters.conditions.forEach(c => params.append('conditions[]', c));
+    currentFilters.availabilities.forEach(a => params.append('availabilities[]', a));
     
     params.append('page', currentPage.toString());
     params.append('limit', '20');
@@ -165,8 +169,26 @@ function ExploreFiltersAndGrid() {
   };
 
   const handleFilterChange = (newFilters: ExploreFilters) => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      prevScrollY.current = window.scrollY;
+    }
     pushUpdatedUrl(newFilters, 1);
   };
+
+  // Restore scroll position instantly if locked on desktop view
+  useEffect(() => {
+    if (prevScrollY.current !== null) {
+      const targetY = prevScrollY.current;
+      window.scrollTo({ top: targetY, behavior: 'instant' });
+      const timer = setTimeout(() => {
+        if (prevScrollY.current !== null) {
+          window.scrollTo({ top: targetY, behavior: 'instant' });
+          prevScrollY.current = null;
+        }
+      }, 30);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   return (
     <>
@@ -215,7 +237,7 @@ function ExploreFiltersAndGrid() {
           </button>
         </div>
 
-        <div className={`hidden md:block transition-all duration-500 shrink-0 z-[40] ${isSidebarOpen ? 'w-64 opacity-100 overflow-visible' : 'w-0 opacity-0 invisible pointer-events-none overflow-hidden'}`}>
+        <div className={`transition-all duration-500 shrink-0 md:z-[40] z-[300] ${isSidebarOpen ? 'md:w-64 opacity-100 overflow-visible' : 'md:w-0 md:opacity-0 md:invisible md:pointer-events-none md:overflow-hidden'}`}>
           <ExploreSidebar currentFilters={currentFilters} onFilterChange={handleFilterChange} isSidebarOpen={isSidebarOpen} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
         </div>
 

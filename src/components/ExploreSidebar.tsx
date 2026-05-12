@@ -14,6 +14,7 @@ export interface ExploreFilters {
   maxPrice: string;
   categories: string[];
   conditions: string[];
+  availabilities: string[];
   communityFilter: string;
   hostel: string;
   state: string;
@@ -138,10 +139,19 @@ export default function ExploreSidebar({
     if (!isMobileOpen) onFilterChange(newFilters);
   };
 
+  const toggleAvailability = (avail: string) => {
+    const newAvails = filters.availabilities.includes(avail)
+      ? filters.availabilities.filter(a => a !== avail)
+      : [...filters.availabilities, avail];
+    const newFilters = { ...filters, availabilities: newAvails };
+    setFilters(newFilters);
+    if (!isMobileOpen) onFilterChange(newFilters);
+  };
+
   const clearFilters = () => {
     const reset: ExploreFilters = {
       search: '', type: 'all', listingType: 'All', sort: 'newest',
-      minPrice: '', maxPrice: '', categories: [], conditions: [],
+      minPrice: '', maxPrice: '', categories: [], conditions: [], availabilities: [],
       communityFilter: user ? 'All' : 'Public', hostel: '', state: '', city: ''
     };
     setFilters(reset);
@@ -165,29 +175,34 @@ export default function ExploreSidebar({
       {isMobileOpen && (
         <div className="fixed inset-0 z-[250] md:hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in" onClick={() => setIsMobileOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-[3rem] h-[85vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom duration-500">
-             <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mt-4 mb-1" />
-             <div className="flex items-center justify-between px-7 py-4 border-b border-gray-100 dark:border-gray-800">
-                <h3 className="text-2xl font-black italic uppercase">Filters</h3>
-                <button onClick={() => setIsMobileOpen(false)} className="p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl">✕</button>
+          <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-[3rem] h-[85vh] overflow-hidden z-10 animate-in slide-in-from-bottom duration-500">
+             {/* Locked Header */}
+             <div className="absolute top-0 left-0 right-0 h-16 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-30 flex flex-col justify-center px-7 rounded-t-[3rem]">
+                <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto absolute top-2 left-1/2 -translate-x-1/2" />
+                <div className="flex items-center justify-between pt-2">
+                   <h3 className="text-xl font-black italic uppercase">Filters</h3>
+                   <button onClick={() => setIsMobileOpen(false)} className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-xl font-bold text-xs">✕</button>
+                </div>
              </div>
-             <div className="flex-1 overflow-y-auto px-7 py-6 pb-20">
+             {/* Scrolling Content Container */}
+             <div className="absolute top-16 bottom-[80px] left-0 right-0 overflow-y-auto px-7 py-6 z-20">
                 <FilterElements 
                    filters={filters} handleChange={handleChange} setFilters={setFilters}
                    productDocsOpen={productDocsOpen} setProductDocsOpen={setProductDocsOpen}
                    serviceDocsOpen={serviceDocsOpen} setServiceDocsOpen={setServiceDocsOpen}
                    citySearch={citySearch} setCitySearch={setCitySearch} 
                    availableStates={availableStates} availableCities={availableCities}
-                   toggleCategory={toggleCategory} toggleCondition={toggleCondition} 
+                   toggleCategory={toggleCategory} toggleCondition={toggleCondition} toggleAvailability={toggleAvailability}
                    clearFilters={clearFilters} onFilterChange={onFilterChange} user={user}
                    isSidebarOpen={true} triggerGuestToast={triggerGuestToast} isMobileMode={true}
                    activeOverlay={activeOverlay} setActiveOverlay={setActiveOverlay} closeOverlays={closeOverlays}
                    locationStats={locationDataResp?.stats || {}}
                  />
              </div>
-             <div className="p-6 pb-safe bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex gap-4 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-                <button onClick={clearFilters} className="flex-1 py-4 font-black uppercase text-gray-500 border-2 border-gray-100 dark:border-gray-800 rounded-2xl active:scale-95 transition-transform">Reset</button>
-                <button onClick={applyFilters} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase shadow-xl shadow-indigo-600/20 active:scale-95 transition-transform">Apply Filters</button>
+             {/* Absolute Locked Footer */}
+             <div className="absolute bottom-0 left-0 right-0 h-[80px] px-6 py-3.5 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex items-center gap-4 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-30">
+                <button onClick={clearFilters} className="flex-1 h-full font-black uppercase text-gray-500 border-2 border-gray-100 dark:border-gray-800 rounded-xl active:scale-95 transition-transform text-xs sm:text-sm">Reset</button>
+                <button onClick={applyFilters} className="flex-[2] h-full bg-indigo-600 text-white rounded-xl font-black uppercase shadow-xl shadow-indigo-600/20 active:scale-95 transition-transform text-xs sm:text-sm">Apply Filters</button>
              </div>
           </div>
         </div>
@@ -202,7 +217,7 @@ export default function ExploreSidebar({
               serviceDocsOpen={serviceDocsOpen} setServiceDocsOpen={setServiceDocsOpen}
               citySearch={citySearch} setCitySearch={setCitySearch}
               availableStates={availableStates} availableCities={availableCities}
-              toggleCategory={toggleCategory} toggleCondition={toggleCondition}
+              toggleCategory={toggleCategory} toggleCondition={toggleCondition} toggleAvailability={toggleAvailability}
               clearFilters={clearFilters} onFilterChange={onFilterChange} user={user}
               isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar} triggerGuestToast={triggerGuestToast} isMobileMode={false}
               activeOverlay={activeOverlay} setActiveOverlay={setActiveOverlay} closeOverlays={closeOverlays}

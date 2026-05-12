@@ -16,6 +16,7 @@ interface FilterElementsProps {
   availableCities: string[];
   toggleCategory: (cat: string) => void;
   toggleCondition: (cond: string) => void;
+  toggleAvailability?: (avail: string) => void;
   clearFilters: () => void;
   onFilterChange: (filters: any) => void;
   user: any;
@@ -32,7 +33,7 @@ interface FilterElementsProps {
 export function FilterElements({ 
   filters, handleChange, setFilters, productDocsOpen, setProductDocsOpen, 
   serviceDocsOpen, setServiceDocsOpen, availableStates, availableCities, 
-  toggleCategory, toggleCondition, clearFilters, onFilterChange, user,
+  toggleCategory, toggleCondition, toggleAvailability, clearFilters, onFilterChange, user,
   onToggleSidebar, triggerGuestToast, isMobileMode,
   activeOverlay, setActiveOverlay, closeOverlays, locationStats
 }: FilterElementsProps) {
@@ -238,6 +239,26 @@ export function FilterElements({
                       }`}
                   >
                       {cond}
+                  </button>
+              ))}
+          </div>
+        </FilterGroup>
+      )}
+
+      {filters.type !== 'products' && (
+        <FilterGroup title="Service Availability">
+          <div className="grid grid-cols-2 gap-3">
+              {(siteConfig?.serviceAvailability || ['🗓️ Flexible', '🏠 Weekends', '🌙 Evening', '☀️ Daytime']).map((avail: string) => (
+                  <button
+                      key={avail}
+                      onClick={() => toggleAvailability && toggleAvailability(avail)}
+                      className={`py-3 px-2 rounded-xl text-[10px] font-black tracking-tight transition-all border-2 flex items-center justify-center whitespace-nowrap ${
+                          filters.availabilities?.includes(avail)
+                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg italic'
+                          : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500'
+                      }`}
+                  >
+                      {avail}
                   </button>
               ))}
           </div>

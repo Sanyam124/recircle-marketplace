@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
         const maxPrice = searchParams.get('maxPrice');
         const categories = searchParams.getAll('categories[]');
         const conditions = searchParams.getAll('conditions[]');
+        const availabilities = searchParams.getAll('availabilities[]');
         const page = parseInt(searchParams.get('page') || '1');
         const requestedLimit = parseInt(searchParams.get('limit') || '12');
         const limit = Math.min(requestedLimit, 50);
@@ -204,6 +205,11 @@ export async function GET(req: NextRequest) {
         // Conditions logic (Products only)
         if (conditions.length > 0) {
             productQuery.condition = { $in: conditions };
+        }
+
+        // Availabilities logic (Services only)
+        if (availabilities.length > 0) {
+            serviceQuery.availability = { $in: availabilities };
         }
 
         // Other filters
