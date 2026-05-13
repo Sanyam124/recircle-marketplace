@@ -5,17 +5,17 @@ import { formatTimeAgo } from '@/lib/utils';
 
 export function PostCardHeader({ post, user, canDeletePost, onDeletePost, cat }: any) {
   return (
-    <div className="flex items-center gap-2 mb-1">
-        <Link href={`/profile/${post.author?._id}`} className="group flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
+    <div className="flex items-center gap-2 mb-1 min-w-0">
+        <Link href={`/profile/${post.author?._id}`} className="group flex flex-col sm:flex-row sm:items-baseline sm:gap-2 min-w-0 max-w-[55%] sm:max-w-[60%] shrink">
             <span className="font-bold text-gray-900 dark:text-white text-sm truncate uppercase tracking-tight italic group-hover:text-indigo-600 transition-colors">
                 {post.author?.name || 'Deleted User'}
             </span>
-            <span className="text-gray-400 dark:text-gray-500 text-[10px] font-medium tracking-tight">@{post.author?.username || 'deleted'}</span>
+            <span className="text-gray-400 dark:text-gray-500 text-[10px] font-medium tracking-tight truncate">@{post.author?.username || 'deleted'}</span>
         </Link>
-        <span className="text-gray-300 dark:text-gray-600">·</span>
-        <span className="text-gray-400 dark:text-gray-500 text-[10px] font-medium tracking-tight">{formatTimeAgo(post.createdAt)}</span>
+        <span className="text-gray-300 dark:text-gray-600 shrink-0">·</span>
+        <span className="text-gray-400 dark:text-gray-500 text-[10px] font-medium tracking-tight whitespace-nowrap shrink-0">{formatTimeAgo(post.createdAt)}</span>
         
-        <div className={`hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full ${cat.color} ml-2 animate-in fade-in zoom-in duration-500`}>
+        <div className={`hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full ${cat.color} ml-2 animate-in fade-in zoom-in duration-500 shrink-0`}>
             <span className="text-[9px]">{cat.icon}</span>
             <span className="text-[8px] font-black uppercase tracking-tighter">{cat.name}</span>
         </div>
@@ -23,7 +23,7 @@ export function PostCardHeader({ post, user, canDeletePost, onDeletePost, cat }:
         {canDeletePost && (
             <button
                 onClick={() => onDeletePost(post._id)}
-                className="ml-auto text-gray-300 hover:text-red-500 transition-colors"
+                className="ml-auto text-gray-300 hover:text-red-500 transition-colors shrink-0"
                 title="Delete Post"
             >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

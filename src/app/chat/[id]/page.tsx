@@ -320,8 +320,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                         fetchItemData(referencingItemRef.current.type, referencingItemRef.current.id);
                     }
                     
-                    // Fire a silent background fetch to sync Read receipts immediately over HTTP
-                    fetchHistory(null, true);
+                    // Only fire background sync for messages from OTHER users (read receipts)
+                    // Skip for our own messages — we already have them via optimistic update
+                    if (newMsg.sender !== currentUserId && newMsg.sender?.toString() !== currentUserId) {
+                        fetchHistory(null, true);
+                    }
                 }
             });
         }
@@ -691,7 +694,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
             if (res.ok) {
                 showSuccess('Offer Accepted', 'The deal has been confirmed!');
-                await fetchHistory(); 
+                await fetchHistory(null, true); 
                 if (referencingItem) {
                     await fetchItemData(referencingItem.type, referencingItem.id);
                 }
@@ -724,7 +727,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 body: JSON.stringify({ action: 'decline' })
             });
             if (res.ok) {
-                await fetchHistory(); 
+                await fetchHistory(null, true); 
                 if (referencingItem) {
                     await fetchItemData(referencingItem.type, referencingItem.id);
                 }
@@ -774,7 +777,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 console.log("Deal closure response:", data);
                 if (!res.ok) throw new Error(data.error || 'Failed to close deal');
                 
-                await fetchHistory();
+                await fetchHistory(null, true);
                 if (referencingItem) {
                     await fetchItemData(referencingItem.type, referencingItem.id);
                 }

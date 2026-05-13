@@ -79,7 +79,7 @@ export function ProductCardHeader({ product }: any) {
       <Link href={`/profile/${product.seller._id}`} className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors pointer-events-auto truncate max-w-[120px]">
           {product.seller?.name}
       </Link>
-      <span className="hidden sm:flex ml-auto text-[10px] text-gray-400 font-medium opacity-60 whitespace-nowrap pl-1 truncate">
+      <span className="flex ml-auto text-[10px] text-gray-400 font-medium opacity-60 whitespace-nowrap pl-1 shrink-0">
           {formatTimeAgo(product.createdAt)}
       </span>
     </div>
