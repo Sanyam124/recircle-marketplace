@@ -28,11 +28,11 @@ interface PostCardProps {
     user: any;
     toggleUpvote: (id: string) => void;
     toggleDownvote: (id: string) => void;
-    handleReply: (id: string) => void;
-    replyingTo: string | null;
-    setReplyingTo: (id: string | null) => void;
-    replyContent: string;
-    setReplyContent: (val: string) => void;
+    handleReply: (id: string, content: string) => void;
+    replyingTo?: string | null;
+    setReplyingTo?: (id: string | null) => void;
+    replyContent?: string;
+    setReplyContent?: (val: string) => void;
     replySubmitting: boolean;
     maxReplyChars: number;
     onDeletePost: (id: string) => void;
@@ -40,13 +40,16 @@ interface PostCardProps {
 }
 
 export default function PostCard({
-    post, user, toggleUpvote, toggleDownvote, handleReply, replyingTo, setReplyingTo,
-    replyContent, setReplyContent, replySubmitting, maxReplyChars,
+    post, user, toggleUpvote, toggleDownvote, handleReply,
+    replySubmitting, maxReplyChars,
     onDeletePost, onDeleteReply
 }: PostCardProps) {
     const postRef = useRef<HTMLDivElement>(null);
     const [repliesVisible, setRepliesVisible] = useState(false);
     const [repliesLimit, setRepliesLimit] = useState(5);
+    // Per-post local reply state — fully independent of other PostCards
+    const [localReplyContent, setLocalReplyContent] = useState('');
+    const [localReplyingTo, setLocalReplyingTo] = useState<string | null>(null);
 
     const authorId = typeof post.author === 'object' ? (post.author._id || (post.author as any).id) : post.author;
     const isAuthor = user && (user.id === String(authorId) || (user as any)._id === String(authorId));
@@ -96,7 +99,7 @@ export default function PostCard({
                 <div className="flex-1 min-w-0">
                     <PostCardHeader post={post} user={user} canDeletePost={canDeletePost} onDeletePost={onDeletePost} cat={cat} />
                     <ExpandableText text={post.content} maxLines={5} showReadMore={true} onCollapse={scrollPostToTop} className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed" />
-                    <PostCardActions post={post} isUpvoted={isUpvoted} isDownvoted={isDownvoted} toggleUpvote={toggleUpvote} toggleDownvote={toggleDownvote} repliesVisible={repliesVisible} setRepliesVisible={setRepliesVisible} setReplyingTo={setReplyingTo} />
+                    <PostCardActions post={post} isUpvoted={isUpvoted} isDownvoted={isDownvoted} toggleUpvote={toggleUpvote} toggleDownvote={toggleDownvote} repliesVisible={repliesVisible} setRepliesVisible={setRepliesVisible} setReplyingTo={setLocalReplyingTo} />
                     
                     {repliesVisible && (
                         <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-300">
@@ -108,8 +111,8 @@ export default function PostCard({
                                         <span>{(user?.name?.[0] || user?.username?.[0] || 'U').toUpperCase()}</span>
                                     )}
                                 </div>
-                                <input type="text" placeholder="Add a comment..." className="flex-1 bg-gray-50 dark:bg-gray-700/50 border-none rounded-xl text-xs py-2 px-4 focus:ring-1 focus:ring-indigo-500 shadow-inner" value={replyingTo === post._id ? replyContent : ''} onFocus={() => setReplyingTo(post._id)} onChange={(e) => { setReplyingTo(post._id); setReplyContent(e.target.value); }} onKeyDown={(e) => e.key === 'Enter' && handleReply(post._id)} maxLength={maxReplyChars} />
-                                <button onClick={() => handleReply(post._id)} disabled={replySubmitting || !replyContent.trim()} className="text-indigo-600 dark:text-indigo-400 text-xs font-black disabled:opacity-30">POST</button>
+                                <input type="text" placeholder="Add a comment..." className="flex-1 bg-gray-50 dark:bg-gray-700/50 border-none rounded-xl text-xs py-2 px-4 focus:ring-1 focus:ring-indigo-500 shadow-inner" value={localReplyContent} onChange={(e) => setLocalReplyContent(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && localReplyContent.trim()) { handleReply(post._id, localReplyContent.trim()); setLocalReplyContent(''); }}} maxLength={maxReplyChars} />
+                                <button onClick={() => { if (localReplyContent.trim()) { handleReply(post._id, localReplyContent.trim()); setLocalReplyContent(''); }}} disabled={replySubmitting || !localReplyContent.trim()} className="text-indigo-600 dark:text-indigo-400 text-xs font-black disabled:opacity-30">POST</button>
                             </div>
                             <div className="space-y-3 pl-4 sm:pl-6 border-l-2 border-gray-50 dark:border-gray-700/50">
                                 {visibleReplies.map(reply => <ReplyItem key={reply._id} reply={reply} user={user} isAdmin={isAdmin} isAuthor={isAuthor} onDeleteReply={onDeleteReply} post={post} formatTimeAgo={formatTimeAgo} />)}

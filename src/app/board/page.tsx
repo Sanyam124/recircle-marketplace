@@ -61,10 +61,10 @@ function BoardPageContent() {
     const [showInfo, setShowInfo] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
-    const [replyingTo, setReplyingTo] = useState<string | null>(null);
-    const [replyContent, setReplyContent] = useState('');
     const [replySubmitting, setReplySubmitting] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    // Debounce guards to prevent race conditions during rapid vote clicks
+    const voteInFlightRef = useRef<Set<string>>(new Set());
 
     // Reset textarea height when content is cleared
     useEffect(() => {
@@ -226,6 +226,9 @@ function BoardPageContent() {
 
     const toggleUpvote = async (postId: string) => {
         if (!user || !selectedCommunityId) return;
+        // Debounce: skip if a vote is already in flight for this post
+        if (voteInFlightRef.current.has(postId)) return;
+        voteInFlightRef.current.add(postId);
         const userId = String(user.id || (user as any)._id);
 
         // Immediate local UI update for instantaneous responsiveness
@@ -243,57 +246,31 @@ function BoardPageContent() {
             return p;
         }));
 
-        // Use SWR's native mutate for robust server synchronization
-        await mutate(
-            async () => {
-                const res = await authFetch('/api/board', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ postId, action: 'upvote' })
-                });
-                if (!res.ok) throw new Error('Failed to upvote');
-                return await res.json();
-            },
-            {
-                optimisticData: (currentData: any) => {
-                    if (!currentData?.posts) return currentData;
-                    return {
-                        ...currentData,
-                        posts: currentData.posts.map((post: Post) => {
-                            if (post._id === postId) {
-                                const upvotes = post.upvotes || [];
-                                const downvotes = post.downvotes || [];
-                                const hasUpvoted = upvotes.includes(userId);
-                                
-                                return {
-                                    ...post,
-                                    upvotes: hasUpvoted 
-                                        ? upvotes.filter((id: string) => id !== userId) 
-                                        : [...upvotes, userId],
-                                    downvotes: downvotes.filter((id: string) => id !== userId)
-                                };
-                            }
-                            return post;
-                        })
-                    };
-                },
-                rollbackOnError: true,
-                revalidate: true,
-                populateCache: (result, currentData) => {
-                    if (!currentData?.posts || !result?.post) return currentData;
-                    // Keep allPosts perfectly in sync with populated post result
+        try {
+            const res = await authFetch('/api/board', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postId, action: 'upvote' })
+            });
+            if (res.ok) {
+                const result = await res.json();
+                if (result?.post) {
                     setAllPosts(prev => prev.map(p => p._id === postId ? result.post : p));
-                    return {
-                        ...currentData,
-                        posts: currentData.posts.map((p: Post) => p._id === postId ? result.post : p)
-                    };
                 }
             }
-        );
+        } catch (err) {
+            // Rollback on error
+            mutate();
+        } finally {
+            voteInFlightRef.current.delete(postId);
+        }
     };
 
     const toggleDownvote = async (postId: string) => {
         if (!user || !selectedCommunityId) return;
+        // Debounce: skip if a vote is already in flight for this post
+        if (voteInFlightRef.current.has(postId)) return;
+        voteInFlightRef.current.add(postId);
         const userId = String(user.id || (user as any)._id);
 
         // Immediate local UI update for instantaneous responsiveness
@@ -311,61 +288,33 @@ function BoardPageContent() {
             return p;
         }));
 
-        await mutate(
-            async () => {
-                const res = await authFetch('/api/board', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ postId, action: 'downvote' })
-                });
-                if (!res.ok) throw new Error('Failed to downvote');
-                return await res.json();
-            },
-            {
-                optimisticData: (currentData: any) => {
-                    if (!currentData?.posts) return currentData;
-                    return {
-                        ...currentData,
-                        posts: currentData.posts.map((post: Post) => {
-                            if (post._id === postId) {
-                                const upvotes = post.upvotes || [];
-                                const downvotes = post.downvotes || [];
-                                const hasDownvoted = downvotes.includes(userId);
-                                
-                                return {
-                                    ...post,
-                                    downvotes: hasDownvoted 
-                                        ? downvotes.filter((id: string) => id !== userId) 
-                                        : [...downvotes, userId],
-                                    upvotes: upvotes.filter((id: string) => id !== userId)
-                                };
-                            }
-                            return post;
-                        })
-                    };
-                },
-                rollbackOnError: true,
-                revalidate: true,
-                populateCache: (result, currentData) => {
-                    if (!currentData?.posts || !result?.post) return currentData;
+        try {
+            const res = await authFetch('/api/board', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postId, action: 'downvote' })
+            });
+            if (res.ok) {
+                const result = await res.json();
+                if (result?.post) {
                     setAllPosts(prev => prev.map(p => p._id === postId ? result.post : p));
-                    return {
-                        ...currentData,
-                        posts: currentData.posts.map((p: Post) => p._id === postId ? result.post : p)
-                    };
                 }
             }
-        );
+        } catch (err) {
+            // Rollback on error
+            mutate();
+        } finally {
+            voteInFlightRef.current.delete(postId);
+        }
     };
 
-    const handleReply = async (postId: string) => {
-        if (!replyContent.trim() || !user) return;
+    const handleReply = async (postId: string, content: string) => {
+        if (!content.trim() || !user) return;
         
-        const contentToSend = replyContent.trim();
+        const contentToSend = content.trim();
         const userId = user.id || (user as any)._id;
         
-        setReplyContent('');
-        setReplyingTo(null);
+        setReplySubmitting(true);
 
         const tempReply = {
             _id: `temp-${Date.now()}`,
@@ -390,44 +339,24 @@ function BoardPageContent() {
             return p;
         }));
 
-        await mutate(
-            async () => {
-                const res = await authFetch('/api/board', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ postId, action: 'reply', content: contentToSend })
-                });
-                if (!res.ok) throw new Error('Failed to reply');
-                return await res.json();
-            },
-            {
-                optimisticData: (currentData: any) => {
-                    if (!currentData?.posts) return currentData;
-                    return {
-                        ...currentData,
-                        posts: currentData.posts.map((post: Post) => {
-                            if (post._id === postId) {
-                                return {
-                                    ...post,
-                                    replies: [...post.replies, tempReply]
-                                };
-                            }
-                            return post;
-                        })
-                    };
-                },
-                rollbackOnError: true,
-                revalidate: true,
-                populateCache: (result, currentData) => {
-                    if (!currentData?.posts || !result?.post) return currentData;
+        try {
+            const res = await authFetch('/api/board', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postId, action: 'reply', content: contentToSend })
+            });
+            if (res.ok) {
+                const result = await res.json();
+                if (result?.post) {
                     setAllPosts(prev => prev.map(p => p._id === postId ? result.post : p));
-                    return {
-                        ...currentData,
-                        posts: currentData.posts.map((p: Post) => p._id === postId ? result.post : p)
-                    };
                 }
             }
-        );
+        } catch (err) {
+            // Rollback on error
+            mutate();
+        } finally {
+            setReplySubmitting(false);
+        }
     };
 
     const handleDeletePost = async (postId: string) => {
@@ -805,10 +734,6 @@ function BoardPageContent() {
                                             toggleUpvote={toggleUpvote}
                                             toggleDownvote={toggleDownvote}
                                             handleReply={handleReply}
-                                            replyingTo={replyingTo}
-                                            setReplyingTo={setReplyingTo}
-                                            replyContent={replyContent}
-                                            setReplyContent={setReplyContent}
                                             replySubmitting={replySubmitting}
                                             maxReplyChars={maxReplyChars}
                                             onDeletePost={handleDeletePost}

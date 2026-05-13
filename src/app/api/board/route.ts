@@ -262,7 +262,8 @@ export async function PATCH(req: NextRequest) {
 
             const updatedPost = await BoardPost.findById(postId)
                 .populate('author', 'name profilePicture username')
-                .populate('replies.author', 'name profilePicture username');
+                .populate('replies.author', 'name profilePicture username')
+                .lean();
 
             return NextResponse.json({ success: true, post: updatedPost }, { status: 200 });
         } 
@@ -289,7 +290,8 @@ export async function PATCH(req: NextRequest) {
 
             const updatedPost = await BoardPost.findById(postId)
                 .populate('author', 'name profilePicture username')
-                .populate('replies.author', 'name profilePicture username');
+                .populate('replies.author', 'name profilePicture username')
+                .lean();
 
             return NextResponse.json({ success: true, post: updatedPost }, { status: 200 });
         } 
@@ -315,7 +317,8 @@ export async function PATCH(req: NextRequest) {
             // Return the full post with populated authors (including new reply author)
             const updatedPost = await BoardPost.findById(postId)
                 .populate('author', 'name profilePicture username')
-                .populate('replies.author', 'name profilePicture username');
+                .populate('replies.author', 'name profilePicture username')
+                .lean();
                 
             return NextResponse.json({ success: true, post: updatedPost }, { status: 200 });
         }

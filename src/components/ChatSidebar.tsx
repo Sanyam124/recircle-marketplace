@@ -250,6 +250,11 @@ export default function ChatSidebar() {
             // [EMPTY FILTER] Ensure we don't show chats with no content
             if (!conv.lastMessage) return false;
 
+            // [DELETED LISTING FILTER] Hide chats where the listing was removed
+            // If the conversation was linked to a product/service but it no longer exists, skip it
+            if (conv.rawProductId && !conv.product) return false;
+            if (conv.rawServiceId && !conv.service) return false;
+
             if (activeTab === 'all') return true;
             
             const itemOwnerId = conv.product?.seller || conv.service?.provider;
