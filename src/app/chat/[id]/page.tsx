@@ -11,6 +11,61 @@ import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 import ReviewModal from '@/components/ReviewModal';
 import ReportModal from '@/components/ReportModal';
 
+const CHAR_STEP = 150;
+const INITIAL_LIMIT = 300;
+
+function ExpandableMessage({ content, msgId, isSender }: { content: string; msgId: string; isSender: boolean }) {
+    const [visibleChars, setVisibleChars] = useState(INITIAL_LIMIT);
+    const msgRef = useRef<HTMLDivElement>(null);
+
+    if (!content || content.length <= INITIAL_LIMIT) {
+        return <p className="break-words whitespace-pre-wrap">{content}</p>;
+    }
+
+    const isFullyExpanded = visibleChars >= content.length;
+    const displayed = content.slice(0, visibleChars);
+    const isTruncated = !isFullyExpanded;
+
+    const handleShowLess = () => {
+        setVisibleChars(INITIAL_LIMIT);
+        // Scroll back to this message so user doesn't get lost
+        setTimeout(() => {
+            const el = document.getElementById(`msg-${msgId}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+    };
+
+    return (
+        <div ref={msgRef}>
+            <p className="break-words whitespace-pre-wrap">
+                {displayed}{isTruncated && '…'}
+            </p>
+            <div className="flex gap-2 mt-1">
+                {isTruncated && (
+                    <button
+                        onClick={() => setVisibleChars(prev => Math.min(prev + CHAR_STEP, content.length))}
+                        className={`text-[11px] font-bold underline underline-offset-2 transition-colors ${
+                            isSender ? 'text-indigo-200 hover:text-white' : 'text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300'
+                        }`}
+                    >
+                        Read more
+                    </button>
+                )}
+                {visibleChars > INITIAL_LIMIT && (
+                    <button
+                        onClick={handleShowLess}
+                        className={`text-[11px] font-bold underline underline-offset-2 transition-colors ${
+                            isSender ? 'text-indigo-200 hover:text-white' : 'text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300'
+                        }`}
+                    >
+                        Show less
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export default function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
     const userId = resolvedParams.id;
@@ -1107,7 +1162,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
                                     <div className="space-y-4">
                                          {group.msgs.map((msg: any) => (
-                                             <div key={msg._id}>
+                                             <div key={msg._id} id={`msg-${msg._id}`}>
                                                    <div className={`flex items-end gap-2 ${msg.sender === userId ? 'flex-row' : 'flex-row-reverse'}`}>
                                                       <div className="shrink-0 w-7 h-7 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-black text-white border border-white dark:border-gray-900 shadow-sm mb-1">
                                                           {msg.sender === userId ? (
@@ -1131,7 +1186,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                   ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-tl-none border border-gray-100 dark:border-gray-700'
                                                                   : 'bg-indigo-600 dark:bg-indigo-500 text-white rounded-tr-none'
                                                           }`}>
-                                                              <p className="break-words whitespace-pre-wrap">{msg.content}</p>
+                                                              <ExpandableMessage content={msg.content} msgId={msg._id} isSender={msg.sender !== userId} />
                                                               <div className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${msg.sender === userId ? 'text-gray-400 dark:text-gray-500' : 'text-indigo-200 dark:text-indigo-100'}`}>
                                                                   <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                                   {msg.sender !== userId && (

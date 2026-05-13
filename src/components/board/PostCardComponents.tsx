@@ -99,18 +99,18 @@ export function ReplyItem({ reply, user, isAdmin, isAuthor, onDeleteReply, post,
             </div>
         </Link>
         <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-                <Link href={`/profile/${reply.author?._id}`} className="flex flex-col group">
-                    <span className="font-bold text-gray-900 dark:text-white text-[11px] uppercase tracking-tight leading-none group-hover:text-indigo-600 transition-colors">{reply.author?.name || 'Deleted user'}</span>
-                    <span className="text-gray-400 dark:text-gray-500 text-[9px] font-medium tracking-tighter">@{reply.author?.username || 'deleted'}</span>
+            <div className="flex items-center gap-2 mb-0.5 min-w-0">
+                <Link href={`/profile/${reply.author?._id}`} className="flex flex-col group min-w-0 max-w-[50%] shrink">
+                    <span className="font-bold text-gray-900 dark:text-white text-[11px] uppercase tracking-tight leading-none group-hover:text-indigo-600 transition-colors truncate">{reply.author?.name || 'Deleted user'}</span>
+                    <span className="text-gray-400 dark:text-gray-500 text-[9px] font-medium tracking-tighter truncate">@{reply.author?.username || 'deleted'}</span>
                 </Link>
-                <span className="text-gray-300 dark:text-gray-600 self-center">·</span>
-                <span className="text-gray-400 dark:text-gray-500 text-[10px] self-center">{formatTimeAgo(reply.createdAt)}</span>
+                <span className="text-gray-300 dark:text-gray-600 self-center shrink-0">·</span>
+                <span className="text-gray-400 dark:text-gray-500 text-[10px] self-center whitespace-nowrap shrink-0">{formatTimeAgo(reply.createdAt)}</span>
 
                 {(reply.author._id === user?._id || reply.author._id === user?.id || isAdmin || isAuthor) && (
                     <button
                         onClick={() => onDeleteReply(post._id, reply._id)}
-                        className="ml-1 text-gray-300 hover:text-red-500 transition-colors"
+                        className="ml-1 text-gray-300 hover:text-red-500 transition-colors shrink-0"
                         title="Delete Reply"
                     >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
