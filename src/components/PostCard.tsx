@@ -116,7 +116,16 @@ export default function PostCard({
                             </div>
                             <div className="space-y-3 pl-4 sm:pl-6 border-l-2 border-gray-50 dark:border-gray-700/50">
                                 {visibleReplies.map(reply => <ReplyItem key={reply._id} reply={reply} user={user} isAdmin={isAdmin} isAuthor={isAuthor} onDeleteReply={onDeleteReply} post={post} formatTimeAgo={formatTimeAgo} />)}
-                                {post.replies.length > repliesLimit && <button onClick={() => setRepliesLimit(prev => prev + 10)} className="text-xs font-black text-gray-400 hover:text-indigo-600 transition-colors pt-2 uppercase tracking-tighter">Load more</button>}
+                                {post.replies.length > repliesLimit ? (
+                                    <button onClick={() => setRepliesLimit(prev => prev + 10)} className="text-xs font-black text-gray-400 hover:text-indigo-600 transition-colors pt-2 uppercase tracking-tighter">Load more</button>
+                                ) : (
+                                    repliesLimit > 5 && (
+                                        <button onClick={() => { setRepliesLimit(5); scrollPostToTop(); }} className="text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors pt-2 uppercase tracking-tighter flex items-center gap-1">
+                                            Collapse All
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" /></svg>
+                                        </button>
+                                    )
+                                )}
                             </div>
                         </div>
                     )}

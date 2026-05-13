@@ -60,20 +60,30 @@ export default function ExpandableText({
   }, [shouldScroll, isFullyExpanded]);
 
   useEffect(() => {
+    const element = textRef.current;
+    if (!element) return;
+
     const checkOverflow = () => {
-      if (textRef.current) {
-        const element = textRef.current;
-        // In incremental mode, we check overflow if not fully expanded
-        const isOverflowing = element.scrollHeight > element.clientHeight;
-        setShowButton(isOverflowing);
-      }
+      const isOverflowing = element.scrollHeight > element.clientHeight;
+      setShowButton(isOverflowing);
     };
 
-    const timeout = setTimeout(checkOverflow, 50);
+    // Immediate check
+    checkOverflow();
+
+    // Secondary check after layout/fonts
+    const timeout = setTimeout(checkOverflow, 100);
+    const longerTimeout = setTimeout(checkOverflow, 500);
+
+    const resizeObserver = new ResizeObserver(checkOverflow);
+    resizeObserver.observe(element);
+    
     window.addEventListener('resize', checkOverflow);
     
     return () => {
       clearTimeout(timeout);
+      clearTimeout(longerTimeout);
+      resizeObserver.disconnect();
       window.removeEventListener('resize', checkOverflow);
     };
   }, [text, currentMaxLines, isFullyExpanded]);

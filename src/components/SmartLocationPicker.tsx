@@ -275,7 +275,7 @@ export default function SmartLocationPicker({
                             onClick={() => setMode(m as any)}
                             className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${mode === m ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-md' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                         >
-                            By {m === 'statecity' ? 'State \u0026 City' : 'Pincode'}
+                            By {m === 'statecity' ? 'State \u0026 City/Area' : 'Pincode'}
                         </button>
                     ))}
                 </div>
@@ -312,13 +312,13 @@ export default function SmartLocationPicker({
                             </select>
                         </div>
                         <div className="relative" ref={cityInputRef}>
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-1.5 ml-1">City <span className="text-red-500">*</span></label>
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-1.5 ml-1">City/Area <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
                                 value={citySearch}
                                 onChange={(e) => handleCitySearchChange(e.target.value)}
                                 disabled={!locationData.state}
-                                placeholder={locationData.state ? 'Search city...' : 'Select state first'}
+                                placeholder={locationData.state ? 'Search city or area...' : 'Select state first'}
                                 className={`w-full bg-gray-50 dark:bg-zinc-800 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none transition-all text-gray-900 dark:text-white ${!locationData.state ? 'opacity-50 cursor-not-allowed' : ''}`}
                             />
                             {showCityDropdown && cityResults.length > 0 && (
@@ -360,7 +360,7 @@ export default function SmartLocationPicker({
                 {locationData.coordinates && locationData.city && (
                     <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
                         <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                        Location set \u2014 {locationData.city}, {locationData.state}
+                        Location set: {locationData.city}, {locationData.state}
                     </div>
                 )}
             </div>

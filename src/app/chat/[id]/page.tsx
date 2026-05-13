@@ -215,6 +215,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
     const [otherUserLastSeen, setOtherUserLastSeen] = useState<Date | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const justSentRef = useRef(false);
     // Stores scroll metrics captured BEFORE a prepend so useLayoutEffect can restore position
     const scrollAdjustRef = useRef<{ savedTop: number; savedHeight: number } | null>(null);
 
@@ -245,6 +246,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         return referencingItem?.type === 'product' && referencingItem?.data?.status === 'Reserved';
     }, [referencingItem]);
 
+    const prevConvRef = useRef<string>("");
     const itemIsOccupied = useMemo(() => {
         if (!referencingItem?.data) return false;
         
@@ -294,6 +296,10 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const currentUserId = user?.id || (user as any)?._id;
 
     useEffect(() => {
+        const convKey = `${userId}-${productId || ''}-${serviceId || ''}`;
+        if (prevConvRef.current === convKey) return;
+        prevConvRef.current = convKey;
+
         // Reset state on conversation switch
         setMessages([]);
         setHasMore(false);
@@ -332,8 +338,10 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         fetchHistory(null);
         setUserLoading(true);
         fetchOtherUser();
+    }, [userId, productId, serviceId]);
 
-        // WebSockets Real-time Updates
+    // WebSockets Real-time Updates
+    useEffect(() => {
         let channelName = '';
         if (currentUserId) {
             channelName = `private-user-${currentUserId}`;
@@ -475,14 +483,18 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     };
 
     useEffect(() => {
-        if (initialLoad && messages.length > 0 && scrollRef.current) {
-            scrollToBottom('auto');
-            setInitialLoad(false);
-        } else if (messages.length > 0 && scrollRef.current) {
-            const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-            const isNearBottom = scrollHeight - scrollTop - clientHeight < 500;
-            if (isNearBottom) {
-               scrollToBottom('smooth');
+        if (scrollRef.current) {
+            if (initialLoad && messages.length > 0) {
+                scrollToBottom('auto');
+                setInitialLoad(false);
+            } else if (messages.length > 0) {
+                const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+                const isNearBottom = scrollHeight - scrollTop - clientHeight < 600;
+                
+                if (justSentRef.current || isNearBottom) {
+                    scrollToBottom(justSentRef.current ? 'auto' : 'smooth');
+                    justSentRef.current = false;
+                }
             }
         }
     }, [messages, initialLoad]);
@@ -676,7 +688,13 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             const newMessages = [...prev, optimisticMessage];
             return newMessages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         });
-        setTimeout(() => scrollToBottom('smooth'), 50);
+        
+        // Immediate scroll before server roundtrip
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+        justSentRef.current = true;
+        setTimeout(() => scrollToBottom('auto'), 10);
 
         try {
             const pId = searchParams.get('productId');
@@ -701,7 +719,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 if (data.message?._id) {
                     setMessages(prev => prev.map(m => m._id === tempId ? data.message : m));
                 }
-                setTimeout(() => scrollToBottom('smooth'), 100); 
+                setTimeout(() => scrollToBottom('smooth'), 50); 
             } else {
                 setMessages(prev => prev.filter(m => m._id !== tempId));
             }
@@ -890,6 +908,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                     fetchItemData(referencingItem.type, referencingItem.id);
                 }
                 setActiveTab('chat');
+                justSentRef.current = true;
+                setTimeout(() => scrollToBottom('auto'), 50);
                 setActionPrice('');
                 setActionMessage('');
             } else {
@@ -919,14 +939,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         "I'm interested!"
     ];
 
-    if (authLoading || loading || userLoading || itemLoading || !contextResolved) return <MessageBubbleSkeleton />;
+    if ((authLoading || loading || userLoading || itemLoading || !contextResolved) && messages.length === 0) return <MessageBubbleSkeleton />;
 
     return (
         <>
             {/* Unified Context Header */}
             <div 
                 className="relative z-[60] bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 transition-colors shrink-0 shadow-[0_2px_4px_-1px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                onClick={() => window.location.href = `/profile/${userId}`}
+                onClick={() => router.push(`/profile/${userId}`)}
             >
                 <div className="px-4 py-3 flex items-center gap-4">
                     <Link 
@@ -1489,7 +1509,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                 <button
                                                     key={reply}
                                                     type="button"
-                                                    onClick={() => setNewMessage(reply)}
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setNewMessage(reply); }}
                                                     className="whitespace-nowrap px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 text-[10px] sm:text-xs font-bold border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 transition-all shadow-sm active:scale-95"
                                                 >
                                                     {reply}
@@ -1667,7 +1687,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                     </div>
                                                 )}
                                                 <button
-                                                    onClick={() => handleActionSubmit('offer')}
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleActionSubmit('offer'); }}
                                                     disabled={submittingAction || !actionPrice || (offerType === 'Rent' && !rentDuration)}
                                                     className={`px-6 py-2.5 rounded-2xl text-[10px] w-full sm:w-auto font-black uppercase tracking-widest transition-all ${
                                                         (!actionPrice || submittingAction || (offerType === 'Rent' && !rentDuration)) ? 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500' : 'bg-indigo-600 text-white'
