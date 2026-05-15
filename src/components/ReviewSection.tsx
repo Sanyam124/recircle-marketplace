@@ -360,7 +360,7 @@ export default function ReviewSection({ targetId, targetName, productId, service
            <div className="flex justify-center mt-6">
              <button
                onClick={handleLoadMore}
-               className="inline-flex items-center px-6 py-2 border border-gray-200 dark:border-gray-700 rounded-full text-sm font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-indigo-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all shadow-sm active:scale-95"
+               className="inline-flex items-center px-6 py-2 border border-gray-200 dark:border-gray-700 rounded-full text-sm font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-indigo-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all shadow-sm active:scale-95 relative z-10 opacity-100 visible"
              >
                Load More Reviews
                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" viewBox="0 0 20 20" fill="currentColor">

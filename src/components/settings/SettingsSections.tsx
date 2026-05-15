@@ -79,9 +79,28 @@ export function AppearanceSection({ theme, setTheme, prefs, updatePreference, sa
                         </select>
                     </div>
                     <div className="flex flex-col gap-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-indigo-600/60 ml-2 italic">Default Hostel/Area</label>
+                        <select 
+                            value={prefs.defaultHostel || ''} 
+                            onChange={(e) => updatePreference('defaultHostel', e.target.value)} 
+                            disabled={!prefs.defaultCommunity}
+                            className={`w-full bg-slate-50 dark:bg-slate-950 px-4 py-3 rounded-2xl border-none text-[11px] font-black outline-none appearance-none ${!prefs.defaultCommunity ? 'opacity-50 grayscale' : ''}`}
+                        >
+                            <option value="">None / All Buildings</option>
+                            {user?.verifiedCommunities?.find((c: any) => (c._id || c.id) === prefs.defaultCommunity)?.hostels?.map((h: string) => (
+                                <option key={h} value={h}>{h}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex flex-col gap-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-indigo-600/60 ml-2 italic">Grid Density</label>
                         <ToggleRow title="Compact View" desc="5-column layout on PC." checked={prefs.compactView} onChange={(v) => updatePreference('compactView', v)} loading={saving === 'compactView'} />
                     </div>
+                </div>
+                <div className="mt-6 pt-6 border-t border-slate-50 dark:border-slate-800/50">
+                    <p className="text-[10px] font-medium text-slate-400 leading-relaxed">
+                        <span className="text-indigo-500 font-black">Note:</span> Your default feed and hostel settings will automatically apply whenever you land on the <b>Explore</b> or <b>Marketplace</b> pages, streamlining your daily browsing.
+                    </p>
                 </div>
             </div>
         </div>

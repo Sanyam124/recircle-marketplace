@@ -119,7 +119,7 @@ export default function CreateProductPage() {
 
     // Validation for Public listings
     if (formData.visibility === 'Public' && (!location.state || !location.city)) {
-        setError('Please select your State and City, or use Auto Detect to set your location.');
+        setError('Please select your State and City/Area, or use Auto Detect to set your location.');
         setLoading(false);
         return;
     }

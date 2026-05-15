@@ -46,6 +46,16 @@ export default function CreateServicePage() {
     }
   }, [siteConfigData]);
 
+  useEffect(() => {
+    if (user?.verifiedCommunities?.length && !formData.communityId) {
+      const firstComm = user.verifiedCommunities[0];
+      setFormData(prev => ({ 
+        ...prev, 
+        communityId: firstComm._id || firstComm.id || firstComm || '' 
+      }));
+    }
+  }, [user, formData.communityId]);
+
   const [location, setLocation] = useState({
     coordinates: undefined as [number, number] | undefined,
     pincode: '',
@@ -121,7 +131,7 @@ export default function CreateServicePage() {
     const hasHostelSettings = Boolean(location.hostel) || location.room !== undefined || location.bed !== undefined;
 
     if (formData.visibility === 'Public' && !hasMapSettings && !hasHostelSettings) {
-        setError('Please select your State and City, or use Auto Detect to set your location.');
+        setError('Please select your State and City/Area, or use Auto Detect to set your location.');
         setLoading(false);
         return;
     }

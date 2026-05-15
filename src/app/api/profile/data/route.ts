@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
         require('@/models/Community');
 
         const user = await User.findById(decoded.userId)
-            .populate('verifiedCommunities', 'name image isActive')
+            .populate('verifiedCommunities', 'name image isActive hostels')
             .select('-password');
             
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -66,7 +66,7 @@ export async function PUT(req: NextRequest) {
         }
 
         const updatedUser = await User.findByIdAndUpdate(decoded.userId, { $set: body }, { new: true, runValidators: true })
-            .populate('verifiedCommunities', 'name image isActive');
+            .populate('verifiedCommunities', 'name image isActive hostels');
 
         return NextResponse.json({ message: 'Profile updated', user: updatedUser }, { status: 200 });
     } catch (error) {
