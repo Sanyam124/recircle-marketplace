@@ -304,7 +304,25 @@ function ExploreFiltersAndGrid() {
               </div>
               {totalPages > 1 && (
                 <div className="mt-20 flex justify-center items-center gap-3 pb-12">
-                  <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 text-gray-400 disabled:opacity-20 hover:text-indigo-600 transition-all active:scale-95"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg></button>
+                  <button 
+                    onClick={() => handlePageChange(currentPage - 1)} 
+                    disabled={currentPage === 1} 
+                    style={{ 
+                      opacity: 1, 
+                      visibility: 'visible', 
+                      display: 'flex', 
+                      zIndex: 999, 
+                      minHeight: '56px',
+                      backgroundColor: '#4F46E5',
+                      color: 'white',
+                      padding: '16px',
+                      borderRadius: '16px',
+                      fontWeight: 'bold'
+                    }}
+                    className="transition-all relative disabled:opacity-20"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
+                  </button>
                   <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 p-2 rounded-[2rem] border border-gray-100 dark:border-gray-700">
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNum;
@@ -313,11 +331,47 @@ function ExploreFiltersAndGrid() {
                       else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
                       else pageNum = currentPage - 2 + i;
                       return (
-                        <button key={pageNum} onClick={() => handlePageChange(pageNum)} className={`w-12 h-12 rounded-xl text-xs font-black transition-all active:scale-90 ${currentPage === pageNum ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 dark:shadow-none' : 'text-gray-400 hover:text-indigo-600'}`}>{pageNum}</button>
+                        <button 
+                          key={pageNum} 
+                          onClick={() => handlePageChange(pageNum)} 
+                          style={{ 
+                            opacity: 1, 
+                            visibility: 'visible', 
+                            display: 'block', 
+                            zIndex: 999, 
+                            minHeight: '48px',
+                            backgroundColor: currentPage === pageNum ? '#4F46E5' : 'white',
+                            color: currentPage === pageNum ? 'white' : '#4F46E5',
+                            border: '2px solid #4F46E5',
+                            borderRadius: '12px',
+                            fontWeight: 'bold'
+                          }}
+                          className={`w-12 h-12 transition-all relative`}
+                        >
+                          {pageNum}
+                        </button>
                       );
                     })}
                   </div>
-                  <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 text-gray-400 disabled:opacity-20 hover:text-indigo-600 transition-all active:scale-95"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg></button>
+                  <button 
+                    onClick={() => handlePageChange(currentPage + 1)} 
+                    disabled={currentPage === totalPages} 
+                    style={{ 
+                      opacity: 1, 
+                      visibility: 'visible', 
+                      display: 'flex', 
+                      zIndex: 999, 
+                      minHeight: '56px',
+                      backgroundColor: '#4F46E5',
+                      color: 'white',
+                      padding: '16px',
+                      borderRadius: '16px',
+                      fontWeight: 'bold'
+                    }}
+                    className="transition-all relative disabled:opacity-20"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
+                  </button>
                 </div>
               )}
             </>

@@ -71,7 +71,19 @@ export function PostCardActions({ post, isUpvoted, isDownvoted, toggleUpvote, to
                 setRepliesVisible(!repliesVisible);
                 if (!repliesVisible) setReplyingTo(post._id);
             }}
-            className={`flex items-center gap-2 group transition-all text-xs font-bold relative z-10 opacity-100 visible ${repliesVisible ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500 hover:text-indigo-600'}`}
+            style={{ 
+              opacity: 1, 
+              visibility: 'visible', 
+              display: 'flex', 
+              zIndex: 999, 
+              minHeight: '44px',
+              backgroundColor: repliesVisible ? '#4F46E5' : 'transparent',
+              color: repliesVisible ? 'white' : '#6366F1',
+              padding: '4px 12px',
+              borderRadius: '8px',
+              fontWeight: 'bold'
+            }}
+            className={`items-center gap-2 group transition-all text-xs relative ${!repliesVisible ? 'text-gray-400 dark:text-gray-500 hover:text-indigo-600' : ''}`}
         >
             <div className={`p-1.5 rounded-full transition-colors ${repliesVisible ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/10'}`}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
