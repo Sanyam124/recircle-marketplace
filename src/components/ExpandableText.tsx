@@ -66,9 +66,7 @@ export default function ExpandableText({
     const checkOverflow = () => {
       // Use a small 2px buffer to account for rounding errors in different browsers/zooms
       const isOverflowing = element.scrollHeight > (element.clientHeight + 2);
-      // Fallback: If text is long but overflow check fails (common on some mobile engines)
-      const isLongText = text.length > (currentMaxLines * 40); 
-      setShowButton(isOverflowing || isLongText);
+      setShowButton(isOverflowing);
     };
 
     // Immediate check
@@ -141,19 +139,7 @@ export default function ExpandableText({
         <button
           onClick={handleToggle}
           type="button"
-          style={{ 
-            opacity: 1, 
-            visibility: 'visible', 
-            display: 'flex', 
-            zIndex: 999, 
-            minHeight: '48px',
-            backgroundColor: '#4F46E5',
-            color: 'white',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            fontWeight: 'bold'
-          }}
-          className="mt-2 text-[11px] uppercase tracking-widest hover:bg-indigo-700 transition-all items-center gap-1 relative"
+          className="mt-2 text-[11px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-all flex items-center gap-1 relative z-20 opacity-100 visible appearance-none touch-manipulation cursor-pointer"
         >
           {isFullyExpanded ? (
             <>

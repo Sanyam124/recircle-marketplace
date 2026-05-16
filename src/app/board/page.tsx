@@ -741,13 +741,8 @@ function BoardPageContent() {
                                         />
                                     ))}
                                     {hasMore && (
-                                        <div className="pt-8 text-center pb-20">
-                                            <button 
-                                                onClick={() => setPage(prev => prev + 1) } 
-                                                disabled={loadingPosts} 
-                                                style={{ opacity: 1, visibility: 'visible', display: 'inline-flex', zIndex: 50, minHeight: '56px' }}
-                                                className="items-center justify-center gap-3 px-12 py-5 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-[2rem] hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-xl hover:shadow-indigo-500/10 active:scale-95 relative"
-                                            >
+                                        <div className="pt-8 text-center">
+                                            <button onClick={() => setPage(prev => prev + 1) } disabled={loadingPosts} className="inline-flex items-center justify-center gap-3 px-12 py-5 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-[2rem] hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-xl hover:shadow-indigo-500/10 active:scale-95 relative z-10 opacity-100 visible appearance-none touch-manipulation cursor-pointer">
                                                 {loadingPosts ? 'Diving Deeper...' : 'Dive Deeper'}
                                             </button>
                                         </div>

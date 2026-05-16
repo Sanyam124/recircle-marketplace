@@ -90,10 +90,13 @@ input[type=number] {
 
 /* --- Mobile UX & Scroll Fixes --- */
 
-/* Prevent horizontal scroll globally and fix root height */
-html, body {
-  overflow-x: hidden;
-  position: relative;
+/* Prevent horizontal scroll globally safely for mobile Safari */
+html {
+  overscroll-behavior-y: none; /* Prevents pull-to-refresh bounce if desired, optional */
+}
+
+body {
+  overflow-x: clip; /* Modern safe alternative to hidden that doesn't break iOS scroll */
   width: 100%;
 }
 
