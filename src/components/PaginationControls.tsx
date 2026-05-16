@@ -14,7 +14,8 @@ export default function PaginationControls({ page, totalPages, onPageChange, scr
             onPageChange(Math.max(1, page - 1));
           }}
           disabled={page === 1}
-          className="relative z-10 opacity-100 visible px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          style={{ opacity: 1, visibility: 'visible', display: 'block', zIndex: 50, minHeight: '44px' }}
+          className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors relative"
         >
           Previous
         </button>
@@ -28,7 +29,8 @@ export default function PaginationControls({ page, totalPages, onPageChange, scr
                   if (scrollTargetId) document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   onPageChange(p);
                 }}
-                className={`relative z-10 opacity-100 visible w-9 h-9 text-sm font-bold rounded-lg transition-colors ${p === page ? 'bg-indigo-600 text-white' : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                style={{ opacity: 1, visibility: 'visible', display: 'block', zIndex: 50, minHeight: '44px' }}
+                className={`w-9 h-9 text-sm font-bold rounded-lg transition-colors relative ${p === page ? 'bg-indigo-600 text-white' : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
               >
                 {p}
               </button>
@@ -42,7 +44,8 @@ export default function PaginationControls({ page, totalPages, onPageChange, scr
             onPageChange(Math.min(totalPages, page + 1));
           }}
           disabled={page === totalPages}
-          className="relative z-10 opacity-100 visible px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          style={{ opacity: 1, visibility: 'visible', display: 'block', zIndex: 50, minHeight: '44px' }}
+          className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors relative"
         >
           Next
         </button>

@@ -139,7 +139,8 @@ export default function ExpandableText({
         <button
           onClick={handleToggle}
           type="button"
-          className="mt-2 text-[11px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-all flex items-center gap-1 relative z-20 opacity-100 visible"
+          style={{ opacity: 1, visibility: 'visible', display: 'flex', zIndex: 30, minHeight: '44px' }}
+          className="mt-2 text-[11px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-all items-center gap-1 relative"
         >
           {isFullyExpanded ? (
             <>
