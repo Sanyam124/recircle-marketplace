@@ -265,7 +265,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               Description
             </h3>
             <div className="text-gray-600 dark:text-gray-400 leading-relaxed font-normal whitespace-pre-wrap">
-              <ExpandableText text={product.description} maxLines={10} className="text-gray-800 dark:text-gray-300" showReadMore={true} />
+              <ExpandableText text={product.description} maxLines={10} className="text-gray-800 dark:text-gray-300" showReadMore={true} scrollOnCollapse={true} />
             </div>
           </div>
 
@@ -361,7 +361,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               Description
             </h3>
             <div className="text-gray-600 dark:text-gray-400 leading-relaxed font-normal whitespace-pre-wrap">
-              <ExpandableText text={product.description} maxLines={10} className="text-gray-800 dark:text-gray-300" showReadMore={true} />
+              <ExpandableText text={product.description} maxLines={10} className="text-gray-800 dark:text-gray-300" showReadMore={true} scrollOnCollapse={true} />
             </div>
           </div>
 
