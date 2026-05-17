@@ -1,7 +1,7 @@
 import React from 'react';
 import NextImage from 'next/image';
 import ImageUpload from '../ImageUpload';
-import { STATES_CITIES } from '@/lib/locations';
+import { INDIAN_STATES } from '@/constants/location';
 
 interface EditProfileFormProps {
     form: any;
@@ -22,6 +22,78 @@ interface EditProfileFormProps {
 
 export default function EditProfileForm({ form, setForm, onSubmit, submitting, user, defaults, mascot }: EditProfileFormProps) {
     const mascotUrl = `https://api.dicebear.com/9.x/${mascot.style}/svg?seed=${mascot.seed}&backgroundColor=${mascot.bg}`;
+
+    const [citySearch, setCitySearch] = React.useState(form.city || '');
+    const [cityResults, setCityResults] = React.useState<any[]>([]);
+    const [showCityDropdown, setShowCityDropdown] = React.useState(false);
+    const [citySearchLoading, setCitySearchLoading] = React.useState(false);
+    
+    const citySearchTimer = React.useRef<NodeJS.Timeout | null>(null);
+    const cityInputRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        setCitySearch(form.city || '');
+    }, [form.city]);
+
+    React.useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            if (cityInputRef.current && !cityInputRef.current.contains(e.target as Node)) {
+                setShowCityDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, []);
+
+    const handleCitySearchChange = (value: string) => {
+        setCitySearch(value);
+        if (citySearchTimer.current) clearTimeout(citySearchTimer.current);
+
+        if (value.length < 2 || !form.state) {
+            setCityResults([]);
+            setShowCityDropdown(false);
+            return;
+        }
+
+        citySearchTimer.current = setTimeout(async () => {
+            setCitySearchLoading(true);
+            try {
+                const query = encodeURIComponent(`${value}, ${form.state}, India`);
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5&countrycodes=in&addressdetails=1`);
+                const data = await res.json();
+                
+                if (data && data.length > 0) {
+                    const seen = new Set();
+                    const cities = data.reduce((acc: any[], d: any) => {
+                        const addr = d.address || {};
+                        const name = addr.city || addr.town || addr.village || addr.county || d.display_name.split(',')[0].trim();
+                        if (!seen.has(name)) {
+                            seen.add(name);
+                            acc.push({ name, display: d.display_name });
+                        }
+                        return acc;
+                    }, []).slice(0, 5);
+                    setCityResults(cities);
+                    setShowCityDropdown(true);
+                } else {
+                    setCityResults([]);
+                    setShowCityDropdown(false);
+                }
+            } catch {
+                setCityResults([]);
+            } finally {
+                setCitySearchLoading(false);
+            }
+        }, 800);
+    };
+
+    const selectCity = (city: string) => {
+        if (citySearchTimer.current) clearTimeout(citySearchTimer.current);
+        setCitySearch(city);
+        setShowCityDropdown(false);
+        setCityResults([]);
+        setForm((p: any) => ({ ...p, city }));
+    };
 
     const generateRandomMascot = () => {
         const randomSeed = Math.random().toString(36).substring(7);
@@ -213,29 +285,43 @@ export default function EditProfileForm({ form, setForm, onSubmit, submitting, u
                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 ml-2 italic">State</label>
                         <select 
                             value={form.state} 
-                            onChange={(e) => setForm((p:any) => ({ ...p, state: e.target.value, city: '' }))}
-                            className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100 appearance-none"
+                            onChange={(e) => {
+                                setForm((p:any) => ({ ...p, state: e.target.value, city: '' }));
+                                setCitySearch('');
+                            }}
+                            className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100 appearance-none cursor-pointer"
                         >
                             <option value="">Select State</option>
-                            {Object.keys(STATES_CITIES).map(state => (
+                            {INDIAN_STATES.map(state => (
                                 <option key={state} value={state}>{state}</option>
                             ))}
                         </select>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 relative" ref={cityInputRef}>
                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 ml-2 italic">City</label>
-                        <select 
-                            value={form.city} 
+                        <input
+                            type="text"
+                            value={citySearch}
+                            onChange={(e) => handleCitySearchChange(e.target.value)}
                             disabled={!form.state}
-                            onChange={(e) => setForm((p:any) => ({ ...p, city: e.target.value }))}
-                            className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100 appearance-none disabled:opacity-40"
-                        >
-                            <option value="">Select City</option>
-                            {form.state && (STATES_CITIES as any)[form.state]?.map((city: string) => (
-                                <option key={city} value={city}>{city}</option>
-                            ))}
-                        </select>
+                            placeholder={form.state ? 'Search city...' : 'Select state first'}
+                            className={`w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100 ${!form.state ? 'opacity-40 cursor-not-allowed' : ''}`}
+                        />
+                        {showCityDropdown && cityResults.length > 0 && (
+                            <div className="absolute top-[calc(100%-8px)] left-0 right-0 mt-1.5 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-gray-100 dark:border-zinc-800 overflow-hidden z-50">
+                                {cityResults.map((c, idx) => (
+                                    <button
+                                        key={idx} type="button"
+                                        onClick={() => selectCity(c.name)}
+                                        className="w-full text-left px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border-b border-gray-50 dark:border-zinc-800 last:border-0"
+                                    >
+                                        <p className="text-sm font-black truncate text-gray-900 dark:text-gray-100">{c.name}</p>
+                                        <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{c.display}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-3 md:col-span-2">
