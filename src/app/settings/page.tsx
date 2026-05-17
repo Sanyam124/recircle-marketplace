@@ -156,17 +156,18 @@ export default function SettingsPage() {
 
     const isProfileFormChanged = () => {
         if (!user) return false;
+        const u = user as any;
         return (
-            profileForm.name !== (user.name || '') ||
-            profileForm.username !== (user.username || '') ||
-            profileForm.bio !== (user.bio || '') ||
-            profileForm.phone !== (user.phone || '') ||
-            profileForm.state !== (user.state || '') ||
-            profileForm.city !== (user.city || '') ||
-            profileForm.landmark !== (user.landmark || '') ||
-            profileForm.gender !== (user.gender || 'none') ||
-            profileForm.profilePicture !== (user.profilePicture || '') ||
-            profileForm.bannerImage !== (user.bannerImage || '')
+            profileForm.name !== (u.name || '') ||
+            profileForm.username !== (u.username || '') ||
+            profileForm.bio !== (u.bio || '') ||
+            profileForm.phone !== (u.phone || '') ||
+            profileForm.state !== (u.state || '') ||
+            profileForm.city !== (u.city || '') ||
+            profileForm.landmark !== (u.landmark || '') ||
+            profileForm.gender !== (u.gender || 'none') ||
+            profileForm.profilePicture !== (u.profilePicture || '') ||
+            profileForm.bannerImage !== (u.bannerImage || '')
         );
     };
 
