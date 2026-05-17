@@ -92,11 +92,40 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
     const [productPage, setProductPage] = useState(1);
     const [servicePage, setServicePage] = useState(1);
     const [sectionLoading, setSectionLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
+    const [activeTab, setActiveTab] = useState<'products' | 'services' | 'admin'>('products');
     const router = useRouter();
+
+    // Verifier Assignment States
+    const [communities, setCommunities] = useState<any[]>([]);
+    const [showCommunityModal, setShowCommunityModal] = useState(false);
+    const [selectedCommunityId, setSelectedCommunityId] = useState('');
+    const [pendingRole, setPendingRole] = useState('');
+
+    // Customizable User Fields
+    const [editForm, setEditForm] = useState<any>({
+        name: '',
+        username: '',
+        email: '',
+        phone: '',
+        isPhoneVerified: false,
+        isVerified: false,
+        isOnVacation: false,
+        showOnlineStatus: false,
+        compactView: false,
+        notifyOffers: false,
+        notifyMessages: false,
+        bio: '',
+        state: '',
+        city: '',
+        landmark: '',
+        status: '',
+        banDays: 7
+    });
+    const [savingFields, setSavingFields] = useState(false);
 
     useEffect(() => {
         fetchUserDetail(productPage, servicePage);
+        fetchCommunities();
     }, []);
 
     useEffect(() => {
@@ -104,6 +133,42 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
             fetchUserDetail(productPage, servicePage, true);
         }
     }, [productPage, servicePage]);
+
+    useEffect(() => {
+        if (data?.user) {
+            setEditForm({
+                name: data.user.name || '',
+                username: data.user.username || '',
+                email: data.user.email || '',
+                phone: data.user.phone || '',
+                isPhoneVerified: data.user.isPhoneVerified || false,
+                isVerified: data.user.isVerified || false,
+                isOnVacation: data.user.isOnVacation || false,
+                showOnlineStatus: data.user.showOnlineStatus !== false,
+                compactView: data.user.compactView || false,
+                notifyOffers: data.user.notifyOffers !== false,
+                notifyMessages: data.user.notifyMessages !== false,
+                bio: data.user.bio || '',
+                state: data.user.state || '',
+                city: data.user.city || '',
+                landmark: data.user.landmark || '',
+                status: data.user.status || 'Active',
+                banDays: 7
+            });
+        }
+    }, [data]);
+
+    const fetchCommunities = async () => {
+        try {
+            const res = await fetch('/api/admin/communities');
+            if (res.ok) {
+                const json = await res.json();
+                setCommunities(json.communities || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch communities', error);
+        }
+    };
 
     const fetchUserDetail = async (pPage = 1, sPage = 1, isPageChange = false) => {
         try {
@@ -123,6 +188,15 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
         } finally {
             setLoading(false);
             setSectionLoading(false);
+        }
+    };
+
+    const handleRoleSelect = (newRole: string) => {
+        if (newRole === 'verifier') {
+            setPendingRole(newRole);
+            setShowCommunityModal(true);
+        } else {
+            handleRoleUpdate(newRole);
         }
     };
 
@@ -150,6 +224,59 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
             }
         } catch (error) {
             console.error('Update failed', error);
+        }
+    };
+
+    const handleVerifierAssign = async () => {
+        if (!selectedCommunityId) return;
+        try {
+            const res = await fetch('/api/admin/users', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: data.user._id, role: 'verifier', communityId: selectedCommunityId })
+            });
+
+            if (res.ok) {
+                showSuccess('Success', 'Verifier assigned and updated successfully');
+                setShowCommunityModal(false);
+                setSelectedCommunityId('');
+                fetchUserDetail(productPage, servicePage);
+            } else {
+                const json = await res.json();
+                showError('Update Failed', json.error || 'Failed to update role');
+            }
+        } catch (error) {
+            console.error('Update failed', error);
+        }
+    };
+
+    const saveUserFields = async () => {
+        const confirmed = await confirmAction({
+            title: 'Save User Modifications?',
+            text: 'Are you sure you want to update this user\'s platform fields?',
+            confirmButtonText: 'Yes, Save Changes'
+        });
+        if (!confirmed) return;
+
+        setSavingFields(true);
+        try {
+            const res = await fetch(`/api/admin/users/${resolvedParams.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editForm)
+            });
+            if (res.ok) {
+                showSuccess('Success', 'User fields updated successfully.');
+                fetchUserDetail(productPage, servicePage);
+            } else {
+                const json = await res.json();
+                showError('Update Failed', json.error || 'Failed to update fields');
+            }
+        } catch (error) {
+            console.error('Failed to update fields', error);
+            showError('Error', 'An error occurred while saving.');
+        } finally {
+            setSavingFields(false);
         }
     };
 
@@ -211,12 +338,13 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
                         </div>
                         <div className="flex items-center gap-2">
                             <select
-                                className="text-sm border border-gray-200 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-1.5 bg-white"
+                                className="text-sm border border-gray-200 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-1.5 bg-white cursor-pointer"
                                 value={user.role}
-                                onChange={(e) => handleRoleUpdate(e.target.value)}
+                                onChange={(e) => handleRoleSelect(e.target.value)}
                             >
                                 <option value="user">User</option>
                                 <option value="admin">Admin</option>
+                                <option value="verifier">Verifier</option>
                             </select>
                             <span className="text-xs text-gray-400 italic">Change Role</span>
                         </div>
@@ -248,13 +376,13 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
             <div className={`transition-opacity duration-200 ${sectionLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
 
                 {/* Tab Toggle */}
-                <div id="admin-user-listings" className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl w-fit mb-6">
+                <div id="admin-user-listings" className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit mb-6 transition-colors">
                     <button
                         onClick={() => setActiveTab('products')}
                         className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
                             activeTab === 'products'
-                                ? 'bg-white text-indigo-700 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700'
+                                ? 'bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                         }`}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,7 +390,7 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
                         </svg>
                         Products
                         <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                            activeTab === 'products' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-500'
+                            activeTab === 'products' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400' : 'bg-gray-200 dark:bg-gray-800 text-gray-500'
                         }`}>
                             {stats?.totalProducts ?? 0}
                         </span>
@@ -271,8 +399,8 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
                         onClick={() => setActiveTab('services')}
                         className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
                             activeTab === 'services'
-                                ? 'bg-white text-indigo-700 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700'
+                                ? 'bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                         }`}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -280,10 +408,21 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
                         </svg>
                         Services
                         <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                            activeTab === 'services' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-500'
+                            activeTab === 'services' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400' : 'bg-gray-200 dark:bg-gray-800 text-gray-500'
                         }`}>
                             {stats?.totalServices ?? 0}
                         </span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('admin')}
+                        className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                            activeTab === 'admin'
+                                ? 'bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                        }`}
+                    >
+                        <span className="text-sm">⚙️</span>
+                        Admin Controls
                     </button>
                 </div>
 
@@ -291,8 +430,8 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
                 {activeTab === 'products' && (
                     <div className="mb-10">
                         {products.length === 0 ? (
-                            <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
-                                <p className="text-gray-500 text-sm">No products listed.</p>
+                            <div className="text-center py-16 bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-700">
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">No products listed.</p>
                             </div>
                         ) : (
                             <>
@@ -316,8 +455,8 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
                 {activeTab === 'services' && (
                     <div className="mb-10">
                         {services.length === 0 ? (
-                            <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
-                                <p className="text-gray-500 text-sm">No services offered.</p>
+                            <div className="text-center py-16 bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-700">
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">No services offered.</p>
                             </div>
                         ) : (
                             <>
@@ -337,12 +476,291 @@ export default function AdminUserDetailsPage({ params }: { params: Promise<{ id:
                     </div>
                 )}
 
+                {/* Administrative Controls Panel */}
+                {activeTab === 'admin' && (
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 p-8 shadow-sm space-y-8 animate-in fade-in duration-300 transition-colors mb-10">
+                        <div>
+                            <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">Administrative Override Control</h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Superuser privilege: edit any user field, location data, or direct notification & online switches immediately.</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            
+                            {/* Moderation & Account Status Card */}
+                            <div className="bg-gray-50/50 dark:bg-gray-900/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-4">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">🛡️ Moderation & Status</h3>
+                                
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Account Status</label>
+                                    <select
+                                        value={editForm.status}
+                                        onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                                        className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-colors"
+                                    >
+                                        <option value="Active">Active</option>
+                                        <option value="Banned">Banned</option>
+                                    </select>
+                                </div>
+
+                                {editForm.status === 'Banned' && (
+                                    <div className="animate-in slide-in-from-top-2 duration-200">
+                                        <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Ban Duration (Days)</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="365"
+                                            value={editForm.banDays}
+                                            onChange={e => setEditForm({ ...editForm, banDays: Math.max(1, parseInt(e.target.value) || 1) })}
+                                            className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-colors"
+                                            placeholder="e.g. 7"
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="flex items-center justify-between pt-2">
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">ID Verification Status</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">Mark account as campus-verified</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={editForm.isVerified} onChange={e => setEditForm({ ...editForm, isVerified: e.target.checked })} />
+                                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500"></div>
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2">
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">Phone Verification Status</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">Mark phone as verified</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={editForm.isPhoneVerified} onChange={e => setEditForm({ ...editForm, isPhoneVerified: e.target.checked })} />
+                                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500"></div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Platform Settings & Preferences Card */}
+                            <div className="bg-gray-50/50 dark:bg-gray-900/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-4">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">⚙️ Settings & Privacy</h3>
+
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">Vacation Mode</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">Hide listings and set away status</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={editForm.isOnVacation} onChange={e => setEditForm({ ...editForm, isOnVacation: e.target.checked })} />
+                                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500"></div>
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">Show Online Status</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">Display presence to other members</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={editForm.showOnlineStatus} onChange={e => setEditForm({ ...editForm, showOnlineStatus: e.target.checked })} />
+                                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500"></div>
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">Compact Chat View</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">Simplify UI layout on mobile devices</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={editForm.compactView} onChange={e => setEditForm({ ...editForm, compactView: e.target.checked })} />
+                                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500"></div>
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">Offer Alert Emails</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">Receive notifications for deal status logs</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={editForm.notifyOffers} onChange={e => setEditForm({ ...editForm, notifyOffers: e.target.checked })} />
+                                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500"></div>
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">Chat Message Emails</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">Receive alert emails for direct chats</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={editForm.notifyMessages} onChange={e => setEditForm({ ...editForm, notifyMessages: e.target.checked })} />
+                                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500"></div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Profile Fields Card */}
+                            <div className="bg-gray-50/50 dark:bg-gray-900/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-4 md:col-span-2">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">👤 User Profile Details</h3>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Full Name</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.name}
+                                            onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                            className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-colors"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Username</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.username}
+                                            onChange={e => setEditForm({ ...editForm, username: e.target.value })}
+                                            className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-colors"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Email Address</label>
+                                        <input
+                                            type="email"
+                                            value={editForm.email}
+                                            onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                                            className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-colors"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Phone Number</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.phone}
+                                            onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                            className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-colors"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Bio</label>
+                                    <textarea
+                                        value={editForm.bio}
+                                        onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
+                                        rows={3}
+                                        className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-colors"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Location Details Card */}
+                            <div className="bg-gray-50/50 dark:bg-gray-900/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-4 md:col-span-2">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">📍 Location Coordinates</h3>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Landmark / Hostel</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.landmark}
+                                            onChange={e => setEditForm({ ...editForm, landmark: e.target.value })}
+                                            className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-colors"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">City</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.city}
+                                            onChange={e => setEditForm({ ...editForm, city: e.target.value })}
+                                            className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-colors"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">State</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.state}
+                                            onChange={e => setEditForm({ ...editForm, state: e.target.value })}
+                                            className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-colors"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <button
+                                onClick={saveUserFields}
+                                disabled={savingFields}
+                                className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-indigo-100"
+                            >
+                                {savingFields ? 'Saving modifications...' : 'Save User Modifications'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Reviews Section */}
                 <div id="reviews-section">
                     <ReviewSection targetId={user._id} targetName={user.name} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors" />
                 </div>
 
             </div>
+
+            {/* Community Assignment Modal for Verifiers */}
+            {showCommunityModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-md p-8 shadow-2xl border border-gray-100 dark:border-gray-700 animate-in zoom-in slide-in-from-bottom-4 duration-300">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            </div>
+                            <h3 className="text-2xl font-black text-gray-900 dark:text-white">Assign Community</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-medium">Select which campus this Verifier will manage.</p>
+                        </div>
+                        
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1">Select Campus Circle</label>
+                                <select 
+                                    value={selectedCommunityId}
+                                    onChange={(e) => setSelectedCommunityId(e.target.value)}
+                                    className="w-full rounded-2xl border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3.5 text-sm font-bold text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all outline-none appearance-none cursor-pointer"
+                                >
+                                    <option value="">-- Choose Community --</option>
+                                    {communities.map((c) => (
+                                        <option key={c._id} value={c._id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button 
+                                    onClick={() => { setShowCommunityModal(false); setSelectedCommunityId(''); }}
+                                    className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-155 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleVerifierAssign}
+                                    disabled={!selectedCommunityId}
+                                    className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-black uppercase tracking-widest text-white bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-400 shadow-lg shadow-indigo-100 dark:shadow-none disabled:opacity-50 transition-all active:scale-95"
+                                >
+                                    Assign & Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

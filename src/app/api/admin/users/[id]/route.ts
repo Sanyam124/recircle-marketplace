@@ -68,7 +68,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const rating = allReviewsForRating.length > 0
             ? allReviewsForRating.reduce((acc, r) => acc + r.rating, 0) / allReviewsForRating.length
             : 0;
-
         const reviews = await Review.find({ target: id })
             .populate('reviewer', 'name profilePicture')
             .sort({ createdAt: -1 })
@@ -105,5 +104,48 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     } catch (error) {
         console.error('Admin User Detail Fetch Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        if (!(await isAdmin(req))) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { id } = await params;
+        const body = await req.json();
+
+        await connectToDatabase();
+
+        const user = await User.findById(id);
+        if (!user) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        const allowedFields = [
+            'name', 'username', 'email', 'phone', 'isPhoneVerified', 'isVerified',
+            'isOnVacation', 'showOnlineStatus', 'compactView', 'notifyOffers', 'notifyMessages',
+            'bio', 'state', 'city', 'landmark', 'status'
+        ];
+
+        allowedFields.forEach(field => {
+            if (body[field] !== undefined) {
+                (user as any)[field] = body[field];
+            }
+        });
+
+        if (body.status === 'Banned' && body.banDays) {
+            user.bannedUntil = new Date(Date.now() + Number(body.banDays) * 24 * 60 * 60 * 1000);
+        } else if (body.status === 'Active') {
+            user.bannedUntil = null as any;
+        }
+
+        await user.save();
+
+        return NextResponse.json({ success: true, user }, { status: 200 });
+    } catch (error: any) {
+        console.error('Admin User Detail Update PUT Error:', error);
+        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -79,14 +79,14 @@ export default function Navbar() {
 
             </div>
           </div>
-          <div className="hidden md:flex sm:items-center">
+          <div className="flex sm:items-center">
             {loading ? (
-              <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-3">
                 <div className="h-8 w-8 rounded-full animate-pulse bg-gray-200 dark:bg-gray-700" />
                 <div className="h-4 w-20 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
               </div>
             ) : user ? (
-              <div className="flex items-center gap-2 lg:gap-3">
+              <div className="hidden md:flex items-center gap-2 lg:gap-3">
                 <NotificationBell />
                 <div className="flex items-center gap-1 lg:gap-2">
                   <Link href="/wishlist" className="flex items-center gap-2 px-2 lg:px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 transition-all" title="Wishlist">
@@ -212,34 +212,34 @@ export default function Navbar() {
               </div>
             ) : (
               <div className="flex items-center">
-                <Link href="/auth" className="bg-indigo-600 dark:bg-indigo-500 text-white hover:bg-indigo-700 dark:hover:bg-indigo-600 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all transform active:scale-[0.98]">
+                <Link href="/auth" className="bg-indigo-600 dark:bg-indigo-500 text-white hover:bg-indigo-700 dark:hover:bg-indigo-600 px-3 py-2 md:px-5 md:py-2.5 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold shadow-md hover:shadow-lg transition-all transform active:scale-[0.98] whitespace-nowrap">
                   Sign In / Register
                 </Link>
               </div>
             )}
           </div>
-          <div className="-mr-2 flex items-center md:hidden">
-            {user && (
+          {user && (
+            <div className="-mr-2 flex items-center md:hidden">
               <div className="flex items-center mr-1">
                 <NotificationBell />
               </div>
-            )}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 transition-colors"
-            >
-              <span className="sr-only">Open main menu</span>
-              {isMobileMenuOpen ? (
-                <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
-            </button>
-          </div>
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 transition-colors"
+              >
+                <span className="sr-only">Open main menu</span>
+                {isMobileMenuOpen ? (
+                  <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
