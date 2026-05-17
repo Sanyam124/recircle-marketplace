@@ -221,7 +221,7 @@ export default function SmartLocationPicker({
         setCityResults([]);
 
         const coords = await geocodeLocation(city, locationData.state || '');
-        updateLocation({ city, coordinates: coords || undefined, isPrecise: false });
+        updateLocation({ city, coordinates: coords || undefined, isPrecise: false, pincode: '' });
     };
 
     // Close dropdown on click outside
@@ -307,7 +307,7 @@ export default function SmartLocationPicker({
                             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-1.5 ml-1">State <span className="text-red-500">*</span></label>
                             <select
                                 value={locationData.state || ''}
-                                onChange={(e) => updateLocation({ state: e.target.value, city: '', coordinates: undefined, isPrecise: false })}
+                                onChange={(e) => updateLocation({ state: e.target.value, city: '', coordinates: undefined, isPrecise: false, pincode: '' })}
                                 className="w-full bg-gray-50 dark:bg-zinc-800 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none cursor-pointer text-gray-900 dark:text-white"
                             >
                                 <option value="" className="dark:bg-zinc-900">Select State</option>

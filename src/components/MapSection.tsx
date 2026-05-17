@@ -37,7 +37,7 @@ export default function MapSection({ coordinates, isPrecise, recenterTick, hasPi
     return (
         <MapContainer 
             center={coordinates} 
-            zoom={isPrecise ? 15 : (hasPincode ? 13 : 11)} 
+            zoom={isPrecise ? 15 : (hasPincode ? 14 : 11)} 
             scrollWheelZoom={true} 
             className="h-full w-full"
             style={{ position: 'relative' }}
@@ -46,7 +46,7 @@ export default function MapSection({ coordinates, isPrecise, recenterTick, hasPi
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <MapViewUpdater center={coordinates} recenterTick={recenterTick} zoom={isPrecise ? 15 : (hasPincode ? 13 : 11)} />
+            <MapViewUpdater center={coordinates} recenterTick={recenterTick} zoom={isPrecise ? 15 : (hasPincode ? 14 : 11)} />
             {isPrecise ? (
                 <Marker position={coordinates} icon={icon} />
             ) : (
