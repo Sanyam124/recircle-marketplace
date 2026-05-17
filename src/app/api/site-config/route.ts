@@ -83,8 +83,7 @@ export async function GET(_req: NextRequest) {
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884930/recircle/defaults/banners/wavqltixgy5dfcnvuv7y.jpg",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884931/recircle/defaults/banners/l1kcurhb3gyrfilaiw8y.jpg",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884932/recircle/defaults/banners/ontd1mq3hvvd4zklnhol.jpg",
-                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884933/recircle/defaults/banners/rnko4ck2wczrv34jzwu2.jpg",
-                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884934/recircle/defaults/banners/ulb2vmptaa6e6gayhzxu.jpg"
+                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884933/recircle/defaults/banners/rnko4ck2wczrv34jzwu2.jpg"
             ],
             productConditions: ['New', 'Like New', 'Good', 'Fair', 'Poor'],
             maxProductImages: 5,

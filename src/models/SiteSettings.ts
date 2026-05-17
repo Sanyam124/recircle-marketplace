@@ -146,8 +146,7 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884929/recircle/defaults/banners/mnfbvgpadbmzzjmfd7db.jpg",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884930/recircle/defaults/banners/wavqltixgy5dfcnvuv7y.jpg",
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884931/recircle/defaults/banners/l1kcurhb3gyrfilaiw8y.jpg",
-                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884933/recircle/defaults/banners/rnko4ck2wczrv34jzwu2.jpg",
-                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884934/recircle/defaults/banners/ulb2vmptaa6e6gayhzxu.jpg"
+                "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884933/recircle/defaults/banners/rnko4ck2wczrv34jzwu2.jpg"
             ],
         },
         productConditions: {
@@ -209,6 +208,11 @@ SiteSettingsSchema.statics.getSingleton = async function () {
     let settings = await this.findOne();
     if (!settings) {
         settings = await this.create({});
+    }
+    // Proactively clean up the broken default banner from the persistent database document
+    if (settings.defaultBanners && settings.defaultBanners.includes("https://res.cloudinary.com/dq3sl82at/image/upload/v1775884934/recircle/defaults/banners/ulb2vmptaa6e6gayhzxu.jpg")) {
+        settings.defaultBanners = settings.defaultBanners.filter((url: string) => url !== "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884934/recircle/defaults/banners/ulb2vmptaa6e6gayhzxu.jpg");
+        await settings.save();
     }
     return settings;
 };
