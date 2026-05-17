@@ -1293,7 +1293,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                 )}
                                                             </div>
                                                             
-                                                            {msg.content && msg.content !== 'Sent an Offer' && msg.content !== 'Sent an Appointment Request' && !msg.content.startsWith("🤝") && (
+                                                            {msg.content && !msg.content.startsWith("🤝") && (
                                                                 <div className={`px-4 py-3 text-sm italic border-b border-gray-100 dark:border-gray-700/50 ${msg.sender === userId ? 'bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300' : 'bg-white/50 dark:bg-gray-900/20 text-indigo-900/80 dark:text-indigo-200'}`}>
                                                                     "{msg.content.replace(/^Note:\s*/, '')}"
                                                                 </div>
