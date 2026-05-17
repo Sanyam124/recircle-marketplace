@@ -26,6 +26,9 @@ function ExploreFiltersAndGrid() {
   // Only apply user defaults on a clean first visit (no URL params)
   const hasAnyParams = searchParams.toString().length > 0;
 
+  const resolvedCommunity = searchParams.get('communityFilter') || (!hasAnyParams ? (user?.defaultCommunity || (user ? 'All' : 'Public')) : (user ? 'All' : 'Public'));
+  const resolvedHostel = searchParams.get('hostel') || (!hasAnyParams && !!user?.defaultHostel && !['All', 'Public', 'Unified'].includes(resolvedCommunity) ? user.defaultHostel : '');
+
   const currentFilters: ExploreFilters = {
     search: searchParams.get('search') || '',
     type: (searchParams.get('type') as 'all' | 'products' | 'services') || 'all',
@@ -36,8 +39,8 @@ function ExploreFiltersAndGrid() {
     categories: Array.from(new Set(catsFromUrl)),
     conditions: searchParams.getAll('conditions[]') || [],
     availabilities: searchParams.getAll('availabilities[]') || [],
-    communityFilter: searchParams.get('communityFilter') || (!hasAnyParams ? (user?.defaultCommunity || (user ? 'All' : 'Public')) : (user ? 'All' : 'Public')),
-    hostel: searchParams.get('hostel') || (!hasAnyParams && !!user?.defaultHostel ? user.defaultHostel : ''),
+    communityFilter: resolvedCommunity,
+    hostel: resolvedHostel,
     state: searchParams.get('state') || '',
     city: searchParams.get('city') || ''
   };

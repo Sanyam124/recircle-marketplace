@@ -129,10 +129,14 @@ export default function SettingsPage() {
         setSaving(field);
         // Handle empty string for ObjectIds or fields to avoid Mongoose casting errors
         const sanitizedValue = (field === 'defaultCommunity' || field === 'defaultHostel') && value === "" ? null : value;
-        const updateData = { [field]: sanitizedValue };
+        const updateData: any = { [field]: sanitizedValue };
         
-        // Optimistic update
-        setPrefs(prev => ({ ...prev, [field]: sanitizedValue }));
+        if (field === 'defaultCommunity') {
+            updateData.defaultHostel = null;
+            setPrefs(prev => ({ ...prev, defaultCommunity: sanitizedValue, defaultHostel: '' }));
+        } else {
+            setPrefs(prev => ({ ...prev, [field]: sanitizedValue }));
+        }
 
         try {
             const res = await fetch('/api/profile/data', {
