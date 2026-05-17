@@ -18,6 +18,7 @@ interface LocationData {
   pincode?: string;
   city?: string;
   state?: string;
+  area?: string;
   hostel?: string;
   room?: number;
   bed?: number;
@@ -97,7 +98,8 @@ export default function SmartLocationPicker({
                     coordinates: [lng, lat],
                     city: details.city,
                     state: details.state,
-                    pincode: details.pincode
+                    pincode: details.pincode,
+                    isPrecise: true
                 });
                 setCitySearch(details.city);
                 setDetecting(false);
@@ -152,7 +154,8 @@ export default function SmartLocationPicker({
                         pincode: clean,
                         city: details.city,
                         state: details.state,
-                        coordinates: [lon, lat]
+                        coordinates: [lon, lat],
+                        isPrecise: false
                     });
                     setCitySearch(details.city);
                 }
@@ -218,7 +221,7 @@ export default function SmartLocationPicker({
         setCityResults([]);
 
         const coords = await geocodeLocation(city, locationData.state || '');
-        updateLocation({ city, coordinates: coords || undefined });
+        updateLocation({ city, coordinates: coords || undefined, isPrecise: false });
     };
 
     // Close dropdown on click outside
@@ -304,7 +307,7 @@ export default function SmartLocationPicker({
                             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-1.5 ml-1">State <span className="text-red-500">*</span></label>
                             <select
                                 value={locationData.state || ''}
-                                onChange={(e) => updateLocation({ state: e.target.value, city: '', coordinates: undefined })}
+                                onChange={(e) => updateLocation({ state: e.target.value, city: '', coordinates: undefined, isPrecise: false })}
                                 className="w-full bg-gray-50 dark:bg-zinc-800 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none cursor-pointer text-gray-900 dark:text-white"
                             >
                                 <option value="" className="dark:bg-zinc-900">Select State</option>
@@ -312,13 +315,13 @@ export default function SmartLocationPicker({
                             </select>
                         </div>
                         <div className="relative" ref={cityInputRef}>
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-1.5 ml-1">City/Area <span className="text-red-500">*</span></label>
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-1.5 ml-1">City <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
                                 value={citySearch}
                                 onChange={(e) => handleCitySearchChange(e.target.value)}
                                 disabled={!locationData.state}
-                                placeholder={locationData.state ? 'Search city or area...' : 'Select state first'}
+                                placeholder={locationData.state ? 'Search city...' : 'Select state first'}
                                 className={`w-full bg-gray-50 dark:bg-zinc-800 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none transition-all text-gray-900 dark:text-white ${!locationData.state ? 'opacity-50 cursor-not-allowed' : ''}`}
                             />
                             {showCityDropdown && cityResults.length > 0 && (
@@ -335,6 +338,16 @@ export default function SmartLocationPicker({
                                     ))}
                                 </div>
                             )}
+                        </div>
+                        <div className="sm:col-span-2">
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-1.5 ml-1">Area/Landmark (Optional)</label>
+                            <input
+                                type="text"
+                                value={locationData.area || ''}
+                                onChange={(e) => updateLocation({ area: e.target.value })}
+                                placeholder="e.g., Near City Park"
+                                className="w-full bg-gray-50 dark:bg-zinc-800 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none transition-all text-gray-900 dark:text-white"
+                            />
                         </div>
                     </div>
                 )}

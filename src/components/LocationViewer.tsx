@@ -22,6 +22,7 @@ interface LocationViewerProps {
         hostel?: string;
         room?: number;
         bed?: number;
+        area?: string;
     };
 }
 
@@ -85,9 +86,9 @@ export default function LocationViewer({ visibility, location }: LocationViewerP
                     </div>
 
                     {/* Official Location - simple text above the map */}
-                    {(location.city || location.state || location.pincode) && (
+                    {(location.city || location.state || location.pincode || location.area) && (
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                            <span className="font-bold text-gray-800 dark:text-gray-200">Location:</span> {[location.city, location.state, location.pincode].filter(Boolean).join(', ')}
+                            <span className="font-bold text-gray-800 dark:text-gray-200">Location:</span> {[location.area, location.city, location.state, location.pincode].filter(Boolean).join(', ')}
                         </p>
                     )}
 
@@ -96,6 +97,7 @@ export default function LocationViewer({ visibility, location }: LocationViewerP
                             coordinates={coordinates}
                             isPrecise={isPrecise}
                             recenterTick={recenterTick}
+                            hasPincode={Boolean(location.pincode)}
                         />
 
                         {/* Action Buttons Overlay */}

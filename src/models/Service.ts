@@ -19,6 +19,8 @@ export interface IService extends Document {
         hostel?: string;
         room?: number;
         bed?: number;
+        area?: string;
+        pincode?: string;
     };
     availability: string;
     createdAt: Date;
@@ -44,7 +46,9 @@ const ServiceSchema: Schema<IService> = new Schema(
             isPrecise: { type: Boolean, default: true },
             hostel: { type: String, trim: true, maxlength: 50 },
             room: { type: Number, min: 1, max: 1000 },
-            bed: { type: Number, min: 1, max: 19 }
+            bed: { type: Number, min: 1, max: 19 },
+            area: { type: String, trim: true, maxlength: 100 },
+            pincode: { type: String, trim: true, maxlength: 10 }
         },
         availability: { type: String, trim: true, maxlength: 100 },
     },

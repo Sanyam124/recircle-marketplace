@@ -34,6 +34,7 @@ interface Product {
     city?: string;
     state?: string;
     pincode?: string;
+    area?: string;
     coordinates?: [number, number];
     hostel?: string;
     room?: number;
@@ -350,7 +351,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
                   {product.visibility === 'Community' || (!product.visibility && product.community)
                     ? (product.community?.name || 'Campus Listing')
-                    : (product.location ? [product.location.city, product.location.state].filter(Boolean).join(', ') || 'Location unknown' : 'Location unknown')}
+                    : (product.location ? [product.location.area, product.location.city, product.location.state].filter(Boolean).join(', ') || 'Location unknown' : 'Location unknown')}
                </span>
             </div>
           </div>

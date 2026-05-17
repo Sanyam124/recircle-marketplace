@@ -110,7 +110,9 @@ export async function POST(req: NextRequest) {
                     isPrecise: location.isPrecise,
                     hostel: location.hostel,
                     room: location.room,
-                    bed: location.bed
+                    bed: location.bed,
+                    area: location.area,
+                    pincode: location.pincode
                 };
             }
 
@@ -150,7 +152,9 @@ export async function POST(req: NextRequest) {
                     isPrecise: location.isPrecise !== false,
                     hostel: location.hostel?.trim() || '',
                     room: (location.room && !isNaN(Number(location.room))) ? Number(location.room) : undefined,
-                    bed: (location.bed && !isNaN(Number(location.bed))) ? Number(location.bed) : undefined
+                    bed: (location.bed && !isNaN(Number(location.bed))) ? Number(location.bed) : undefined,
+                    area: location.area?.trim() || '',
+                    pincode: location.pincode?.trim() || ''
                 } : undefined
             });
 

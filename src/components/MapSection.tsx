@@ -6,13 +6,13 @@ import 'leaflet/dist/leaflet.css';
 import { useEffect } from 'react';
 
 // Internal component to handle map center updates
-function MapViewUpdater({ center, recenterTick }: { center: [number, number], recenterTick?: number }) {
+function MapViewUpdater({ center, recenterTick, zoom }: { center: [number, number], recenterTick?: number, zoom: number }) {
     const map = useMap();
     useEffect(() => {
         if (center) {
-            map.flyTo(center, 15, { animate: true, duration: 1.5 });
+            map.flyTo(center, zoom, { animate: true, duration: 1.5 });
         }
-    }, [center, map, recenterTick]);
+    }, [center, map, recenterTick, zoom]);
     return null;
 }
 
@@ -20,9 +20,10 @@ interface MapSectionProps {
     coordinates: [number, number]; // [lat, lng] for Leaflet
     isPrecise: boolean;
     recenterTick?: number;
+    hasPincode?: boolean;
 }
 
-export default function MapSection({ coordinates, isPrecise, recenterTick }: MapSectionProps) {
+export default function MapSection({ coordinates, isPrecise, recenterTick, hasPincode }: MapSectionProps) {
     const icon = L.icon({
         iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -31,10 +32,12 @@ export default function MapSection({ coordinates, isPrecise, recenterTick }: Map
         iconAnchor: [12, 41]
     });
 
+    const circleRadius = hasPincode ? 1500 : 8000; // 1.5km for pincode, 8km for city
+
     return (
         <MapContainer 
             center={coordinates} 
-            zoom={15} 
+            zoom={isPrecise ? 15 : (hasPincode ? 13 : 11)} 
             scrollWheelZoom={true} 
             className="h-full w-full"
             style={{ position: 'relative' }}
@@ -43,13 +46,13 @@ export default function MapSection({ coordinates, isPrecise, recenterTick }: Map
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <MapViewUpdater center={coordinates} recenterTick={recenterTick} />
+            <MapViewUpdater center={coordinates} recenterTick={recenterTick} zoom={isPrecise ? 15 : (hasPincode ? 13 : 11)} />
             {isPrecise ? (
                 <Marker position={coordinates} icon={icon} />
             ) : (
                 <Circle 
                     center={coordinates}
-                    radius={500}
+                    radius={circleRadius}
                     pathOptions={{ 
                         color: '#f59e0b', 
                         fillColor: '#f59e0b', 
