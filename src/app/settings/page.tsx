@@ -154,6 +154,22 @@ export default function SettingsPage() {
         }
     };
 
+    const isProfileFormChanged = () => {
+        if (!user) return false;
+        return (
+            profileForm.name !== (user.name || '') ||
+            profileForm.username !== (user.username || '') ||
+            profileForm.bio !== (user.bio || '') ||
+            profileForm.phone !== (user.phone || '') ||
+            profileForm.state !== (user.state || '') ||
+            profileForm.city !== (user.city || '') ||
+            profileForm.landmark !== (user.landmark || '') ||
+            profileForm.gender !== (user.gender || 'none') ||
+            profileForm.profilePicture !== (user.profilePicture || '') ||
+            profileForm.bannerImage !== (user.bannerImage || '')
+        );
+    };
+
     const handleProfileSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
@@ -268,25 +284,27 @@ export default function SettingsPage() {
                                         }}
                                     />
                                     {/* Bottom Action Bar for Profile */}
-                                    <div className="fixed bottom-20 left-0 right-0 p-4 md:relative md:bottom-0 md:p-0 z-40">
-                                        <button 
-                                            onClick={handleProfileSubmit}
-                                            disabled={submitting}
-                                            className="w-full md:w-auto px-12 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 active:scale-95 transition-all flex items-center justify-center gap-3 border border-emerald-400/20"
-                                        >
-                                            {submitting ? (
-                                                <>
-                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                    Saving Changes...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                                                    Save Profile Details
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
+                                    {isProfileFormChanged() && (
+                                        <div className="fixed bottom-20 left-0 right-0 p-4 md:relative md:bottom-0 md:p-0 z-40 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                            <button 
+                                                onClick={handleProfileSubmit}
+                                                disabled={submitting}
+                                                className="w-full md:w-auto px-12 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 active:scale-95 transition-all flex items-center justify-center gap-3 border border-emerald-400/20"
+                                            >
+                                                {submitting ? (
+                                                    <>
+                                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                        Saving Changes...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                                        Save Profile Details
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
