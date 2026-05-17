@@ -28,6 +28,7 @@ export default function ExpandableText({
   const [showButton, setShowButton] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+  const fullTextRef = useRef<HTMLDivElement>(null);
 
   const [shouldScroll, setShouldScroll] = useState(false);
 
@@ -64,8 +65,21 @@ export default function ExpandableText({
     if (!element) return;
 
     const checkOverflow = () => {
-      // Use a small 2px buffer to account for rounding errors in different browsers/zooms
-      const isOverflowing = element.scrollHeight > (element.clientHeight + 2);
+      const fullElement = fullTextRef.current;
+      
+      // 1. Standard scrollHeight check (Works on Chrome/Firefox/Android)
+      let isOverflowing = element.scrollHeight > (element.clientHeight + 2);
+      
+      // 2. iOS Safari Fallback Check:
+      // On some mobile WebKit engines, a container with -webkit-line-clamp will incorrectly report 
+      // its scrollHeight as equal to its clientHeight because the overflow is completely clipped from the render tree.
+      // We compare the height of our invisible, un-clamped clone to the visible clamped container.
+      if (!isOverflowing && fullElement && !isFullyExpanded) {
+         if (fullElement.clientHeight > element.clientHeight + 2) {
+             isOverflowing = true;
+         }
+      }
+      
       setShowButton(isOverflowing);
     };
 
@@ -120,7 +134,7 @@ export default function ExpandableText({
     <div ref={containerRef} className={`relative ${className}`}>
       <div 
         ref={textRef}
-        className="transition-all duration-300"
+        className="transition-all duration-300 relative z-10"
         style={{ 
           display: !isFullyExpanded ? '-webkit-box' : 'block',
           WebkitLineClamp: !isFullyExpanded ? currentMaxLines : 'unset',
@@ -134,6 +148,21 @@ export default function ExpandableText({
           <div className="whitespace-pre-wrap break-words">{text}</div>
         )}
       </div>
+
+      {/* Invisible Full-Text Clone for Safari Height Measurement */}
+      {!isFullyExpanded && (
+        <div 
+          ref={fullTextRef}
+          className="absolute top-0 left-0 w-full invisible pointer-events-none opacity-0 z-0"
+          aria-hidden="true"
+        >
+          {isHtml ? (
+            <div className="overflow-hidden break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: text.replace(/\n/g, '<br/>') }} />
+          ) : (
+            <div className="whitespace-pre-wrap break-words">{text}</div>
+          )}
+        </div>
+      )}
 
       {showReadMore && (showButton || isFullyExpanded) && (
         <button
