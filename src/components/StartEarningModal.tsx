@@ -15,7 +15,7 @@ export default function StartEarningModal({ onClose }: StartEarningModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4 transition-all" onClick={onClose}>
+    <div className="fixed inset-0 z-[500] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4 transition-all" onClick={onClose}>
       <div
         className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-t-[2.5rem] sm:rounded-[3rem] shadow-2xl p-6 sm:p-10 transition-all animate-in slide-in-from-bottom sm:zoom-in duration-300 max-h-[92vh] overflow-y-auto pb-[120px] sm:pb-10"
         onClick={e => e.stopPropagation()}
