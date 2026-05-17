@@ -39,6 +39,7 @@ export default function SettingsPage() {
         profilePicture: '',
         bannerImage: '',
     });
+    const [initialProfileForm, setInitialProfileForm] = useState<any>(null);
 
     // Preferences State
     const [prefs, setPrefs] = useState({
@@ -84,7 +85,7 @@ export default function SettingsPage() {
             const res = await fetch('/api/profile/data');
             if (res.ok) {
                 const { user: u, configData } = await res.json();
-                setProfileForm({
+                const cleanForm = {
                     name: u.name || '',
                     username: u.username || '',
                     bio: u.bio || '',
@@ -95,7 +96,9 @@ export default function SettingsPage() {
                     gender: u.gender || 'none',
                     profilePicture: u.profilePicture || '',
                     bannerImage: u.bannerImage || '',
-                });
+                };
+                setProfileForm(cleanForm);
+                setInitialProfileForm(cleanForm);
                 setPrefs({
                     allowEmailContact: !!u.allowEmailContact,
                     allowPhoneContact: !!u.allowPhoneContact,
@@ -155,19 +158,18 @@ export default function SettingsPage() {
     };
 
     const isProfileFormChanged = () => {
-        if (!user) return false;
-        const u = user as any;
+        if (!initialProfileForm) return false;
         return (
-            (profileForm.name || '') !== (u.name || '') ||
-            (profileForm.username || '') !== (u.username || '') ||
-            (profileForm.bio || '') !== (u.bio || '') ||
-            (profileForm.phone || '') !== (u.phone || '') ||
-            (profileForm.state || '') !== (u.state || '') ||
-            (profileForm.city || '') !== (u.city || '') ||
-            (profileForm.landmark || '') !== (u.landmark || '') ||
-            (profileForm.gender || 'none') !== (u.gender || 'none') ||
-            (profileForm.profilePicture || '') !== (u.profilePicture || '') ||
-            (profileForm.bannerImage || '') !== (u.bannerImage || '')
+            (profileForm.name || '') !== (initialProfileForm.name || '') ||
+            (profileForm.username || '') !== (initialProfileForm.username || '') ||
+            (profileForm.bio || '') !== (initialProfileForm.bio || '') ||
+            (profileForm.phone || '') !== (initialProfileForm.phone || '') ||
+            (profileForm.state || '') !== (initialProfileForm.state || '') ||
+            (profileForm.city || '') !== (initialProfileForm.city || '') ||
+            (profileForm.landmark || '') !== (initialProfileForm.landmark || '') ||
+            (profileForm.gender || 'none') !== (initialProfileForm.gender || 'none') ||
+            (profileForm.profilePicture || '') !== (initialProfileForm.profilePicture || '') ||
+            (profileForm.bannerImage || '') !== (initialProfileForm.bannerImage || '')
         );
     };
 
