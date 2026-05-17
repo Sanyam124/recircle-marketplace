@@ -85,8 +85,8 @@ export default function SettingsPage() {
             if (res.ok) {
                 const { user: u, configData } = await res.json();
                 setProfileForm({
-                    name: u.name,
-                    username: u.username,
+                    name: u.name || '',
+                    username: u.username || '',
                     bio: u.bio || '',
                     phone: u.phone || '',
                     state: u.state || '',
@@ -158,16 +158,16 @@ export default function SettingsPage() {
         if (!user) return false;
         const u = user as any;
         return (
-            profileForm.name !== (u.name || '') ||
-            profileForm.username !== (u.username || '') ||
-            profileForm.bio !== (u.bio || '') ||
-            profileForm.phone !== (u.phone || '') ||
-            profileForm.state !== (u.state || '') ||
-            profileForm.city !== (u.city || '') ||
-            profileForm.landmark !== (u.landmark || '') ||
-            profileForm.gender !== (u.gender || 'none') ||
-            profileForm.profilePicture !== (u.profilePicture || '') ||
-            profileForm.bannerImage !== (u.bannerImage || '')
+            (profileForm.name || '') !== (u.name || '') ||
+            (profileForm.username || '') !== (u.username || '') ||
+            (profileForm.bio || '') !== (u.bio || '') ||
+            (profileForm.phone || '') !== (u.phone || '') ||
+            (profileForm.state || '') !== (u.state || '') ||
+            (profileForm.city || '') !== (u.city || '') ||
+            (profileForm.landmark || '') !== (u.landmark || '') ||
+            (profileForm.gender || 'none') !== (u.gender || 'none') ||
+            (profileForm.profilePicture || '') !== (u.profilePicture || '') ||
+            (profileForm.bannerImage || '') !== (u.bannerImage || '')
         );
     };
 
