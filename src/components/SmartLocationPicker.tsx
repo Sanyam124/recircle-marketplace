@@ -340,9 +340,15 @@ export default function SmartLocationPicker({
                             )}
                         </div>
                         <div className="sm:col-span-2">
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-1.5 ml-1">Area/Landmark (Optional)</label>
+                            <div className="flex justify-between items-center mb-1.5 px-1">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">Area/Landmark (Optional)</label>
+                                <span className={`text-[9px] font-bold ${(locationData.area?.length || 0) > 90 ? 'text-amber-500' : 'text-gray-400'}`}>
+                                    {(locationData.area?.length || 0)}/100
+                                </span>
+                            </div>
                             <input
                                 type="text"
+                                maxLength={100}
                                 value={locationData.area || ''}
                                 onChange={(e) => updateLocation({ area: e.target.value })}
                                 placeholder="e.g., Near City Park"
