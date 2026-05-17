@@ -886,7 +886,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                     rentDuration: (isProduct && offerType === 'Rent') ? Number(rentDuration) : undefined,
                     rentUnit: (isProduct && offerType === 'Rent') ? rentUnit : undefined,
                     offeredPrice: price,
-                    message: actionMessage
+                    message: undefined
                 })
             });
 
@@ -903,9 +903,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 };
                 
                 const offerTypeStr = isProduct ? 'Offer' : 'Appointment Request';
-                const note = actionMessage.trim();
                 
-                await handleSendMessage(undefined, note || `Sent an ${offerTypeStr}`, offerPayload);
+                await handleSendMessage(undefined, `Sent an ${offerTypeStr}`, offerPayload);
                 if (referencingItem) {
                     fetchItemData(referencingItem.type, referencingItem.id);
                 }
