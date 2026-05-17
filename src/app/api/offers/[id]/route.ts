@@ -218,6 +218,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             { $set: updateData }
         );
 
+        // 2b. Post a new chat status message log reflecting the decision in the chat feed
+        const decisionMsg = await Message.create({
+            sender: decoded.userId,
+            recipient: offer.buyer,
+            content: action === 'accept'
+                ? `🤝 OFFER ACCEPTED! I've accepted your offer of ₹${offer.offeredPrice} on "${itemName}". Let's coordinate the handoff!`
+                : `❌ OFFER DECLINED. I've declined your offer of ₹${offer.offeredPrice} on "${itemName}".`,
+            product: offer.product?._id || offer.product || undefined,
+            service: offer.service?._id || offer.service || undefined
+        });
+
         // 3. Trigger Pusher events for all related messages to sync UI in real-time (Deduplicated)
         try {
             const { pusherServer } = await import('@/lib/pusherServer');
@@ -228,6 +239,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 for (const rId of recipients) {
                     await pusherServer.trigger(`private-user-${rId}`, 'new-message', msg);
                 }
+            }
+
+            // Also trigger Pusher for the new decision chat message
+            const recipients = new Set([decisionMsg.recipient.toString(), decisionMsg.sender.toString()]);
+            for (const rId of recipients) {
+                await pusherServer.trigger(`private-user-${rId}`, 'new-message', decisionMsg);
             }
         } catch (pusherErr) {
             console.error('Pusher sync error in offer action:', pusherErr);

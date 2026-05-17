@@ -211,6 +211,7 @@ export async function GET(req: NextRequest) {
             const hasReview = await Review.exists({
                 reviewer: decoded.userId,
                 $or: [
+                    { order: o._id },
                     ...(o.product ? [{ product: o.product._id || o.product }] : []),
                     ...(o.service ? [{ service: o.service._id || o.service }] : [])
                 ]

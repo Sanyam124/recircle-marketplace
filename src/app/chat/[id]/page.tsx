@@ -116,7 +116,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         return [...messages].reverse().find(m => 
             m.offer && 
             m.offer.status === 'Accepted' &&
-            (m.offer.productId?.toString() === referencingItem?.id?.toString() || 
+            (m.product?.toString() === referencingItem?.id?.toString() || 
+             m.service?.toString() === referencingItem?.id?.toString() ||
+             m.offer.productId?.toString() === referencingItem?.id?.toString() || 
              m.offer.serviceId?.toString() === referencingItem?.id?.toString())
         );
     }, [messages, referencingItem?.id]);
@@ -1595,7 +1597,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                             verificationCode.length === 6 && !submittingAction ? 'bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer' : 'bg-gray-100 text-gray-400'
                                                         }`}
                                                     >
-                                                        {submittingAction ? 'Processing...' : `Verify & Mark ${prodData?.type === 'service' ? 'Completed' : (offerType === 'Rent' ? 'Rented' : 'Sold')}`}
+                                                        {submittingAction ? 'Processing...' : `Verify & Mark ${referencingItem?.type === 'service' ? 'Completed' : ((activeAcceptedOffer?.offer?.offerType || activeOrder?.transactionType || offerType || 'Buy') === 'Rent' ? 'Rented' : 'Sold')}`}
                                                     </button>
                                                     {actionError && <p className="text-[10px] text-red-500 font-bold px-3 py-1.5 bg-red-50 dark:bg-red-900/10 border border-red-100 rounded-lg mt-2">{actionError}</p>}
                                                 </div>
