@@ -680,7 +680,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             _id: tempId,
             sender: user?.id || (user as any)?._id,
             recipient: userId,
-            content: content || 'Sent an Offer',
+            content: content || (referencingItem?.type === 'service' ? 'Sent an Appointment Request' : 'Sent an Offer'),
             createdAt: new Date().toISOString(),
             isRead: false,
             offer: offerPayload || undefined
@@ -707,7 +707,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     recipientId: userId, 
-                    content: content || 'Sent an Offer',
+                    content: content || (referencingItem?.type === 'service' ? 'Sent an Appointment Request' : 'Sent an Offer'),
                     productId: pId,
                     serviceId: sId,
                     offer: offerPayload || undefined
@@ -1236,11 +1236,15 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                             <div className="p-4 flex flex-col items-center justify-center border-b border-gray-100 dark:border-gray-700/50">
                                                                 <div className="flex items-center gap-2 mb-1">
                                                                     <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                                                                        {msg.sender === userId ? 'Offer Received' : 'You Offered'}
+                                                                        {msg.service 
+                                                                            ? (msg.sender === userId ? 'Request Received' : 'Request Sent') 
+                                                                            : (msg.sender === userId ? 'Offer Received' : 'You Offered')}
                                                                     </span>
-                                                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter ring-1 ring-inset ${msg.offer.offerType === 'Rent' ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20' : 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 ring-indigo-500/20'}`}>
-                                                                        {msg.offer.offerType || 'Buy'}
-                                                                    </span>
+                                                                    {!msg.service && (
+                                                                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter ring-1 ring-inset ${msg.offer.offerType === 'Rent' ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20' : 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 ring-indigo-500/20'}`}>
+                                                                            {msg.offer.offerType || 'Buy'}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                                 
                                                                 <div className="flex flex-col items-center">
@@ -1290,7 +1294,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                 )}
                                                             </div>
                                                             
-                                                            {msg.content && msg.content !== 'Sent an Offer' && !msg.content.startsWith("🤝") && (
+                                                            {msg.content && msg.content !== 'Sent an Offer' && msg.content !== 'Sent an Appointment Request' && !msg.content.startsWith("🤝") && (
                                                                 <div className={`px-4 py-3 text-sm italic border-b border-gray-100 dark:border-gray-700/50 ${msg.sender === userId ? 'bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300' : 'bg-white/50 dark:bg-gray-900/20 text-indigo-900/80 dark:text-indigo-200'}`}>
                                                                     "{msg.content.replace(/^Note:\s*/, '')}"
                                                                 </div>
