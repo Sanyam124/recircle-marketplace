@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import useSWR from 'swr';
 import { FilterElements } from './explore/FilterElements';
+import { PRODUCT_CATEGORIES, SERVICE_CATEGORIES } from '@/constants/marketplace';
 
 export interface ExploreFilters {
   search: string;
@@ -49,6 +50,16 @@ export default function ExploreSidebar({
       setFilters(currentFilters);
     }
   }, [currentFilters, isMobileOpen]);
+
+  // Auto-expand accordions based on selected categories
+  useEffect(() => {
+    if (currentFilters.categories.some(cat => PRODUCT_CATEGORIES.includes(cat))) {
+      setProductDocsOpen(true);
+    }
+    if (currentFilters.categories.some(cat => SERVICE_CATEGORIES.includes(cat))) {
+      setServiceDocsOpen(true);
+    }
+  }, [currentFilters.categories]);
 
   // Auto-close info overlays after 3 seconds
   useEffect(() => {

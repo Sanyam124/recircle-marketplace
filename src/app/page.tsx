@@ -24,7 +24,7 @@ function CategoryGrid({
             {categories.map((category) => (
                 <Link 
                     key={category.name} 
-                    href={`/explore?type=${baseUrl}&category=${encodeURIComponent(category.filterName || category.name)}`}
+                    href={`/explore?type=${baseUrl}&categories[]=${encodeURIComponent(category.filterName || category.name)}`}
                     className="group flex flex-col items-center justify-center p-4 sm:p-8 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1"
                 >
                     <div className={`h-12 w-12 sm:h-16 sm:w-16 rounded-2xl flex items-center justify-center mb-4 ${category.color} group-hover:scale-110 transition-transform`}>
@@ -153,7 +153,7 @@ export default function Home() {
             { name: "Study Notes", icon: "document-text", color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30" },
             { name: "Electronics", icon: "computer-desktop", color: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30" },
             { name: "Furniture", icon: "home", color: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30" },
-            { name: "Clothing", icon: "shopping-bag", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30" },
+            { name: "Casual Wear", icon: "shopping-bag", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30" },
             { name: "Other", icon: "queue-list", color: "text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800" },
         ]}
       />
