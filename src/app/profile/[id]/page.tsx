@@ -352,42 +352,49 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   </div>
 
               {/* Actions Box */}
-              <div className="w-full md:w-auto flex flex-col gap-3 shrink-0 pt-4 md:pt-0">
+              <div className="w-full flex flex-col gap-3 shrink-0 mt-6 md:mt-8">
                 {isOwner ? (
                   <Link href="/settings?tab=profile" className="w-full md:w-44 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/20 text-center transition-all hover:-translate-y-1 active:scale-95">
                     Edit Settings
                   </Link>
                 ) : (
-                  <div className="flex items-center justify-center md:justify-start gap-2.5 md:w-44">
-                     <ShareButton title={`${user.name}'s Profile`} className="h-12 flex-1 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-400 hover:text-indigo-600 transition-all hover:shadow-md shrink-0" />
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full max-w-full">
+                     <ShareButton 
+                       title={`${user.name}'s Profile`} 
+                       className="h-12 px-5 flex items-center justify-center gap-2 bg-white dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 hover:border-indigo-300 dark:hover:border-indigo-500/30 rounded-xl text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold text-xs uppercase tracking-wider select-none shrink-0 active:scale-95 transition-all duration-200 hover:shadow-sm" 
+                     />
                      
                      <button 
                        onClick={handleBlockUser} 
                        disabled={blocking}
-                       className={`h-12 flex-1 flex items-center justify-center rounded-xl border transition-all hover:shadow-md shrink-0 ${
+                       className={`h-12 px-5 flex items-center justify-center gap-2 rounded-xl border font-bold text-xs uppercase tracking-wider select-none shrink-0 active:scale-95 transition-all duration-200 hover:shadow-sm ${
                          isBlocked 
-                           ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-900/30 text-rose-600 dark:text-rose-400' 
-                           : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 hover:text-rose-600'
+                           ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/40' 
+                           : 'bg-white dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-300 dark:hover:border-rose-900/30 hover:bg-rose-50/10 dark:hover:bg-rose-950/10'
                        }`}
                        title={isBlocked ? 'Unblock User' : 'Block User'}
                      >
                        {blocking ? (
                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                        ) : (
-                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
-                         </svg>
+                         <>
+                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                             <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636" />
+                           </svg>
+                           <span>{isBlocked ? 'Unblock' : 'Block'}</span>
+                         </>
                        )}
                      </button>
 
                      <button 
                        onClick={() => setReportOpen(true)}
-                       className="h-12 flex-1 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-400 hover:text-rose-600 transition-all hover:shadow-md shrink-0"
+                       className="h-12 px-5 flex items-center justify-center gap-2 bg-white dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 hover:border-rose-300 dark:hover:border-rose-900/30 rounded-xl text-gray-600 dark:text-gray-300 hover:text-rose-600 dark:hover:text-rose-400 font-bold text-xs uppercase tracking-wider select-none shrink-0 active:scale-95 transition-all duration-200 hover:shadow-sm hover:bg-rose-50/10 dark:hover:bg-rose-950/10"
                        title="Report User"
                      >
-                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                        </svg>
+                       <span>Report</span>
                      </button>
                   </div>
                 )}
