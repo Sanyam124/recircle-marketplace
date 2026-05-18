@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import useSWR from 'swr';
-import { PRODUCT_CATEGORIES, SERVICE_CATEGORIES } from '@/constants/marketplace';
+import { PRODUCT_CATEGORIES, SERVICE_CATEGORIES, LISTING_CONDITIONS } from '@/constants/marketplace';
 
 interface FilterElementsProps {
   filters: any;
@@ -228,7 +228,7 @@ export function FilterElements({
       {filters.type !== 'services' && (
         <FilterGroup title="Item Condition">
           <div className="grid grid-cols-2 gap-3">
-              {['Like New', 'Good', 'Fair', 'Poor'].map((cond: string) => (
+              {(siteConfig?.productConditions || LISTING_CONDITIONS).map((cond: string) => (
                   <button
                       key={cond}
                       onClick={() => toggleCondition(cond)}

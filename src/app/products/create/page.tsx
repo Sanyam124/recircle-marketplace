@@ -343,7 +343,16 @@ export default function CreateProductPage() {
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               >
-                {(siteConfig?.productCategories || ['Textbooks', 'Study Notes', 'Stationery', 'Electronics', 'Clothing', 'Bags', 'Hostel Kit', 'Sports', 'Furniture', 'Other']).map((cat: string) => (
+                {(siteConfig?.productCategories || [
+              'Textbooks', 'Study Notes', 'Stationery', 'Electronics', 'Gadgets',
+              'Men\'s Wear', 'Women\'s Wear', 'Casual Wear', 'Formal Wear', 'Traditional & Ethnic',
+              'T-Shirts', 'Winter Wear', 'Activewear', 'Costumes', 'Footwear', 'Accessories',
+              'Bags', 'Luggage', 'Storage', 'Organizers', 'Hostel Essentials', 'Room Decor',
+              'Furniture', 'Appliances', 'Sports Equipment', 'Fitness Gear', 'Bicycles',
+              'Vehicles', 'Musical Instruments', 'Gaming', 'Art Supplies', 'Drafting Tools',
+              'Lab Equipment', 'Microcontrollers & Sensors', 'Project Materials',
+              'Exam Survival Kits', 'Event Passes & Tickets', 'Subscriptions & Digital', 'Other'
+            ]).map((cat: string) => (
                   <option key={cat} value={cat} className="dark:bg-[#111] dark:text-white">{cat}</option>
                 ))}
               </select>
@@ -357,7 +366,7 @@ export default function CreateProductPage() {
                 value={formData.condition}
                 onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
               >
-                {(siteConfig?.productConditions || ['Like New', 'Good', 'Fair', 'Poor']).map((cond: string) => (
+                {(siteConfig?.productConditions || ['New', 'Like New', 'Good', 'Fair', 'Poor']).map((cond: string) => (
                   <option key={cond} value={cond} className="dark:bg-zinc-900 dark:text-white">{cond}</option>
                 ))}
               </select>

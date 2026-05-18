@@ -36,8 +36,26 @@ export async function GET(_req: NextRequest) {
         console.error('Site Config Error:', error);
         // Return hardcoded defaults as fallback
         return NextResponse.json({
-            productCategories: ['Textbooks', 'Study Notes', 'Stationery', 'Electronics', 'Clothing', 'Bags', 'Hostel Kit', 'Sports', 'Furniture', 'Other'],
-            serviceCategories: ['Academic Help', 'Tech Support', 'Graphic Design', 'Photography', 'Dorm Services', 'Fitness Coaching', 'Other'],
+            productCategories: [
+              'Textbooks', 'Study Notes', 'Stationery', 'Electronics', 'Gadgets',
+              'Men\'s Wear', 'Women\'s Wear', 'Casual Wear', 'Formal Wear', 'Traditional & Ethnic',
+              'T-Shirts', 'Winter Wear', 'Activewear', 'Costumes', 'Footwear', 'Accessories',
+              'Bags', 'Luggage', 'Storage', 'Organizers', 'Hostel Essentials', 'Room Decor',
+              'Furniture', 'Appliances', 'Sports Equipment', 'Fitness Gear', 'Bicycles',
+              'Vehicles', 'Musical Instruments', 'Gaming', 'Art Supplies', 'Drafting Tools',
+              'Lab Equipment', 'Microcontrollers & Sensors', 'Project Materials',
+              'Exam Survival Kits', 'Event Passes & Tickets', 'Subscriptions & Digital', 'Other'
+            ],
+            serviceCategories: [
+              'Tutoring', 'Academic Mentoring', 'Assignment Help', 'Project Assistance',
+              'Tech Support', 'Device Repair', 'Graphic Design', 'Video Editing',
+              'Photography', 'Videography', 'Content Writing', 'Proofreading',
+              'Resume Building', 'Interview Prep', 'Room Cleaning', 'Laundry Services',
+              'Moving Assistance', 'Packing Services', 'Delivery Services', 'Fitness Coaching',
+              'Sports Training', 'Event Organizing', 'DJ Services', 'Roommate Matching',
+              'Sublets & Leases', 'Carpooling & Rides', 'Skill Swapping',
+              'Lost & Found (Bounties)', 'E-Sports Teammates', 'Other'
+            ],
             serviceAvailability: ['🗓️ Flexible', '🏠 Weekends', '🌙 Evening', '☀️ Daytime'],
             defaultAvatars: [
                 "https://res.cloudinary.com/dq3sl82at/image/upload/v1775879627/recircle/defaults/avatars/qgkgztxivymqpykcln9l.webp",

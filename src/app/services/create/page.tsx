@@ -297,7 +297,16 @@ export default function CreateServicePage() {
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               >
-                {(siteConfigData?.serviceCategories || ['Academic Help', 'Tech Support', 'Graphic Design', 'Photography', 'Dorm Services', 'Fitness Coaching', 'Other']).map((cat: string) => (
+                {(siteConfigData?.serviceCategories || [
+              'Tutoring', 'Academic Mentoring', 'Assignment Help', 'Project Assistance',
+              'Tech Support', 'Device Repair', 'Graphic Design', 'Video Editing',
+              'Photography', 'Videography', 'Content Writing', 'Proofreading',
+              'Resume Building', 'Interview Prep', 'Room Cleaning', 'Laundry Services',
+              'Moving Assistance', 'Packing Services', 'Delivery Services', 'Fitness Coaching',
+              'Sports Training', 'Event Organizing', 'DJ Services', 'Roommate Matching',
+              'Sublets & Leases', 'Carpooling & Rides', 'Skill Swapping',
+              'Lost & Found (Bounties)', 'E-Sports Teammates', 'Other'
+            ]).map((cat: string) => (
                   <option key={cat} value={cat} className="dark:bg-zinc-900 dark:text-white">{cat}</option>
                 ))}
               </select>

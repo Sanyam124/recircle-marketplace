@@ -151,9 +151,9 @@ export default function Home() {
         categories={[
             { name: "Textbooks", icon: "book-open", color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30" },
             { name: "Study Notes", icon: "document-text", color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30" },
-            { name: "Electronics & Gadgets", icon: "computer-desktop", color: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30" },
+            { name: "Electronics", icon: "computer-desktop", color: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30" },
             { name: "Furniture", icon: "home", color: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30" },
-            { name: "Clothing & Accessories", icon: "shopping-bag", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30" },
+            { name: "Clothing", icon: "shopping-bag", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30" },
             { name: "Other", icon: "queue-list", color: "text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800" },
         ]}
       />
@@ -164,12 +164,12 @@ export default function Home() {
         subtitle="Find talented peers for tutoring, design, repairs & more."
         baseUrl="services"
         categories={[
-            { name: "Academic Help", filterName: "Academic Help (Tutoring, Notes)", icon: "academic-cap", color: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30" },
-            { name: "Tech Support", filterName: "Tech Support & Repairs", icon: "computer-desktop", color: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30" },
-            { name: "Design & Edits", filterName: "Graphic Design & Editing", icon: "paint-brush", color: "text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/30" },
-            { name: "Photo & Video", filterName: "Photography & Videography", icon: "camera", color: "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30" },
-            { name: "Room Services", filterName: "Dorm & Room Services (Cleaning, Moving)", icon: "sparkles", color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30" },
-            { name: "Other Services", filterName: "Other", icon: "queue-list", color: "text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800" },
+            { name: "Tutoring", icon: "academic-cap", color: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30" },
+            { name: "Tech Support", icon: "computer-desktop", color: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30" },
+            { name: "Graphic Design", icon: "paint-brush", color: "text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/30" },
+            { name: "Photography", icon: "camera", color: "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30" },
+            { name: "Room Cleaning", icon: "sparkles", color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30" },
+            { name: "Other", icon: "queue-list", color: "text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800" },
         ]}
       />
 

@@ -89,11 +89,29 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
 
         productCategories: {
             type: [String],
-            default: ['Textbooks', 'Study Notes', 'Stationery', 'Electronics', 'Clothing', 'Bags', 'Hostel/Building Kit', 'Sports', 'Furniture', 'Other'],
+            default: [
+              'Textbooks', 'Study Notes', 'Stationery', 'Electronics', 'Gadgets',
+              'Men\'s Wear', 'Women\'s Wear', 'Casual Wear', 'Formal Wear', 'Traditional & Ethnic',
+              'T-Shirts', 'Winter Wear', 'Activewear', 'Costumes', 'Footwear', 'Accessories',
+              'Bags', 'Luggage', 'Storage', 'Organizers', 'Hostel Essentials', 'Room Decor',
+              'Furniture', 'Appliances', 'Sports Equipment', 'Fitness Gear', 'Bicycles',
+              'Vehicles', 'Musical Instruments', 'Gaming', 'Art Supplies', 'Drafting Tools',
+              'Lab Equipment', 'Microcontrollers & Sensors', 'Project Materials',
+              'Exam Survival Kits', 'Event Passes & Tickets', 'Subscriptions & Digital', 'Other'
+            ],
         },
         serviceCategories: {
             type: [String],
-            default: ['Academic Help', 'Tech Support', 'Graphic Design', 'Photography', 'Hostel/Building Services', 'Fitness Coaching', 'Other'],
+            default: [
+              'Tutoring', 'Academic Mentoring', 'Assignment Help', 'Project Assistance',
+              'Tech Support', 'Device Repair', 'Graphic Design', 'Video Editing',
+              'Photography', 'Videography', 'Content Writing', 'Proofreading',
+              'Resume Building', 'Interview Prep', 'Room Cleaning', 'Laundry Services',
+              'Moving Assistance', 'Packing Services', 'Delivery Services', 'Fitness Coaching',
+              'Sports Training', 'Event Organizing', 'DJ Services', 'Roommate Matching',
+              'Sublets & Leases', 'Carpooling & Rides', 'Skill Swapping',
+              'Lost & Found (Bounties)', 'E-Sports Teammates', 'Other'
+            ],
         },
         serviceAvailability: {
             type: [String],
