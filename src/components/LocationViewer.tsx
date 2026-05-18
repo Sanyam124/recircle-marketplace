@@ -127,40 +127,62 @@ export default function LocationViewer({ visibility, location }: LocationViewerP
             )}
 
             {/* 3. Campus Trade-off Details - Shown whenever entered */}
-            {hasHostelSettings && (
-                <div className="p-6 sm:p-8 rounded-[2.5rem] bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/30">
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="w-12 h-12 bg-indigo-600 dark:bg-indigo-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
-                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.2em] leading-none mb-1.5">Campus Delivery</p>
-                            <h4 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Exchange Point</h4>
-                        </div>
-                    </div>
+            {hasHostelSettings && (() => {
+                const hasHostel = Boolean(location.hostel);
+                const hasRoom = location.room !== undefined && location.room !== null;
+                const hasBed = location.bed !== undefined && location.bed !== null;
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        {location.hostel && (
-                            <div className="p-4 bg-white dark:bg-white/5 rounded-2xl border border-indigo-100/30 dark:border-white/5 shadow-sm overflow-hidden min-w-0">
-                                <span className="text-[10px] font-black text-gray-400 dark:text-indigo-400/50 uppercase block mb-1 tracking-widest">Hostel/Building</span>
-                                <span className="text-lg font-black text-gray-900 dark:text-indigo-300 break-all">{location.hostel}</span>
+                let hostelColSpan = "col-span-1 sm:col-span-1";
+                let roomColSpan = "col-span-1 sm:col-span-1";
+                let bedColSpan = "col-span-1 sm:col-span-1";
+
+                if (hasHostel) {
+                    if (!hasRoom && !hasBed) {
+                        hostelColSpan = "col-span-1 sm:col-span-3";
+                    } else if (hasRoom && !hasBed) {
+                        hostelColSpan = "col-span-1 sm:col-span-2";
+                        roomColSpan = "col-span-1 sm:col-span-1";
+                    } else if (!hasRoom && hasBed) {
+                        hostelColSpan = "col-span-1 sm:col-span-2";
+                        bedColSpan = "col-span-1 sm:col-span-1";
+                    }
+                }
+
+                return (
+                    <div className="p-6 sm:p-8 rounded-[2.5rem] bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/30">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-12 h-12 bg-indigo-600 dark:bg-indigo-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                             </div>
-                        )}
-                        {location.room !== undefined && (
-                            <div className="p-4 bg-white dark:bg-white/5 rounded-2xl border border-indigo-100/30 dark:border-white/5 shadow-sm">
-                                <span className="text-[10px] font-black text-gray-400 dark:text-indigo-400/50 uppercase block mb-1 tracking-widest">Room</span>
-                                <span className="text-lg font-black text-gray-900 dark:text-indigo-300">{location.room}</span>
+                            <div>
+                                <p className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.2em] leading-none mb-1.5">Campus Delivery</p>
+                                <h4 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Exchange Point</h4>
                             </div>
-                        )}
-                        {location.bed !== undefined && (
-                            <div className="p-4 bg-white dark:bg-white/5 rounded-2xl border border-indigo-100/30 dark:border-white/5 shadow-sm">
-                                <span className="text-[10px] font-black text-gray-400 dark:text-indigo-400/50 uppercase block mb-1 tracking-widest">Bed</span>
-                                <span className="text-lg font-black text-gray-900 dark:text-indigo-300">{location.bed}</span>
-                            </div>
-                        )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {location.hostel && (
+                                <div className={`p-4 bg-white dark:bg-white/5 rounded-2xl border border-indigo-100/30 dark:border-white/5 shadow-sm overflow-hidden min-w-0 ${hostelColSpan}`}>
+                                    <span className="text-[10px] font-black text-gray-400 dark:text-indigo-400/50 uppercase block mb-1 tracking-widest">Hostel/Building</span>
+                                    <span className="text-lg font-black text-gray-900 dark:text-indigo-300 break-all">{location.hostel}</span>
+                                </div>
+                            )}
+                            {location.room !== undefined && (
+                                <div className={`p-4 bg-white dark:bg-white/5 rounded-2xl border border-indigo-100/30 dark:border-white/5 shadow-sm ${roomColSpan}`}>
+                                    <span className="text-[10px] font-black text-gray-400 dark:text-indigo-400/50 uppercase block mb-1 tracking-widest">Room</span>
+                                    <span className="text-lg font-black text-gray-900 dark:text-indigo-300">{location.room}</span>
+                                </div>
+                            )}
+                            {location.bed !== undefined && (
+                                <div className={`p-4 bg-white dark:bg-white/5 rounded-2xl border border-indigo-100/30 dark:border-white/5 shadow-sm ${bedColSpan}`}>
+                                    <span className="text-[10px] font-black text-gray-400 dark:text-indigo-400/50 uppercase block mb-1 tracking-widest">Bed</span>
+                                    <span className="text-lg font-black text-gray-900 dark:text-indigo-300">{location.bed}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 }
