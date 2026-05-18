@@ -198,7 +198,7 @@ export async function GET(req: NextRequest) {
 
         const orders = await Order.find(query)
             .populate('product')
-            .populate('service', 'title category price duration')
+            .populate('service')
             .populate('seller', 'name username gender profilePicture')
             .populate('buyer', 'name username gender profilePicture')
             .sort({ createdAt: -1, _id: -1 })
