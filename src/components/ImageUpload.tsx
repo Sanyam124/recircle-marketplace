@@ -97,7 +97,10 @@ export default function ImageUpload({
 
   return (
     <div className={`flex flex-col items-center gap-4 ${className}`}>
-      <div className={`relative overflow-hidden group border border-gray-100 dark:border-gray-700 bg-indigo-50 dark:bg-indigo-900/30 ${imageClassName} flex items-center justify-center`}>
+      <div 
+        onClick={() => !isUploading && fileInputRef.current?.click()}
+        className={`relative overflow-hidden group cursor-pointer border border-gray-100 dark:border-gray-700 bg-indigo-50 dark:bg-indigo-900/30 ${imageClassName} flex items-center justify-center`}
+      >
         {preview ? (
           <Image
             src={preview}

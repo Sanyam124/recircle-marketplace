@@ -175,9 +175,9 @@ export default function EditProfileForm({ form, setForm, onSubmit, submitting, u
                                 <NextImage src={url} alt={`Avatar ${idx}`} fill unoptimized={url.includes('dicebear')} className="object-cover" />
                             </button>
                         ))}
-                        <div className="relative aspect-square cursor-pointer" onClick={() => (document.querySelector('input[type="file"]') as any)?.click()}>
-                            <ImageUpload label="" folder="recircle/profiles" currentImage={!defaults.avatars.includes(form.profilePicture) ? form.profilePicture : ''} onUpload={(url) => setForm((p: any) => ({ ...p, profilePicture: url }))} className="w-full h-full" imageClassName="rounded-2xl object-cover" />
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xl">+</div></div>
+                        <div className="relative aspect-square cursor-pointer">
+                            <ImageUpload label="" folder="recircle/profiles" currentImage={!defaults.avatars.includes(form.profilePicture) ? form.profilePicture : ''} onUpload={(url) => setForm((p: any) => ({ ...p, profilePicture: url }))} className="w-full h-full" imageClassName="rounded-2xl object-cover w-full h-full" />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xl shadow-lg">+</div></div>
                         </div>
                     </div>
                 </div>
@@ -191,9 +191,9 @@ export default function EditProfileForm({ form, setForm, onSubmit, submitting, u
                                 <NextImage src={url} alt={`Banner ${idx}`} fill unoptimized className="object-cover" />
                             </button>
                         ))}
-                        <div className="relative aspect-video cursor-pointer" onClick={() => (document.querySelectorAll('input[type="file"]')[1] as any)?.click()}>
-                            <ImageUpload label="" folder="recircle/banners" currentImage={!defaults.banners.includes(form.bannerImage) ? form.bannerImage : ''} onUpload={(url) => setForm((p: any) => ({ ...p, bannerImage: url }))} className="w-full h-full" imageClassName="rounded-2xl object-cover" />
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xl">+</div></div>
+                        <div className="relative aspect-video cursor-pointer">
+                            <ImageUpload label="" folder="recircle/banners" currentImage={!defaults.banners.includes(form.bannerImage) ? form.bannerImage : ''} onUpload={(url) => setForm((p: any) => ({ ...p, bannerImage: url }))} className="w-full h-full" imageClassName="rounded-2xl object-cover w-full h-full" />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xl shadow-lg">+</div></div>
                         </div>
                     </div>
                 </div>
