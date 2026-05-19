@@ -16,7 +16,7 @@ import PostCard from '@/components/PostCard';
 interface Post {
     _id: string;
     content: string;
-    category: 'General' | 'LostFound' | 'Essentials' | 'Events' | 'Alerts';
+    category: 'General' | 'LostFound' | 'Rides' | 'Tickets' | 'Housing' | 'Academic' | 'Opportunities' | 'Alerts';
     author: {
         _id: string;
         name: string;
@@ -86,8 +86,11 @@ function BoardPageContent() {
         { id: 'All', name: 'All Activity', icon: '🏛️', desc: 'Everything from your campus' },
         { id: 'General', name: 'General', icon: '💬', desc: 'General chats & discussions' },
         { id: 'LostFound', name: 'Lost & Found', icon: '🔍', desc: 'Find lost items or help others' },
-        { id: 'Essentials', name: 'Essentials', icon: '🥤', desc: 'Quick trade & urgent needs' },
-        { id: 'Events', name: 'Events', icon: '🎉', desc: 'Happenings & gatherings' },
+        { id: 'Rides', name: 'Carpool & Rides', icon: '🚗', desc: 'Daily travel & cab sharing' },
+        { id: 'Tickets', name: 'Event Passes', icon: '🎟️', desc: 'Buy/sell concert & fest tickets' },
+        { id: 'Housing', name: 'Flatmates', icon: '🏠', desc: 'Find roommates & PGs' },
+        { id: 'Academic', name: 'Academic Help', icon: '📚', desc: 'Study groups & notes sharing' },
+        { id: 'Opportunities', name: 'Gigs & Interns', icon: '💼', desc: 'Freelance & job opportunities' },
         { id: 'Alerts', name: 'Alerts', icon: '🚨', desc: 'Critical updates & safety info' },
     ];
 

@@ -223,7 +223,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-12 sm:pb-20 w-full min-w-0">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-40 sm:pb-20 w-full min-w-0">
       <div className="lg:grid lg:grid-cols-2 lg:gap-x-12 lg:items-start">
         {/* Left Column: Image Carousel + Details */}
         <div className="flex flex-col gap-4 w-full max-w-2xl mx-auto lg:max-w-none">
@@ -257,6 +257,21 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
 
           <div className="relative group rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-xl sm:shadow-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-[#111] transition-all duration-500 hover:shadow-indigo-500/10">
             <ImageCarousel images={service.images || []} alt={service.title} />
+            {/* Mobile Hovering Wishlist Button */}
+            {user && (
+              <button
+                onClick={toggleWishlist}
+                className={`sm:hidden absolute top-4 right-4 z-[100] p-3 rounded-full shadow-lg backdrop-blur-md transition-all active:scale-95 border ${
+                  liked 
+                    ? 'bg-rose-50/90 text-rose-600 border-rose-200/50 dark:bg-rose-500/20 dark:text-rose-500 dark:border-rose-500/30' 
+                    : 'bg-white/90 text-gray-600 border-white/50 dark:bg-black/40 dark:text-white dark:border-white/10 hover:text-gray-900'
+                }`}
+              >
+                <svg className={`w-6 h-6 ${liked ? 'fill-current' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {/* Description Card (Desktop Only) */}
@@ -421,7 +436,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                 <button 
                   onClick={handleDelete} 
                   disabled={isDeleting} 
-                  className="w-full py-4 sm:py-5 bg-red-50 dark:bg-rose-500/10 hover:bg-red-100 dark:hover:bg-rose-500/20 text-red-600 dark:text-rose-500 border border-red-200 dark:border-rose-500/30 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+                  className="hidden sm:block w-full py-4 sm:py-5 bg-red-50 dark:bg-rose-500/10 hover:bg-red-100 dark:hover:bg-rose-500/20 text-red-600 dark:text-rose-500 border border-red-200 dark:border-rose-500/30 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
                 >
                   {isDeleting ? 'Deleting...' : 'Delete Service'}
                 </button>
@@ -438,7 +453,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                   <button
                     onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${service.provider._id}?serviceId=${service._id}`); }}
                     disabled={service.status !== 'Active'}
-                    className={`w-full py-4 sm:py-5 rounded-2xl font-black text-xs uppercase tracking-[0.1em] sm:tracking-[0.15em] transition-all border shadow-lg ${
+                    className={`hidden sm:block w-full py-4 sm:py-5 rounded-2xl font-black text-xs uppercase tracking-[0.1em] sm:tracking-[0.15em] transition-all border shadow-lg ${
                       service.status !== 'Active' 
                         ? 'bg-gray-100 text-gray-400 border-transparent dark:bg-gray-800 dark:text-gray-600 cursor-not-allowed' 
                         : 'bg-gray-900 border-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:border-white dark:hover:bg-gray-200 active:scale-[0.98]'
@@ -449,7 +464,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                   <button
                     onClick={() => { if (!user) router.push('/auth'); else router.push(`/chat/${service.provider._id}?serviceId=${service._id}&tab=action&autoMsg=true`); }}
                     disabled={service.status !== 'Active'}
-                    className={`w-full py-4 sm:py-5 rounded-2xl font-black text-xs uppercase tracking-[0.1em] sm:tracking-[0.15em] transition-all border ${
+                    className={`hidden sm:block w-full py-4 sm:py-5 rounded-2xl font-black text-xs uppercase tracking-[0.1em] sm:tracking-[0.15em] transition-all border ${
                       service.status !== 'Active' 
                         ? 'bg-gray-50 text-gray-400 border-gray-200 dark:bg-gray-800/50 dark:text-gray-600 dark:border-[#2a2a2a] cursor-not-allowed' 
                         : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-50 dark:bg-transparent dark:text-white dark:border-[#3a3a3a] dark:hover:bg-[#222] active:scale-[0.98]'
@@ -459,7 +474,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
                   </button>
                   <button
                     onClick={toggleWishlist}
-                    className={`w-full py-4 sm:py-5 rounded-2xl font-black text-xs uppercase tracking-[0.1em] sm:tracking-[0.15em] transition-all border flex items-center justify-center gap-2 ${
+                    className={`hidden sm:flex w-full py-4 sm:py-5 rounded-2xl font-black text-xs uppercase tracking-[0.1em] sm:tracking-[0.15em] transition-all border items-center justify-center gap-2 ${
                       liked 
                         ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-500/10 dark:text-rose-500 dark:border-rose-500/30' 
                         : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-50 dark:bg-transparent dark:text-white dark:border-[#3a3a3a] dark:hover:bg-[#222]'
@@ -473,7 +488,7 @@ export default function ServiceDetailPage({ params }: { params: Promise<{ id: st
           </div>
           
           {/* Sticky Mobile Action Bar */}
-          <div className="fixed bottom-[calc(92px+env(safe-area-inset-bottom,0px))] sm:bottom-0 left-0 right-0 sm:hidden z-[150] p-4 bg-white/95 dark:bg-[#111]/90 backdrop-blur-md border-t border-gray-200 dark:border-[#2a2a2a] shadow-[0_-10px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+          <div className="fixed bottom-[calc(68px+env(safe-area-inset-bottom,0px))] sm:bottom-0 left-0 right-0 sm:hidden z-[150] p-4 bg-white/95 dark:bg-[#111]/90 backdrop-blur-md border-t border-gray-200 dark:border-[#2a2a2a] shadow-[0_-10px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
              <div className="flex gap-3 max-w-lg mx-auto">
                 {!isOwner && (
                    <>

@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Validate category
-        const validCategories = ['General', 'LostFound', 'Essentials', 'Events', 'Alerts'];
+        const validCategories = ['General', 'LostFound', 'Rides', 'Tickets', 'Housing', 'Academic', 'Opportunities', 'Alerts'];
         if (category && !validCategories.includes(category)) {
             return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
         }

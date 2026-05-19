@@ -10,7 +10,7 @@ import { PostCardHeader, PostCardActions, ReplyItem } from './board/PostCardComp
 interface Post {
     _id: string;
     content: string;
-    category: 'General' | 'LostFound' | 'Essentials' | 'Events' | 'Alerts';
+    category: 'General' | 'LostFound' | 'Rides' | 'Tickets' | 'Housing' | 'Academic' | 'Opportunities' | 'Alerts';
     author: {
         _id: string;
         name: string;
@@ -59,8 +59,11 @@ export default function PostCard({
     const categories: any = {
         'General': { name: 'General', icon: '💬', color: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' },
         'LostFound': { name: 'Lost & Found', icon: '🔍', color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
-        'Essentials': { name: 'Essentials', icon: '🥤', color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' },
-        'Events': { name: 'Events', icon: '🎉', color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' },
+        'Rides': { name: 'Carpool & Rides', icon: '🚗', color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' },
+        'Tickets': { name: 'Event Passes', icon: '🎟️', color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' },
+        'Housing': { name: 'Flatmates', icon: '🏠', color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' },
+        'Academic': { name: 'Academic Help', icon: '📚', color: 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400' },
+        'Opportunities': { name: 'Gigs & Interns', icon: '💼', color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' },
         'Alerts': { name: 'Alerts', icon: '🚨', color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' }
     };
 

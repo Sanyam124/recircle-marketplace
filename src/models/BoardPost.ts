@@ -4,7 +4,7 @@ export interface IBoardPost extends Document {
     author: mongoose.Types.ObjectId;
     community: mongoose.Types.ObjectId;
     content: string;
-    category: 'General' | 'LostFound' | 'Essentials' | 'Events' | 'Alerts';
+    category: 'General' | 'LostFound' | 'Rides' | 'Tickets' | 'Housing' | 'Academic' | 'Opportunities' | 'Alerts';
     upvotes: mongoose.Types.ObjectId[];
     downvotes: mongoose.Types.ObjectId[];
     replies: {
@@ -24,7 +24,7 @@ const BoardPostSchema: Schema<IBoardPost> = new Schema(
         content: { type: String, required: true, maxlength: 500, trim: true },
         category: { 
             type: String, 
-            enum: ['General', 'LostFound', 'Essentials', 'Events', 'Alerts'],
+            enum: ['General', 'LostFound', 'Rides', 'Tickets', 'Housing', 'Academic', 'Opportunities', 'Alerts'],
             default: 'General'
         },
         upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

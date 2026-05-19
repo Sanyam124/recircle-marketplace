@@ -360,7 +360,7 @@ export default function ReviewSection({ targetId, targetName, productId, service
            <div className="flex justify-center mt-6">
              <button
                onClick={handleLoadMore}
-               style={{ opacity: 1, visibility: "visible", display: "inline-flex", zIndex: 999, minHeight: "48px", backgroundColor: "#4F46E5", color: "white", padding: "10px 24px", borderRadius: "9999px", fontWeight: "bold" }} className="items-center border border-transparent transition-all shadow-md active:scale-95 relative"
+               style={{ opacity: 1, visibility: "visible", display: "inline-flex", minHeight: "48px", backgroundColor: "#4F46E5", color: "white", padding: "10px 24px", borderRadius: "9999px", fontWeight: "bold" }} className="items-center border border-transparent transition-all shadow-md active:scale-95 relative"
              >
                Load More Reviews
                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" viewBox="0 0 20 20" fill="currentColor">
