@@ -58,7 +58,6 @@ function BoardPageContent() {
     const [activeCategory, setActiveCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [showInfo, setShowInfo] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [replySubmitting, setReplySubmitting] = useState(false);
@@ -78,8 +77,7 @@ function BoardPageContent() {
     const maxReplyChars = siteConfig?.maxBoardReplyChars || 300;
 
     const flashInfo = () => {
-        setShowInfo(true);
-        setTimeout(() => setShowInfo(false), 4000);
+        showSuccess('Board Rules', 'All posts automatically vanish after 48 hours to keep the feed fresh.');
     };
 
     const categories = [
@@ -581,15 +579,14 @@ function BoardPageContent() {
                                         <option key={c._id || c.id || c} value={c._id || c.id || c}>🏢 {c.name.split(' ')[0]}</option>
                                     ))}
                                 </select>
+                                <button 
+                                    onClick={flashInfo}
+                                    className="w-10 h-10 flex shrink-0 items-center justify-center bg-indigo-50 dark:bg-indigo-900/30 rounded-xl text-indigo-600 transition-all active:scale-95"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                </button>
                             </div>
                             
-                            {/* Mobile Info Toast */}
-                            {showInfo && (
-                                <div className="bg-indigo-600 text-white rounded-xl py-3 px-4 shadow-xl animate-in fade-in slide-in-from-top-2 duration-300 text-[10px] font-bold leading-relaxed flex items-center gap-3">
-                                    <span className="text-lg">📢</span>
-                                    <p>Campus notice board. All posts vanish after <span className="underline underline-offset-4">48 hours</span> automatically.</p>
-                                </div>
-                            )}
                         </div>
 
                         {/* Top Utility Bar (Desktop Only) */}

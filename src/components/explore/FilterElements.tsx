@@ -109,7 +109,9 @@ export function FilterElements({
             <label className="text-[10px] font-black uppercase tracking-widest italic ml-1 mb-1.5 block text-gray-400 dark:text-gray-500">Hostel/Building</label>
             <div className={`relative group transition-opacity duration-300 ${(filters.communityFilter === 'Public' || filters.communityFilter === 'All' || (!user?.verifiedCommunities?.length && user?.role !== 'admin')) ? 'opacity-50 pointer-events-none' : ''}`}>
                 <select name="hostel" value={filters.hostel || ''} onChange={handleChange} disabled={filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user} className="w-full py-3.5 pl-4 pr-10 text-[11px] border font-bold appearance-none outline-none transition-all rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
-                  <option value="" className="dark:bg-gray-900 dark:text-white">All Areas</option>
+                  <option value="" className="dark:bg-gray-900 dark:text-white">
+                    {filters.communityFilter === 'Public' || filters.communityFilter === 'All' || !user ? "Select Community First" : "All Areas"}
+                  </option>
                   {communityHostels.map(h => <option key={h} value={h} className="dark:bg-gray-900 dark:text-white">🏢 {h}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-400">
@@ -180,8 +182,8 @@ export function FilterElements({
                 </div>
             </div>
             <div className="relative group">
-                <select name="city" value={filters.city || ''} onChange={handleChange} className="w-full bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl py-3.5 pl-4 pr-10 text-[11px] border border-gray-100 dark:border-gray-800 text-gray-900 dark:text-white font-bold appearance-none outline-none">
-                    <option value="" className="dark:bg-gray-900 dark:text-white">All Cities</option>
+                <select name="city" value={filters.city || ''} onChange={handleChange} disabled={!filters.state} className={`w-full bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl py-3.5 pl-4 pr-10 text-[11px] border border-gray-100 dark:border-gray-800 font-bold appearance-none outline-none transition-all ${!filters.state ? 'opacity-50 text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                    <option value="" className="dark:bg-gray-900 dark:text-white">{!filters.state ? 'Select State First' : 'All Cities'}</option>
                     {availableCities.map(c => <option key={c} value={c} className="dark:bg-gray-900 dark:text-white">{c}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
