@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, use, useRef } from 'react';
+import imageCompression from 'browser-image-compression';
 import useSWR from 'swr';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -91,6 +92,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [blocking, setBlocking] = useState(false);
   const [cols, setCols] = useState<2 | 3 | 4 | 5>(4);
   const [mobileCols, setMobileCols] = useState<1 | 2>(2);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') as TabKey;
@@ -195,6 +200,53 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     } catch (error) { console.error(error); } finally { setBlocking(false); }
   };
 
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'profilePicture' | 'bannerImage') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    const setUploading = field === 'profilePicture' ? setUploadingAvatar : setUploadingBanner;
+    setUploading(true);
+
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: field === 'bannerImage' ? 1 : 0.5,
+        maxWidthOrHeight: field === 'bannerImage' ? 1920 : 1000,
+        useWebWorker: true,
+      });
+
+      const reader = new FileReader();
+      reader.readAsDataURL(compressed);
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        const folder = field === 'profilePicture' ? 'recircle/profiles' : 'recircle/banners';
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64, folder }),
+        });
+
+        if (uploadRes.ok) {
+          const { url } = await uploadRes.json();
+          const saveRes = await fetch('/api/profile/data', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [field]: url }),
+          });
+          if (saveRes.ok) {
+            await refreshUser();
+            mutate();
+          }
+        }
+        setUploading(false);
+      };
+    } catch (err) {
+      console.error('Upload failed:', err);
+      setUploading(false);
+    }
+  };
+
   if (loading) return <ProfileSkeleton />;
   if (error || isRateLimited) return <div className="text-center py-20 font-medium text-gray-500">{error?.message || 'Access Denied'}</div>;
   if (!data) return <div className="text-center py-20 font-medium text-gray-500">User not found</div>;
@@ -233,6 +285,22 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
           )}
         </div>
+
+        {/* Owner: Upload Banner Button */}
+        {isOwner && (
+          <button
+            onClick={() => bannerInputRef.current?.click()}
+            disabled={uploadingBanner}
+            className="absolute top-4 right-4 z-20 flex items-center gap-2 px-4 py-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-xl text-white rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all active:scale-95 border border-white/10 shadow-lg"
+          >
+            {uploadingBanner ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            )}
+            {uploadingBanner ? 'Uploading...' : 'Change Banner'}
+          </button>
+        )}
       </div>
 
       {/* Floating Profile Glass Card */}
@@ -256,6 +324,20 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                          <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                        </svg>
                      </div>
+                   )}
+                   {/* Owner: Upload Avatar Button */}
+                   {isOwner && (
+                     <button
+                       onClick={() => avatarInputRef.current?.click()}
+                       disabled={uploadingAvatar}
+                       className="absolute -top-1 -right-1 z-20 w-9 h-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/30 border-[3px] border-white dark:border-gray-950 transition-all active:scale-90"
+                     >
+                       {uploadingAvatar ? (
+                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                       ) : (
+                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                       )}
+                     </button>
                    )}
                 </div>
               </div>
@@ -513,6 +595,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
       </div>
 
       {reportOpen && <ReportModal targetUserId={user.id || user._id} itemType={null} itemId={null} onClose={() => setReportOpen(false)} />}
+
+      {/* Hidden file inputs for profile uploads */}
+      <input type="file" ref={avatarInputRef} className="hidden" accept="image/*" onChange={(e) => handleProfileImageUpload(e, 'profilePicture')} />
+      <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={(e) => handleProfileImageUpload(e, 'bannerImage')} />
     </div>
   );
 }

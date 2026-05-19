@@ -16,10 +16,12 @@ interface ImageUploadProps {
   maxWidthOrHeight?: number;
   fallbackInitial?: string;
   buttonClassName?: string;
+  deferUpload?: boolean; // If true, returns base64 instead of uploading to Cloudinary
 }
 
 /**
  * Reusable Image Upload component that handles compression and Cloudinary upload.
+ * When deferUpload=true, returns base64 for local preview only — Cloudinary upload is deferred to save time.
  */
 export default function ImageUpload({
   label = 'Upload Image',
@@ -33,6 +35,7 @@ export default function ImageUpload({
   buttonClassName = '',
   maxSizeMB = 0.5,
   maxWidthOrHeight = 1000,
+  deferUpload = false,
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState(currentImage);
@@ -68,6 +71,14 @@ export default function ImageUpload({
       reader.onloadend = async () => {
         const base64data = reader.result as string;
         setPreview(base64data); // Show local preview instantly
+
+        if (deferUpload) {
+          // Deferred mode: return base64 directly, no Cloudinary upload
+          onUpload(base64data);
+          setIsUploading(false);
+          onUploadingChange?.(false);
+          return;
+        }
 
         // Upload to Cloudinary immediately for fast saves
         const res = await fetch('/api/upload', {

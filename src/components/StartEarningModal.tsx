@@ -43,7 +43,7 @@ export default function StartEarningModal({ onClose }: StartEarningModalProps) {
             onClick={() => handleSelect('/products/create')}
             className="group flex flex-row sm:flex-col items-center sm:items-start gap-4 sm:gap-0 p-4 sm:p-7 bg-indigo-50/50 dark:bg-indigo-500/5 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-[2rem] hover:border-indigo-600 dark:hover:border-indigo-500 transition-all hover:shadow-xl hover:-translate-y-1 text-left w-full"
           >
-            <div className="h-12 w-12 sm:h-16 sm:w-16 shrink-0 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center sm:mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+            <div className="h-12 w-12 sm:h-16 sm:w-16 shrink-0 rounded-2xl bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center sm:mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
               <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
@@ -59,7 +59,7 @@ export default function StartEarningModal({ onClose }: StartEarningModalProps) {
             onClick={() => handleSelect('/services/create')}
             className="group flex flex-row sm:flex-col items-center sm:items-start gap-4 sm:gap-0 p-4 sm:p-7 bg-purple-50/50 dark:bg-purple-500/5 border-2 border-purple-100 dark:border-purple-900/30 rounded-[2rem] hover:border-indigo-600 dark:hover:border-indigo-500 transition-all hover:shadow-xl hover:-translate-y-1 text-left w-full"
           >
-            <div className="h-12 w-12 sm:h-16 sm:w-16 shrink-0 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center sm:mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+            <div className="h-12 w-12 sm:h-16 sm:w-16 shrink-0 rounded-2xl bg-white dark:bg-zinc-800 text-purple-600 dark:text-purple-400 flex items-center justify-center sm:mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
               <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>

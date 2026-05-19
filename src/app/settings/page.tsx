@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from 'next-themes';
 import Loader from '@/components/Loader';
 import { showError, showSuccess } from '@/lib/confirm';
+import NextImage from 'next/image';
 
 // Sub-components
 import EditProfileForm from '@/components/settings/EditProfileForm';
@@ -177,10 +178,38 @@ export default function SettingsPage() {
         e.preventDefault();
         setSubmitting(true);
         try {
+            let finalForm = { ...profileForm };
+
+            // Upload profile picture if it's a new base64 image
+            if (finalForm.profilePicture?.startsWith('data:image')) {
+                const upRes = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: finalForm.profilePicture, folder: 'recircle/profiles' }),
+                });
+                if (upRes.ok) {
+                    const { url } = await upRes.json();
+                    finalForm.profilePicture = url;
+                }
+            }
+
+            // Upload banner image if it's a new base64 image
+            if (finalForm.bannerImage?.startsWith('data:image')) {
+                const upRes = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: finalForm.bannerImage, folder: 'recircle/banners' }),
+                });
+                if (upRes.ok) {
+                    const { url } = await upRes.json();
+                    finalForm.bannerImage = url;
+                }
+            }
+
             const res = await fetch('/api/profile/data', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(profileForm),
+                body: JSON.stringify(finalForm),
             });
             if (res.ok) {
                 showSuccess('Success', 'Profile updated correctly.');
@@ -256,18 +285,66 @@ export default function SettingsPage() {
                     <div className={`flex-1 min-w-0 transition-all duration-500 ${viewMode === 'list' ? 'hidden md:block' : 'block'}`}>
                         
                         {/* Mobile Back Button & Section Title */}
-                        <div className="md:hidden flex items-center gap-4 mb-6 sticky top-0 bg-[#FDFDFD]/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl py-2 z-50">
-                            <button 
-                                onClick={() => setViewMode('list')}
-                                className="w-12 h-12 flex items-center justify-center bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 text-indigo-600"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
-                            </button>
-                            <h2 className="text-xl font-black italic tracking-tighter text-slate-900 dark:text-white">
-                                {tabs.find(t => t.id === activeTab)?.label}
-                            </h2>
+                        <div className="md:hidden sticky top-[64px] sm:top-[72px] z-50 mb-6 -mx-4 px-4 py-2 bg-[#FDFDFD]/95 dark:bg-[#0A0A0A]/95 backdrop-blur-3xl border-b border-gray-100 dark:border-zinc-800/50 shadow-sm">
+                            {activeTab === 'profile' ? (
+                                <div className="flex items-center gap-3">
+                                    <button 
+                                        onClick={() => setViewMode('list')}
+                                        className="shrink-0 w-11 h-11 flex items-center justify-center bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 text-indigo-600 z-10"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
+                                    </button>
+                                    
+                                    <div className="flex-1 relative rounded-[1.25rem] overflow-hidden border border-zinc-200/60 dark:border-zinc-700/60 bg-white dark:bg-zinc-900 shadow-sm flex items-center h-14">
+                                        {/* Banner Background */}
+                                        <div className="absolute inset-0 opacity-40 dark:opacity-50">
+                                            {profileForm.bannerImage ? (
+                                                <NextImage src={profileForm.bannerImage} className="object-cover" fill unoptimized alt="Banner" />
+                                            ) : (
+                                                <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-500" />
+                                            )}
+                                        </div>
+                                        {/* Content overlay */}
+                                        <div className="relative z-10 flex items-center gap-3 px-3 w-full">
+                                            {profileForm.profilePicture ? (
+                                                <>
+                                                    <div className="w-10 h-10 rounded-full border-[3px] border-white dark:border-zinc-800 shadow-sm overflow-hidden shrink-0 relative">
+                                                        <NextImage 
+                                                            src={profileForm.profilePicture} 
+                                                            alt="Avatar"
+                                                            fill
+                                                            className="object-cover"
+                                                            unoptimized={profileForm.profilePicture.includes('dicebear')}
+                                                        />
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full border-[3px] border-white dark:border-zinc-800 bg-indigo-100 flex items-center justify-center text-indigo-600 font-black shrink-0">
+                                                    {profileForm.name?.charAt(0).toUpperCase() || 'U'}
+                                                </div>
+                                            )}
+                                            <div className="flex flex-col truncate">
+                                                <span className="text-sm font-black truncate text-zinc-900 dark:text-white leading-tight">{profileForm.name || 'Your Name'}</span>
+                                                <span className="text-[10px] font-bold truncate text-indigo-600 dark:text-indigo-400">@{profileForm.username || 'username'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-4">
+                                    <button 
+                                        onClick={() => setViewMode('list')}
+                                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 text-indigo-600"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
+                                    </button>
+                                    <h2 className="text-xl font-black italic tracking-tighter text-slate-900 dark:text-white">
+                                        {tabs.find(t => t.id === activeTab)?.label}
+                                    </h2>
+                                </div>
+                            )}
                         </div>
-
+                        
                         <SettingsHeader user={user} />
                         
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -292,7 +369,7 @@ export default function SettingsPage() {
                                             <button 
                                                 onClick={handleProfileSubmit}
                                                 disabled={submitting}
-                                                className="w-full md:w-auto px-12 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 active:scale-95 transition-all flex items-center justify-center gap-3 border border-emerald-400/20"
+                                                className="w-full md:w-auto px-12 py-5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 dark:from-indigo-500 dark:to-indigo-400 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-95 transition-all flex items-center justify-center gap-3 border border-indigo-400/20"
                                             >
                                                 {submitting ? (
                                                     <>
@@ -300,10 +377,7 @@ export default function SettingsPage() {
                                                         Saving Changes...
                                                     </>
                                                 ) : (
-                                                    <>
-                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                                                        Save Profile Details
-                                                    </>
+                                                    "Save Profile Details"
                                                 )}
                                             </button>
                                         </div>
@@ -350,7 +424,7 @@ export default function SettingsPage() {
 
 function SettingsHeader({ user }: any) {
     return (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-12 bg-slate-900 text-white p-8 sm:p-12 rounded-[2.5rem] sm:rounded-[3rem] overflow-hidden relative shadow-2xl">
+        <div className="hidden md:flex flex-col sm:flex-row items-center justify-between gap-6 mb-12 bg-slate-900 text-white p-8 sm:p-12 rounded-[2.5rem] sm:rounded-[3rem] overflow-hidden relative shadow-2xl">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center gap-6 relative z-10">
                 {user?.profilePicture ? (

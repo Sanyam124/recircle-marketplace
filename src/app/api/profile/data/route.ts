@@ -65,6 +65,18 @@ export async function PUT(req: NextRequest) {
             body.usernameChangeCount = (user.usernameChangeCount || 0) + 1;
         }
 
+        // Cloudinary cleanup: delete old avatar/banner if they're being replaced
+        const isUserUpload = (url?: string) => !!url && url.includes('cloudinary.com') && !url.includes('/recircle/defaults/');
+        
+        if (body.profilePicture && body.profilePicture !== user.profilePicture && isUserUpload(user.profilePicture)) {
+            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+            await deleteFromCloudinary(user.profilePicture).catch(() => null);
+        }
+        if (body.bannerImage && body.bannerImage !== user.bannerImage && isUserUpload(user.bannerImage)) {
+            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+            await deleteFromCloudinary(user.bannerImage).catch(() => null);
+        }
+
         const updatedUser = await User.findByIdAndUpdate(decoded.userId, { $set: body }, { new: true, runValidators: true })
             .populate('verifiedCommunities', 'name image isActive hostels');
 

@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
         if (!referer.includes('/products/create') && 
             !referer.includes('/services/create') && 
             !referer.includes('/profile') &&
+            !referer.includes('/settings') &&
             !referer.includes('/admin')) {
              return NextResponse.json({ error: 'Unauthorized upload source. Uploading must be done through official UI forms.' }, { status: 403 });
         }
