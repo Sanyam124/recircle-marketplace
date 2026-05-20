@@ -77,7 +77,7 @@ function BoardPageContent() {
     const maxReplyChars = siteConfig?.maxBoardReplyChars || 300;
 
     const flashInfo = () => {
-        showSuccess('Board Rules', 'All posts automatically vanish after 48 hours to keep the feed fresh.');
+        showSuccess('Board Rules', 'All posts automatically vanish after 30 days to keep the feed fresh.');
     };
 
     const categories = [

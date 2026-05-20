@@ -289,7 +289,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
              <ReviewSection 
                 targetId={product.seller._id} 
                 targetName={product.seller.name} 
-                productId={product._id} 
+                productId={(product.forSell !== false && !product.forRent) ? undefined : product._id} 
                 className="hidden lg:block bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-[2rem] sm:rounded-3xl p-5 sm:p-6 shadow-sm"
               />
         </div>
@@ -537,7 +537,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <ReviewSection 
                 targetId={product.seller._id} 
                 targetName={product.seller.name} 
-                productId={product._id} 
+                productId={(product.forSell !== false && !product.forRent) ? undefined : product._id} 
                 className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] rounded-[2rem] sm:rounded-3xl p-4 shadow-sm"
               />
           </div>
