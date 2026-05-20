@@ -699,7 +699,7 @@ async function seed() {
       const joinDate = randomDate(START_DATE, MAX_DATE);
       usersToInsert.push({
         name: profile.name,
-        username: `student_boy_${email.split('@')[0]}`,
+        username: email.split('@')[0].replace(/[^a-z0-9_.]/gi, '_').substring(0, 20),
         email: email,
         password: commonHash,
         role: 'user',
@@ -722,7 +722,7 @@ async function seed() {
       const joinDate = randomDate(START_DATE, MAX_DATE);
       usersToInsert.push({
         name: profile.name,
-        username: `student_girl_${email.split('@')[0]}`,
+        username: email.split('@')[0].replace(/[^a-z0-9_.]/gi, '_').substring(0, 20),
         email: email,
         password: commonHash,
         role: 'user',
@@ -1102,41 +1102,121 @@ async function seed() {
     // 4. Seeding Circle Board student threads
     console.log('📢 Seeding Circle Board student threads...');
     const boardPosts = [];
-    const typicalStudentQuestions = [
-      'Has anyone got the notes for Engineering Math-2 midsems? Please share!',
-      'Where is the best spot near Shastri Bhawan to study overnight?',
-      'Is the campus laundry service open on Sundays?',
-      'Can anyone recommend a reliable classmate mini-drafter tool?',
-      'Looking for a roommate for the upcoming summer semester sublet!',
-      'Selling my bicycle since I completed my course. Ping me if interested.',
-      'Are there any good food delivery places that deliver near Indira Bhawan lobby?',
-      'Anyone going from campus to Vadodara station this Friday afternoon?'
+    const THIRTY_DAYS_AGO = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000);
+    const POST_START = THIRTY_DAYS_AGO.getTime() > START_DATE.getTime() ? THIRTY_DAYS_AGO : START_DATE;
+    
+    const REALISTIC_POSTS = [
+      {
+        category: 'LostFound',
+        content: 'I left my scientific calculator in the reading room at Shastri Bhawan – B. If anyone found it, please let me know!',
+        replies: [
+          'Check with the warden, someone deposited a calculator yesterday.',
+          'Is it the Casio 991EX? I think I saw it near table 4.'
+        ]
+      },
+      {
+        category: 'Rides',
+        content: 'Anyone going to Vadodara Station this Friday afternoon from Kalam Bhawan – A? Let\'s split a cab.',
+        replies: [
+          'I am! What time are you leaving?',
+          'My train is at 5 PM, so leaving around 3:30. Let me DM you.'
+        ]
+      },
+      {
+        category: 'Housing',
+        content: 'Looking for a flatmate for a 2BHK near campus. I am currently in Sardar Bhawan – C and moving out next month.',
+        replies: [
+          'What is the expected rent?',
+          'Around 4k per head. Hit me up if you want details.'
+        ]
+      },
+      {
+        category: 'Academic',
+        content: 'Does anyone have the previous year question papers for Data Structures? Need them urgently for mid-sems.',
+        replies: [
+          'Yes, I have the PDF. DM me your number.',
+          'Check the library portal, they uploaded the last 3 years.',
+          'Can you send them to me too?'
+        ]
+      },
+      {
+        category: 'LostFound',
+        content: 'Found a silver Titan watch near the mess in Indira Bhawan – A. Tell me the brand to claim it.',
+        replies: [
+          'Is it a Fastrack?',
+          'No, read the post carefully lol.',
+          'I lost a Titan watch! DMing you now.'
+        ]
+      },
+      {
+        category: 'General',
+        content: 'Is the wifi working in Teresa Bhawan – C? My connection keeps dropping since morning.',
+        replies: [
+          'Same issue in D block. It\'s a server issue.',
+          'Working fine for me in A block.'
+        ]
+      },
+      {
+        category: 'Tickets',
+        content: 'Selling 1 pass for the upcoming DJ night at the main ground. Bought for 500, selling for 400. DM.',
+        replies: [
+          'Hey, I want it! Still available?',
+          'Can you do 350?'
+        ]
+      },
+      {
+        category: 'Opportunities',
+        content: 'Looking for someone who knows React and Node.js for a minor project collaboration. I am from Atal Bhawan – A1.',
+        replies: [
+          'I can help with the frontend (React). DM me!',
+          'What\'s the project about?'
+        ]
+      },
+      {
+        category: 'Alerts',
+        content: 'Avoid the road near Azad Bhawan – A, there\'s some construction going on and it\'s fully blocked.',
+        replies: [
+          'Thanks for the heads up!',
+          'Oh no, I usually take that route to classes.'
+        ]
+      },
+      {
+        category: 'General',
+        content: 'Best place to get midnight snacks near Kalpana Bhawan – A? Everything seems closed.',
+        replies: [
+          'There\'s a Maggi stall right outside the main gate that stays open till 2 AM.',
+          'Order online, delivery comes till the security gate.'
+        ]
+      }
     ];
 
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 40; i++) {
       const author = randomItem(createdUsers);
-      const postDate = randomDate(new Date(author.createdAt), MAX_DATE);
+      const postTemplate = randomItem(REALISTIC_POSTS);
+      const authorJoinTime = new Date(author.createdAt).getTime();
+      const possibleStartTime = Math.max(authorJoinTime, POST_START.getTime());
+      
+      // Ensure the post is created AFTER the author joined AND within the last 30 days
+      const postDate = randomDate(new Date(possibleStartTime), MAX_DATE);
+      const expiresAt = new Date(postDate.getTime() + 30 * 24 * 60 * 60 * 1000);
       
       boardPosts.push({
         author: author._id,
         community: puCommunity._id,
-        content: typicalStudentQuestions[i % typicalStudentQuestions.length],
+        content: postTemplate.content,
+        category: postTemplate.category,
         upvotes: createdUsers.slice(0, Math.floor(Math.random() * 8)).map(u => u._id),
-        replies: [
-          { 
-            author: randomItem(createdUsers)._id, 
-            content: randomItem([
-              'Yes, check the official WhatsApp group links!',
-              'I have the PDF notes, DM me your number.',
-              'Usually Shastri lobby is quiet for overnight prep.',
-              'Is it still available? I want to buy it.',
-              'DM me the details.'
-            ]),
-            createdAt: randomDate(postDate, MAX_DATE)
-          }
-        ],
+        replies: postTemplate.replies.map(replyContent => {
+            const replyDate = randomDate(postDate, MAX_DATE);
+            return {
+                author: randomItem(createdUsers)._id,
+                content: replyContent,
+                createdAt: replyDate
+            }
+        }),
         createdAt: postDate,
-        updatedAt: postDate
+        updatedAt: postDate,
+        expiresAt: expiresAt
       });
     }
     await BoardPost.insertMany(boardPosts);
@@ -1202,10 +1282,11 @@ async function seed() {
         });
         totalOrdersCreated++;
 
+        const isBuyOnly = prod.forSell && !prod.forRent;
         await Review.create({
           reviewer: buyer._id,
           target: prod.seller,
-          product: prod._id,
+          product: isBuyOnly ? undefined : prod._id,
           rating: randomItem([4, 5, 4, 5, 3]), // slightly weighted to 4 & 5 stars
           comment: randomItem(PRODUCT_REVIEWS),
           createdAt: randomDate(orderDate, MAX_DATE)
