@@ -219,25 +219,16 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
       reader.readAsDataURL(compressed);
       reader.onloadend = async () => {
         const base64 = reader.result as string;
-        const folder = field === 'profilePicture' ? 'recircle/profiles' : 'recircle/banners';
 
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
+        const saveRes = await fetch('/api/profile/data', {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64, folder }),
+          body: JSON.stringify({ [field]: base64 }),
         });
-
-        if (uploadRes.ok) {
-          const { url } = await uploadRes.json();
-          const saveRes = await fetch('/api/profile/data', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ [field]: url }),
-          });
-          if (saveRes.ok) {
-            await refreshUser();
-            mutate();
-          }
+        
+        if (saveRes.ok) {
+          await refreshUser();
+          mutate();
         }
         setUploading(false);
       };

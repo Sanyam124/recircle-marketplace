@@ -93,7 +93,35 @@ export async function PUT(req: NextRequest) {
 
         for (const field of allowedFields) {
             if (body[field] !== undefined) {
-                (settings as any)[field] = body[field];
+                // Special handling for image arrays (Avatars and Banners)
+                if (field === 'defaultAvatars' || field === 'defaultBanners') {
+                    const currentList = (settings as any)[field] as string[] || [];
+                    const newList = body[field] as string[];
+                    
+                    if (!Array.isArray(newList)) continue;
+                    
+                    const { uploadToCloudinary, deleteFromCloudinary } = await import('@/lib/cloudinary');
+                    const folder = field === 'defaultAvatars' ? 'recircle/defaults/avatars' : 'recircle/defaults/banners';
+
+                    // 1. Find images that were removed (in current list, but not in new list)
+                    const removedImages = currentList.filter(url => !newList.includes(url) && url.includes('cloudinary.com'));
+                    for (const url of removedImages) {
+                        try { await deleteFromCloudinary(url); } catch (e) { console.error(`Failed to delete ${url}`, e); }
+                    }
+
+                    // 2. Upload any new base64 images
+                    const processedList = await Promise.all(newList.map(async (item) => {
+                        if (item.startsWith('data:image')) {
+                            try { return await uploadToCloudinary(item, folder); }
+                            catch (e) { console.error('Failed to upload image', e); return null; }
+                        }
+                        return item;
+                    }));
+
+                    (settings as any)[field] = processedList.filter(Boolean); // Filter out failed uploads
+                } else {
+                    (settings as any)[field] = body[field];
+                }
             }
         }
 

@@ -68,19 +68,46 @@ export async function PUT(req: NextRequest) {
         // Cloudinary cleanup: delete old avatar/banner if they're being replaced
         const isUserUpload = (url?: string) => !!url && url.includes('cloudinary.com') && !url.includes('/recircle/defaults/');
         
-        if (body.profilePicture && body.profilePicture !== user.profilePicture && isUserUpload(user.profilePicture)) {
-            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-            await deleteFromCloudinary(user.profilePicture).catch(() => null);
-        }
-        if (body.bannerImage && body.bannerImage !== user.bannerImage && isUserUpload(user.bannerImage)) {
-            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-            await deleteFromCloudinary(user.bannerImage).catch(() => null);
+        let newAvatarUrl = '';
+        let newBannerUrl = '';
+
+        try {
+            if (body.profilePicture?.startsWith('data:image')) {
+                const { uploadToCloudinary } = await import('@/lib/cloudinary');
+                newAvatarUrl = await uploadToCloudinary(body.profilePicture, 'recircle/profiles');
+                body.profilePicture = newAvatarUrl;
+            }
+            if (body.bannerImage?.startsWith('data:image')) {
+                const { uploadToCloudinary } = await import('@/lib/cloudinary');
+                newBannerUrl = await uploadToCloudinary(body.bannerImage, 'recircle/banners');
+                body.bannerImage = newBannerUrl;
+            }
+        } catch (e) {
+            console.error('Failed to upload profile images:', e);
+            return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 });
         }
 
-        const updatedUser = await User.findByIdAndUpdate(decoded.userId, { $set: body }, { new: true, runValidators: true })
-            .populate('verifiedCommunities', 'name image isActive hostels');
+        try {
+            if (body.profilePicture && body.profilePicture !== user.profilePicture && isUserUpload(user.profilePicture)) {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await deleteFromCloudinary(user.profilePicture).catch(() => null);
+            }
+            if (body.bannerImage && body.bannerImage !== user.bannerImage && isUserUpload(user.bannerImage)) {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await deleteFromCloudinary(user.bannerImage).catch(() => null);
+            }
 
-        return NextResponse.json({ message: 'Profile updated', user: updatedUser }, { status: 200 });
+            const updatedUser = await User.findByIdAndUpdate(decoded.userId, { $set: body }, { new: true, runValidators: true })
+                .populate('verifiedCommunities', 'name image isActive hostels');
+
+            return NextResponse.json({ message: 'Profile updated', user: updatedUser }, { status: 200 });
+        } catch (dbError) {
+            // Rollback newly uploaded images if DB save fails
+            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+            if (newAvatarUrl) await deleteFromCloudinary(newAvatarUrl).catch(() => null);
+            if (newBannerUrl) await deleteFromCloudinary(newBannerUrl).catch(() => null);
+            throw dbError; // throw to outer catch
+        }
     } catch (error) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }

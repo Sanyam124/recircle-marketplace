@@ -72,29 +72,10 @@ export default function ImageUpload({
         const base64data = reader.result as string;
         setPreview(base64data); // Show local preview instantly
 
-        if (deferUpload) {
-          // Deferred mode: return base64 directly, no Cloudinary upload
-          onUpload(base64data);
-          setIsUploading(false);
-          onUploadingChange?.(false);
-          return;
-        }
-
-        // Upload to Cloudinary immediately for fast saves
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64data, folder }),
-        });
-
-        if (res.ok) {
-          const { url } = await res.json();
-          setPreview(url);
-          onUpload(url);
-        } else {
-          console.error('Upload failed');
-          setPreview(currentImage);
-        }
+        // ALWAYS return base64 directly, no Cloudinary upload from component
+        // This prevents 'ghost images' in Cloudinary if a user cancels the form.
+        // The parent form/backend must handle the Cloudinary upload!
+        onUpload(base64data);
         setIsUploading(false);
         onUploadingChange?.(false);
       };

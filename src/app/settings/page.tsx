@@ -180,31 +180,7 @@ export default function SettingsPage() {
         try {
             let finalForm = { ...profileForm };
 
-            // Upload profile picture if it's a new base64 image
-            if (finalForm.profilePicture?.startsWith('data:image')) {
-                const upRes = await fetch('/api/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: finalForm.profilePicture, folder: 'recircle/profiles' }),
-                });
-                if (upRes.ok) {
-                    const { url } = await upRes.json();
-                    finalForm.profilePicture = url;
-                }
-            }
-
-            // Upload banner image if it's a new base64 image
-            if (finalForm.bannerImage?.startsWith('data:image')) {
-                const upRes = await fetch('/api/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: finalForm.bannerImage, folder: 'recircle/banners' }),
-                });
-                if (upRes.ok) {
-                    const { url } = await upRes.json();
-                    finalForm.bannerImage = url;
-                }
-            }
+            // The backend will handle uploading the base64 images for profilePicture and bannerImage
 
             const res = await fetch('/api/profile/data', {
                 method: 'PUT',
