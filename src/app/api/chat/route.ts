@@ -114,13 +114,13 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        const otherUser = await User.findById(recipientId).select('lastSeen name username profilePicture').lean();
+        const otherUser = await User.findById(recipientId).select('lastSeen showOnlineStatus name username profilePicture').lean();
 
         return NextResponse.json({
             messages,
             lastContext,
             pagination: { hasMore: total > messages.length },
-            otherUser: otherUser ? { lastSeen: otherUser.lastSeen, name: (otherUser as any).name } : null,
+            otherUser: otherUser ? { lastSeen: otherUser.lastSeen, showOnlineStatus: (otherUser as any).showOnlineStatus ?? true, name: (otherUser as any).name } : null,
         }, { status: 200 });
 
     } catch (error) {

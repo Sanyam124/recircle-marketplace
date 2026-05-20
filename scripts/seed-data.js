@@ -128,12 +128,18 @@ const BoardPostSchema = new mongoose.Schema({
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   community: { type: mongoose.Schema.Types.ObjectId, ref: 'Community', required: true },
   content: { type: String, required: true },
+  category: { 
+    type: String, 
+    enum: ['General', 'LostFound', 'Rides', 'Tickets', 'Housing', 'Academic', 'Opportunities', 'Alerts'],
+    default: 'General'
+  },
   upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   replies: [{
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     content: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
-  }]
+  }],
+  expiresAt: { type: Date }
 }, { timestamps: true });
 
 // Models Compilation
@@ -220,7 +226,7 @@ const GIRL_PROFILES = [
 
 const MALE_AVATARS = [
   "https://res.cloudinary.com/dq3sl82at/image/upload/v1775879674/recircle/defaults/avatars/ujoj8pesdwygl7prxhop.webp", // Idx 1
-  "https://res.cloudinary.com/dq3sl82at/image/upload/v1775879779/recircle/defaults/avatars/tgl886mu6da8jute1kiw.webp", // Idx 3
+  "https://res.cloudinary.com/dq3sl82at/image/upload/q_auto/f_auto/v1779185337/Copilot_20260411_092250_wl7rnn.png", // Idx 3
   "https://res.cloudinary.com/dq3sl82at/image/upload/v1775879826/recircle/defaults/avatars/njihd9oj1h1glmzuoinj.webp", // Idx 5
   "https://res.cloudinary.com/dq3sl82at/image/upload/v1775879876/recircle/defaults/avatars/ulsdike1w01t9jej98jk.webp", // Idx 7
   "https://res.cloudinary.com/dq3sl82at/image/upload/v1775880073/recircle/defaults/avatars/ozw4w9mtamtwceivlqeg.webp", // Idx 9

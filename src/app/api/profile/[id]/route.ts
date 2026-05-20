@@ -48,7 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const _models = [Community, Product, Service, Review, Order]; 
 
         const user = await User.findById(id)
-            .select('name username email profilePicture bannerImage gender createdAt role bio isVerified allowEmailContact authProvider isPhoneVerified phone allowPhoneContact state city landmark isOnVacation blockedUsers verifiedCommunities')
+            .select('name username email profilePicture bannerImage gender createdAt role bio isVerified allowEmailContact authProvider isPhoneVerified phone allowPhoneContact state city landmark isOnVacation blockedUsers verifiedCommunities lastSeen showOnlineStatus')
             .populate('verifiedCommunities', 'name image isActive hostels')
             .lean();
             

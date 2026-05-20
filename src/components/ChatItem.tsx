@@ -126,7 +126,7 @@ export const ChatItem = React.memo(({
 
                         {/* Stable Unread Badge */}
                         {displayUnread > 0 && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 group-hover:opacity-0 transition-opacity">
+                            <div className="absolute right-4 bottom-4 flex flex-col items-center gap-1 group-hover:opacity-0 transition-opacity md:group-hover:hidden">
                                 <span className="bg-red-600 text-white text-[10px] font-black h-5 w-5 rounded-full flex items-center justify-center shadow-lg border border-white/20 animate-in zoom-in-50 duration-300 z-[5]">
                                     {displayUnread}
                                 </span>

@@ -216,6 +216,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     };
 
     const [otherUserLastSeen, setOtherUserLastSeen] = useState<Date | null>(null);
+    const [otherUserShowOnline, setOtherUserShowOnline] = useState<boolean>(true);
     const scrollRef = useRef<HTMLDivElement>(null);
     const justSentRef = useRef(false);
     // Stores scroll metrics captured BEFORE a prepend so useLayoutEffect can restore position
@@ -561,6 +562,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
                 if (data.otherUser?.lastSeen) {
                     setOtherUserLastSeen(new Date(data.otherUser.lastSeen));
+                }
+                if (data.otherUser?.showOnlineStatus !== undefined) {
+                    setOtherUserShowOnline(data.otherUser.showOnlineStatus);
                 }
                 
                 if (!searchParams.get('productId') && !searchParams.get('serviceId')) {
@@ -973,20 +977,22 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                             )}
                         </div>
                         
-                        <div className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/80 flex items-center justify-center text-indigo-700 dark:text-indigo-300 text-xs font-extrabold border-[2.5px] border-white dark:border-gray-900 shadow-md z-10 backdrop-blur-sm overflow-hidden">
-                            {otherUser?.profilePicture && !otherUser.profilePicture.includes('??') ? (
-                                <img 
-                                    src={otherUser.profilePicture} 
-                                    alt={otherUser.name || 'User'} 
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <span className="flex items-center justify-center w-full h-full bg-indigo-50 dark:bg-indigo-900/40">
-                                    {(otherUser?.name?.[0] || otherUser?.username?.[0] || 'U').toUpperCase()}
-                                </span>
-                            )}
-                            {otherUserLastSeen && (Date.now() - otherUserLastSeen.getTime()) < 2 * 60 * 1000 && (
-                                <span className="absolute bottom-0 -right-0.5 w-2.5 h-2.5 bg-green-400 border-[1.5px] border-white dark:border-gray-900 rounded-full" title="Online now" />
+                        <div className="absolute bottom-0 right-0 h-8 w-8 z-10">
+                            <div className="w-full h-full rounded-full bg-indigo-100 dark:bg-indigo-900/80 flex items-center justify-center text-indigo-700 dark:text-indigo-300 text-xs font-extrabold border-[2.5px] border-white dark:border-gray-900 shadow-md backdrop-blur-sm overflow-hidden">
+                                {otherUser?.profilePicture && !otherUser.profilePicture.includes('??') ? (
+                                    <img 
+                                        src={otherUser.profilePicture} 
+                                        alt={otherUser.name || 'User'} 
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="flex items-center justify-center w-full h-full bg-indigo-50 dark:bg-indigo-900/40">
+                                        {(otherUser?.name?.[0] || otherUser?.username?.[0] || 'U').toUpperCase()}
+                                    </span>
+                                )}
+                            </div>
+                            {otherUserShowOnline && otherUserLastSeen && (Date.now() - otherUserLastSeen.getTime()) < 2 * 60 * 1000 && (
+                                <span className="absolute bottom-0 -right-0.5 w-2.5 h-2.5 bg-green-500 border-[1.5px] border-white dark:border-gray-900 rounded-full shadow-[0_0_6px_rgba(34,197,94,0.4)] animate-pulse z-20" style={{ animationDuration: '3s' }} title="Online now" />
                             )}
                         </div>
                     </div>
