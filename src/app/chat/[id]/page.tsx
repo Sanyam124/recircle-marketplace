@@ -691,7 +691,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             _id: tempId,
             sender: user?.id || (user as any)?._id,
             recipient: userId,
-            content: content || (referencingItem?.type === 'service' ? 'Sent an Appointment Request' : (currentAttachment ? 'Sent an Image' : 'Sent an Offer')),
+            content: content || (currentAttachment ? 'Sent an Image' : (referencingItem?.type === 'service' ? 'Sent an Appointment Request' : 'Sent an Offer')),
             createdAt: new Date().toISOString(),
             isRead: false,
             offer: offerPayload || undefined,
@@ -719,7 +719,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     recipientId: userId, 
-                    content: content || (referencingItem?.type === 'service' ? 'Sent an Appointment Request' : (currentAttachment ? 'Sent an Image' : 'Sent an Offer')),
+                    content: content || (currentAttachment ? 'Sent an Image' : (referencingItem?.type === 'service' ? 'Sent an Appointment Request' : 'Sent an Offer')),
                     productId: pId,
                     serviceId: sId,
                     offer: offerPayload || undefined,

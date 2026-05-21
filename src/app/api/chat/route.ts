@@ -201,15 +201,24 @@ export async function POST(req: NextRequest) {
         if (isBlockedBySender) return NextResponse.json({ error: 'You have blocked this user.' }, { status: 403 });
         if (isBlockedByReceiver) return NextResponse.json({ error: 'Cannot message this user.' }, { status: 403 });
 
-        const message = await Message.create({
-            sender: decoded.userId,
-            recipient: recipientId,
-            content: content || '',
-            product: productId || undefined,
-            service: serviceId || undefined,
-            offer: offer || undefined,
-            image: imageUrl
-        });
+        let message;
+        try {
+            message = await Message.create({
+                sender: decoded.userId,
+                recipient: recipientId,
+                content: content || '',
+                product: productId || undefined,
+                service: serviceId || undefined,
+                offer: offer || undefined,
+                image: imageUrl
+            });
+        } catch (dbError) {
+            if (imageUrl) {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await deleteFromCloudinary(imageUrl).catch(() => null);
+            }
+            throw dbError;
+        }
 
         // Pusher Sync
         try {

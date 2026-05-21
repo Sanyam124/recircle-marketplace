@@ -195,13 +195,22 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: `The ${commObj.name} circle is in maintenance. New posts are disabled.` }, { status: 503 });
         }
 
-        const newPost = await BoardPost.create({
-            author: decoded.userId,
-            community: communityId,
-            content: content?.trim() || '',
-            category: category || 'General',
-            image: imageUrl
-        });
+        let newPost;
+        try {
+            newPost = await BoardPost.create({
+                author: decoded.userId,
+                community: communityId,
+                content: content?.trim() || '',
+                category: category || 'General',
+                image: imageUrl
+            });
+        } catch (dbError) {
+            if (imageUrl) {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await deleteFromCloudinary(imageUrl).catch(() => null);
+            }
+            throw dbError;
+        }
 
         // Populate author before returning
         const populatedPost = await BoardPost.findById(newPost._id).populate('author', 'name profilePicture username');
