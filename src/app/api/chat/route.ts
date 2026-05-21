@@ -141,9 +141,9 @@ export async function POST(req: NextRequest) {
         const decoded = verifyToken(token);
         if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
-        const { recipientId, content, productId, serviceId, offer } = await req.json();
+        const { recipientId, content, productId, serviceId, offer, image } = await req.json();
 
-        if (!recipientId || !content) return NextResponse.json({ error: 'Missing recipient or content' }, { status: 400 });
+        if (!recipientId || (!content && !image)) return NextResponse.json({ error: 'Missing recipient or content/image' }, { status: 400 });
 
         // Anti-Spam Protection
         const { checkRateLimit } = await import('@/lib/rate-limit');
@@ -156,7 +156,33 @@ export async function POST(req: NextRequest) {
         }
 
         if (recipientId && !isValidObjectId(recipientId)) return NextResponse.json({ error: 'Invalid Recipient ID' }, { status: 400 });
-        if (content.length > 2000) return NextResponse.json({ error: 'Message too long (max 2000 chars)' }, { status: 400 });
+        if (content && content.length > 2000) return NextResponse.json({ error: 'Message too long (max 2000 chars)' }, { status: 400 });
+
+        let imageUrl = undefined;
+        if (image) {
+            if (typeof image !== 'string' || !image.startsWith('data:image')) {
+                return NextResponse.json({ error: 'Invalid image format' }, { status: 400 });
+            }
+            // Backend size check: ~5MB base64 ≈ 6.9M chars
+            if (image.length > 7 * 1024 * 1024) {
+                return NextResponse.json({ error: 'Image too large. Max 5MB allowed.' }, { status: 400 });
+            }
+            // Stricter rate limit for image uploads: 10 per hour
+            const imgRl = await checkRateLimit(decoded.userId, 'chat-image-upload', 10, 60 * 60 * 1000);
+            if (!imgRl.success) {
+                return NextResponse.json(
+                    { error: 'Too many images sent. Max 10 per hour.', retryAfter: imgRl.resetTime ? Math.ceil((imgRl.resetTime.getTime() - Date.now()) / 1000) : 3600 },
+                    { status: 429 }
+                );
+            }
+            try {
+                const { uploadToCloudinary } = await import('@/lib/cloudinary');
+                imageUrl = await uploadToCloudinary(image, 'recircle/messages');
+            } catch (error) {
+                console.error('Image upload error:', error);
+                return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 });
+            }
+        }
 
         await connectToDatabase();
 
@@ -178,10 +204,11 @@ export async function POST(req: NextRequest) {
         const message = await Message.create({
             sender: decoded.userId,
             recipient: recipientId,
-            content,
+            content: content || '',
             product: productId || undefined,
             service: serviceId || undefined,
-            offer: offer || undefined
+            offer: offer || undefined,
+            image: imageUrl
         });
 
         // Pusher Sync

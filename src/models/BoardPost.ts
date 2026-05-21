@@ -27,6 +27,7 @@ const BoardPostSchema: Schema<IBoardPost> = new Schema(
             enum: ['General', 'LostFound', 'Rides', 'Tickets', 'Housing', 'Academic', 'Opportunities', 'Alerts'],
             default: 'General'
         },
+        image: { type: String },
         upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         downvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     replies: {
@@ -39,7 +40,7 @@ const BoardPostSchema: Schema<IBoardPost> = new Schema(
     },
     expiresAt: { 
         type: Date, 
-        default: () => new Date(+new Date() + 30*24*60*60*1000), 
+        default: () => new Date(+new Date() + 32*24*60*60*1000), 
     },
 },
     { timestamps: true }

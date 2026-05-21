@@ -51,6 +51,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid image format. Must be base64 data URI.' }, { status: 400 });
         }
 
+        if (image.length > 7 * 1024 * 1024) {
+            return NextResponse.json({ error: 'Image too large. Max 5MB allowed.' }, { status: 400 });
+        }
+
         await connectToDatabase();
 
         // Upload to Cloudinary

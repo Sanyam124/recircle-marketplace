@@ -53,6 +53,8 @@ function BoardPageContent() {
     
     // Board State
     const [newPostContent, setNewPostContent] = useState('');
+    const [attachment, setAttachment] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [postCategory, setPostCategory] = useState('General');
     const [viewMode, setViewMode] = useState<'list' | 'feed'>('list');
     const [activeCategory, setActiveCategory] = useState('All');
@@ -67,10 +69,10 @@ function BoardPageContent() {
 
     // Reset textarea height when content is cleared
     useEffect(() => {
-        if (!newPostContent && textareaRef.current) {
+        if (!newPostContent && !attachment && textareaRef.current) {
             textareaRef.current.style.height = 'auto';
         }
-    }, [newPostContent]);
+    }, [newPostContent, attachment]);
 
     const { data: siteConfig } = useSWR('/api/site-config');
     const maxPostChars = siteConfig?.maxBoardPostChars || 500;
@@ -194,7 +196,7 @@ function BoardPageContent() {
 
     const handleCreatePost = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newPostContent.trim() || !selectedCommunityId) return;
+        if ((!newPostContent.trim() && !attachment) || !selectedCommunityId) return;
 
         setSubmitting(true);
         setError('');
@@ -205,13 +207,15 @@ function BoardPageContent() {
                 body: JSON.stringify({ 
                     content: newPostContent.trim(), 
                     communityId: selectedCommunityId,
-                    category: postCategory
+                    category: postCategory,
+                    image: attachment || undefined
                 })
             });
 
             if (res.ok) {
                 mutate(); 
                 setNewPostContent('');
+                setAttachment(null);
                 if (textareaRef.current) textareaRef.current.style.height = 'auto';
             } else {
                 const data = await res.json();
@@ -644,14 +648,48 @@ function BoardPageContent() {
                                             </span>
                                         </div>
 
-                                        <div className="flex items-end gap-2 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-2xl border border-gray-200 dark:border-gray-800 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
-                                            <button 
-                                                type="button" 
-                                                onClick={() => showSuccess('Coming Soon!', 'Images coming in v2.0 🚀')}
-                                                className="w-10 h-10 shrink-0 flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-gray-800 rounded-xl transition-all"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                            </button>
+                                        <div className="flex flex-col gap-2 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-2xl border border-gray-200 dark:border-gray-800 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+                                            {attachment && (
+                                                <div className="relative w-32 h-32 shrink-0 mx-2 mt-2">
+                                                    <img src={attachment} alt="Preview" className="w-full h-full object-cover rounded-xl shadow-md border border-gray-200 dark:border-gray-700 bg-white" />
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setAttachment(null)}
+                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-600 transition"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    </button>
+                                                </div>
+                                            )}
+                                            <div className="flex items-end gap-2">
+                                                <input 
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    ref={fileInputRef}
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            if (file.size > 5 * 1024 * 1024) {
+                                                                setError('Please upload an image smaller than 5MB');
+                                                                return;
+                                                            }
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                setAttachment(reader.result as string);
+                                                                setError('');
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="w-10 h-10 shrink-0 flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-gray-800 rounded-xl transition-all"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                </button>
 
                                             <textarea
                                                 ref={textareaRef}
@@ -671,7 +709,7 @@ function BoardPageContent() {
 
                                             <button 
                                                 type="submit" 
-                                                disabled={submitting || !newPostContent.trim()} 
+                                                disabled={submitting || (!newPostContent.trim() && !attachment)} 
                                                 className="w-10 h-10 shrink-0 flex items-center justify-center bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-95 shadow-sm"
                                             >
                                                 {submitting ? (
@@ -682,6 +720,7 @@ function BoardPageContent() {
                                                     </svg>
                                                 )}
                                             </button>
+                                            </div>
                                         </div>
 
                                         {activeCategory === 'All' && (

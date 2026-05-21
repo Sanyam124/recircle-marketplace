@@ -20,6 +20,7 @@ interface Post {
     upvotes: string[];
     downvotes?: string[];
     replies: any[];
+    image?: string;
     createdAt: string;
 }
 
@@ -101,6 +102,11 @@ export default function PostCard({
                 </Link>
                 <div className="flex-1 min-w-0">
                     <PostCardHeader post={post} user={user} canDeletePost={canDeletePost} onDeletePost={onDeletePost} cat={cat} />
+                    {post.image && (
+                        <div className="mt-2 mb-3 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 cursor-pointer" onClick={() => window.open(post.image, '_blank')}>
+                            <img src={post.image} alt="Attachment" className="w-full max-h-[400px] object-cover" />
+                        </div>
+                    )}
                     <ExpandableText text={post.content} maxLines={5} showReadMore={true} onCollapse={scrollPostToTop} className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed" />
                     <PostCardActions post={post} isUpvoted={isUpvoted} isDownvoted={isDownvoted} toggleUpvote={toggleUpvote} toggleDownvote={toggleDownvote} repliesVisible={repliesVisible} setRepliesVisible={setRepliesVisible} setReplyingTo={setLocalReplyingTo} />
                     

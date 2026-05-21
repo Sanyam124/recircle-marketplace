@@ -131,13 +131,42 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { content, communityId, category } = await req.json();
+        const { content, communityId, category, image } = await req.json();
 
         const settings = await SiteSettings.getSingleton();
         const maxChars = settings.maxBoardPostChars || 500;
 
-        if (!content || content.length > maxChars) {
-            return NextResponse.json({ error: `Content must be 1-${maxChars} characters` }, { status: 400 });
+        if (!content && !image) {
+            return NextResponse.json({ error: 'Content or image is required' }, { status: 400 });
+        }
+        if (content && content.length > maxChars) {
+            return NextResponse.json({ error: `Content must be up to ${maxChars} characters` }, { status: 400 });
+        }
+
+        let imageUrl = undefined;
+        if (image) {
+            if (typeof image !== 'string' || !image.startsWith('data:image')) {
+                return NextResponse.json({ error: 'Invalid image format' }, { status: 400 });
+            }
+            // Backend size check: ~5MB base64 ≈ 6.9M chars
+            if (image.length > 7 * 1024 * 1024) {
+                return NextResponse.json({ error: 'Image too large. Max 5MB allowed.' }, { status: 400 });
+            }
+            // Stricter rate limit for image uploads: 5 per hour
+            const imgRl = await checkRateLimit(decoded.userId, 'board-image-upload', 5, 60 * 60 * 1000);
+            if (!imgRl.success) {
+                return NextResponse.json(
+                    { error: 'Too many image uploads. Max 5 per hour.', retryAfter: imgRl.resetTime ? Math.ceil((imgRl.resetTime.getTime() - Date.now()) / 1000) : 3600 },
+                    { status: 429 }
+                );
+            }
+            try {
+                const { uploadToCloudinary } = await import('@/lib/cloudinary');
+                imageUrl = await uploadToCloudinary(image, 'recircle/boards');
+            } catch (error) {
+                console.error('Image upload error:', error);
+                return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 });
+            }
         }
 
         if (!communityId || !isValidObjectId(communityId)) {
@@ -169,8 +198,9 @@ export async function POST(req: NextRequest) {
         const newPost = await BoardPost.create({
             author: decoded.userId,
             community: communityId,
-            content: content.trim(),
-            category: category || 'General'
+            content: content?.trim() || '',
+            category: category || 'General',
+            image: imageUrl
         });
 
         // Populate author before returning
@@ -367,9 +397,17 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ success: true, message: 'Reply deleted' }, { status: 200 });
         }
 
-        // CASE 2: Deleting the entire post
         if (post.author.toString() !== decoded.userId && !isAdmin) {
             return NextResponse.json({ error: 'Unauthorized to delete this post' }, { status: 403 });
+        }
+
+        if (post.image) {
+            try {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await deleteFromCloudinary(post.image);
+            } catch (err) {
+                console.error("Failed to delete image from cloudinary", err);
+            }
         }
 
         await BoardPost.findByIdAndDelete(postId);

@@ -84,6 +84,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const [initialLoad, setInitialLoad] = useState(true);
     const [otherUser, setOtherUser] = useState<any>(null);
     const [newMessage, setNewMessage] = useState('');
+    const [attachment, setAttachment] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [loading, setLoading] = useState(true);
     const [userLoading, setUserLoading] = useState(true);
     const [itemLoading, setItemLoading] = useState(!!(searchParams.get('productId') || searchParams.get('serviceId')));
@@ -673,10 +675,15 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const handleSendMessage = async (e?: React.FormEvent, customContent?: string, offerPayload?: any) => {
         if (e) e.preventDefault();
         const content = customContent || newMessage.trim();
-        if ((!content && !offerPayload) || sendingMessage) return;
+        if ((!content && !offerPayload && !attachment) || sendingMessage) return;
 
         setSendingMessage(true);
-        if (!customContent && !offerPayload) setNewMessage('');
+        if (!customContent && !offerPayload) {
+            setNewMessage('');
+        }
+        
+        const currentAttachment = attachment;
+        setAttachment(null); // Clear attachment optimistically
 
         // Optimistic UI Update
         const tempId = `temp-${Date.now()}`;
@@ -684,10 +691,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             _id: tempId,
             sender: user?.id || (user as any)?._id,
             recipient: userId,
-            content: content || (referencingItem?.type === 'service' ? 'Sent an Appointment Request' : 'Sent an Offer'),
+            content: content || (referencingItem?.type === 'service' ? 'Sent an Appointment Request' : (currentAttachment ? 'Sent an Image' : 'Sent an Offer')),
             createdAt: new Date().toISOString(),
             isRead: false,
-            offer: offerPayload || undefined
+            offer: offerPayload || undefined,
+            image: currentAttachment || undefined
         };
 
         setMessages(prev => {
@@ -711,10 +719,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     recipientId: userId, 
-                    content: content || (referencingItem?.type === 'service' ? 'Sent an Appointment Request' : 'Sent an Offer'),
+                    content: content || (referencingItem?.type === 'service' ? 'Sent an Appointment Request' : (currentAttachment ? 'Sent an Image' : 'Sent an Offer')),
                     productId: pId,
                     serviceId: sId,
-                    offer: offerPayload || undefined
+                    offer: offerPayload || undefined,
+                    image: currentAttachment || undefined
                 })
             });
 
@@ -1213,7 +1222,12 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                   ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-tl-none border border-gray-100 dark:border-gray-700'
                                                                   : 'bg-indigo-600 dark:bg-indigo-500 text-white rounded-tr-none'
                                                           }`}>
-                                                              <ExpandableMessage content={msg.content} msgId={msg._id} isSender={msg.sender !== userId} />
+                                                              {msg.image && (
+                                                                  <div className="mb-2 -mx-2 -mt-1 rounded-xl overflow-hidden cursor-pointer" onClick={() => window.open(msg.image, '_blank')}>
+                                                                      <img src={msg.image} alt="Attachment" className="max-w-full max-h-[300px] object-contain bg-black/5" />
+                                                                  </div>
+                                                              )}
+                                                              {msg.content && <ExpandableMessage content={msg.content} msgId={msg._id} isSender={msg.sender !== userId} />}
                                                               <div className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${msg.sender === userId ? 'text-gray-400 dark:text-gray-500' : 'text-indigo-200 dark:text-indigo-100'}`}>
                                                                   <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                                   {msg.sender !== userId && (
@@ -1527,10 +1541,40 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                 </button>
                                             ))}
                                         </div>
+                                        {attachment && (
+                                            <div className="px-4 py-2 relative w-24 h-24 shrink-0 mx-2 mt-2">
+                                                <img src={attachment} alt="Preview" className="w-full h-full object-cover rounded-xl shadow-md border border-gray-200 dark:border-gray-700" />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setAttachment(null)}
+                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-600 transition"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                            </div>
+                                        )}
                                         <form onSubmit={handleSendMessage} className="flex gap-2 relative bg-gray-50 dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 items-center p-1 px-2 shadow-inner">
+                                            <input 
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                ref={fileInputRef}
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        if (file.size > 5 * 1024 * 1024) {
+                                                            showError('File too large', 'Please upload an image smaller than 5MB');
+                                                            return;
+                                                        }
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => setAttachment(reader.result as string);
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
                                             <button 
                                                 type="button" 
-                                                onClick={() => showSuccess('Coming Soon!', 'Attachments and file sharing will be available in v2.0 🚀')}
+                                                onClick={() => fileInputRef.current?.click()}
                                                 className="p-2 text-gray-400 hover:text-indigo-600 transition-colors shrink-0 rounded-full"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
@@ -1544,10 +1588,10 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                             />
                                             <button
                                                 type="submit"
-                                                disabled={!newMessage.trim()}
-                                                className={`p-2 rounded-full transition-all flex-shrink-0 ${newMessage.trim() ? 'bg-indigo-600 text-white shadow-md' : 'bg-transparent text-gray-300'}`}
+                                                disabled={(!newMessage.trim() && !attachment)}
+                                                className={`p-2 rounded-full transition-all flex-shrink-0 ${(newMessage.trim() || attachment) ? 'bg-indigo-600 text-white shadow-md' : 'bg-transparent text-gray-300'}`}
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${newMessage.trim() ? '-rotate-45' : ''} transition-transform`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${(newMessage.trim() || attachment) ? '-rotate-45' : ''} transition-transform`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                                 </svg>
                                             </button>

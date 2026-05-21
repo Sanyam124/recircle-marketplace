@@ -73,11 +73,33 @@ export async function PUT(req: NextRequest) {
 
         try {
             if (body.profilePicture?.startsWith('data:image')) {
+                if (body.profilePicture.length > 7 * 1024 * 1024) {
+                    return NextResponse.json({ error: 'Profile picture too large. Max 5MB allowed.' }, { status: 400 });
+                }
+                const { checkRateLimit } = await import('@/lib/rate-limit');
+                const rl = await checkRateLimit(decoded.userId, 'profile-avatar-upload', 5, 60 * 60 * 1000);
+                if (!rl.success) {
+                    return NextResponse.json(
+                        { error: 'Too many profile picture updates. Max 5 per hour.', retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 3600 },
+                        { status: 429 }
+                    );
+                }
                 const { uploadToCloudinary } = await import('@/lib/cloudinary');
                 newAvatarUrl = await uploadToCloudinary(body.profilePicture, 'recircle/profiles');
                 body.profilePicture = newAvatarUrl;
             }
             if (body.bannerImage?.startsWith('data:image')) {
+                if (body.bannerImage.length > 7 * 1024 * 1024) {
+                    return NextResponse.json({ error: 'Banner image too large. Max 5MB allowed.' }, { status: 400 });
+                }
+                const { checkRateLimit } = await import('@/lib/rate-limit');
+                const rl = await checkRateLimit(decoded.userId, 'profile-banner-upload', 5, 60 * 60 * 1000);
+                if (!rl.success) {
+                    return NextResponse.json(
+                        { error: 'Too many banner image updates. Max 5 per hour.', retryAfter: rl.resetTime ? Math.ceil((rl.resetTime.getTime() - Date.now()) / 1000) : 3600 },
+                        { status: 429 }
+                    );
+                }
                 const { uploadToCloudinary } = await import('@/lib/cloudinary');
                 newBannerUrl = await uploadToCloudinary(body.bannerImage, 'recircle/banners');
                 body.bannerImage = newBannerUrl;

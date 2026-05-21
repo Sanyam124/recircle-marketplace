@@ -95,6 +95,8 @@ export default function AuthPage() {
 
 
     const handleGoogleCallback = async (response: any) => {
+        setIsLoading(true);
+        setError('');
         try {
             const res = await fetch('/api/auth/google', {
                 method: 'POST',
@@ -106,17 +108,42 @@ export default function AuthPage() {
             if (!res.ok) throw new Error(data.error);
 
             if (data.exists === false) {
-                setEmail(data.googleData.email || '');
-                setName(data.googleData.name || '');
-                setEmailVerified(true);
-                setGoogleToken(response.credential);
-                setStep(3);
-                setError('');
+                const gEmail = data.googleData.email || '';
+                let gName = (data.googleData.name || '').trim();
+                
+                // Ensure name length satisfies API constraint (3-30 characters)
+                if (gName.length < 3) {
+                    gName = gEmail.split('@')[0] || 'User';
+                    if (gName.length < 3) gName = 'User';
+                }
+
+                // Call registration directly without prompting for Full Name
+                const regRes = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: gName,
+                        email: gEmail.toLowerCase(),
+                        googleToken: response.credential
+                    }),
+                });
+
+                const regData = await regRes.json();
+                if (!regRes.ok) throw new Error(regData.error || 'Registration failed');
+
+                if (regData.autoVerifiedCommunities && regData.autoVerifiedCommunities.length > 0) {
+                    sessionStorage.setItem('newVerification', regData.autoVerifiedCommunities.join(', '));
+                }
+
+                setTimeout(() => {
+                    login(regData.user, regData.newCommunityJoined ? regData.newCommunityNames : undefined);
+                }, 100);
             } else {
                 login(data.user, data.newCommunityJoined ? data.newCommunityNames : undefined);
             }
         } catch (err: any) {
             setError(err.message);
+            setIsLoading(false);
         }
     };
 

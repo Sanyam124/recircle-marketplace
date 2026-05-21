@@ -96,8 +96,17 @@ export async function POST(req: NextRequest) {
         const newlyUploadedUrls: string[] = [];
 
         if (images && Array.isArray(images)) {
+            if (images.length > 5) {
+                return NextResponse.json({ error: 'Maximum 5 images allowed per product listing' }, { status: 400 });
+            }
             for (const img of images) {
+                if (typeof img !== 'string') {
+                    return NextResponse.json({ error: 'Invalid image format in request payload' }, { status: 400 });
+                }
                 if (img.startsWith('data:image')) {
+                    if (img.length > 7 * 1024 * 1024) {
+                        return NextResponse.json({ error: 'Image too large. Max 5MB allowed per image.' }, { status: 400 });
+                    }
                     try {
                         const url = await uploadToCloudinary(img, 'recircle/products');
                         imageUrls.push(url);
