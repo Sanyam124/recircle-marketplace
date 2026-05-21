@@ -6,9 +6,10 @@ import Image from 'next/image';
 interface ImageCarouselProps {
   images: string[];
   alt: string;
+  className?: string;
 }
 
-export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
+export default function ImageCarousel({ images, alt, className }: ImageCarouselProps) {
   const [current, setCurrent] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const touchStartX = useRef<number | null>(null);
@@ -65,7 +66,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
     return (
       <>
         <div 
-            className="aspect-square w-full relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 transition-colors cursor-pointer"
+            className={className || "aspect-square w-full relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 transition-colors cursor-pointer"}
             onClick={() => setIsLightboxOpen(true)}
         >
           <Image src={images[0]} alt={alt} fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, 50vw" />
@@ -100,7 +101,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
     <div className="w-full select-none">
       {/* Main image */}
       <div
-        className="aspect-square w-full relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 group transition-colors cursor-pointer"
+        className={className || "aspect-square w-full relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 group transition-colors cursor-pointer"}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onClick={() => setIsLightboxOpen(true)}

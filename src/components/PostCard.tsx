@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatTimeAgo } from '@/lib/utils';
+import LightboxImage from '@/components/LightboxImage';
 import ExpandableText from '@/components/ExpandableText';
 import { PostCardHeader, PostCardActions, ReplyItem } from './board/PostCardComponents';
 
@@ -103,8 +104,13 @@ export default function PostCard({
                 <div className="flex-1 min-w-0">
                     <PostCardHeader post={post} user={user} canDeletePost={canDeletePost} onDeletePost={onDeletePost} cat={cat} />
                     {post.image && (
-                        <div className="mt-2 mb-3 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 cursor-pointer" onClick={() => window.open(post.image, '_blank')}>
-                            <img src={post.image} alt="Attachment" className="w-full max-h-[400px] object-cover" />
+                        <div className="mt-2 mb-3">
+                            <LightboxImage 
+                                src={post.image} 
+                                alt="Attachment" 
+                                className="w-full relative rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+                                imageClassName="w-full max-h-[400px] object-cover"
+                            />
                         </div>
                     )}
                     <ExpandableText text={post.content} maxLines={5} showReadMore={true} onCollapse={scrollPostToTop} className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed" />

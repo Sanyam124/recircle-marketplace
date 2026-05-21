@@ -619,8 +619,9 @@ function BoardPageContent() {
                                     )}
                                 </div>
                                 <button 
+                                    type="button"
                                     onClick={flashInfo}
-                                    className="w-12 h-12 flex items-center justify-center bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl text-indigo-600 transition-all hover:scale-105 active:scale-95"
+                                    className="w-12 h-12 relative z-10 flex items-center justify-center bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl text-indigo-600 transition-all hover:scale-105 active:scale-95"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 </button>

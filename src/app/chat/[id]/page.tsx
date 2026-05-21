@@ -10,6 +10,7 @@ import { pusherClient } from '@/lib/pusherClient';
 import { confirmAction, showError, showSuccess } from '@/lib/confirm';
 import ReviewModal from '@/components/ReviewModal';
 import ReportModal from '@/components/ReportModal';
+import LightboxImage from '@/components/LightboxImage';
 
 const CHAR_STEP = 150;
 const INITIAL_LIMIT = 300;
@@ -1223,8 +1224,13 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                                                                   : 'bg-indigo-600 dark:bg-indigo-500 text-white rounded-tr-none'
                                                           }`}>
                                                               {msg.image && (
-                                                                  <div className="mb-2 -mx-2 -mt-1 rounded-xl overflow-hidden cursor-pointer" onClick={() => window.open(msg.image, '_blank')}>
-                                                                      <img src={msg.image} alt="Attachment" className="max-w-full max-h-[300px] object-contain bg-black/5" />
+                                                                  <div className="mb-2 -mx-2 -mt-1 h-auto">
+                                                                      <LightboxImage 
+                                                                          src={msg.image} 
+                                                                          alt="Attachment" 
+                                                                          className="w-full relative rounded-xl overflow-hidden"
+                                                                          imageClassName="max-w-full max-h-[300px] object-contain bg-black/5"
+                                                                      />
                                                                   </div>
                                                               )}
                                                               {msg.content && <ExpandableMessage content={msg.content} msgId={msg._id} isSender={msg.sender !== userId} />}

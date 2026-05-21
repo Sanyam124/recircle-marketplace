@@ -168,7 +168,27 @@ async function seed() {
             name: 'Parul University',
             description: 'The vibrant campus of Parul University, Vadodara.',
             emailDomains: ['paruluniversity.ac.in', 'parul.edu.in'],
-            isActive: true
+            isActive: true,
+            hostels: [
+              'Shastri Bhawan – A', 'Shastri Bhawan – B', 'Shastri Bhawan – C',
+              'Kalam Bhawan – A', 'Kalam Bhawan – B', 'Kalam Bhawan – C',
+              'Tagore Bhawan – A', 'Tagore Bhawan – B', 'Tagore Bhawan – C',
+              'Dhyan Bhawan',
+              'Sardar Bhawan – A', 'Sardar Bhawan – B', 'Sardar Bhawan – C',
+              'Milkha Bhawan – A',
+              'Atal Bhawan – A1', 'Atal Bhawan – A2', 'Atal Bhawan – B',
+              'Azad Bhawan – A',
+              'Tilak Bhawan – A',
+              'Abraham Lincoln Bhawan – A', 'Abraham Lincoln Bhawan – B',
+              'Ratan Tata Bhawan',
+              'Sarojini Bhawan – A', 'Sarojini Bhawan – B', 'Sarojini Bhawan – C',
+              'Indira Bhawan – A', 'Indira Bhawan – B', 'Indira Bhawan – C',
+              'Teresa Bhawan – A', 'Teresa Bhawan – B', 'Teresa Bhawan – C', 'Teresa Bhawan – D',
+              'Janki Bhawan',
+              'Kalpana Bhawan – A', 'Kalpana Bhawan – B',
+              'Shakuntala Bhawan – A', 'Shakuntala Bhawan – B',
+              'Rani Laxmibai Bhawan – A', 'Rani Laxmibai Bhawan – B'
+            ]
         });
 
         console.log('👤 Initializing User Accounts...');
