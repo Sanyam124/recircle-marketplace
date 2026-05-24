@@ -50,3 +50,5 @@ dummy_accounts_record.md
 # local scripts & seeding (never push)
 /scripts/
 seed.js
+/src/scripts/
+dummy_accounts_record.md
