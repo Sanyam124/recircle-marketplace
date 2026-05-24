@@ -24,16 +24,37 @@ export default function PushNotificationManager() {
     subscriptionRef.current = subscription;
   }, [subscription]);
 
-  // On mount: check if we already have a subscription
+  // On mount: check if we already have a subscription and clean up conflicting service workers
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-    navigator.serviceWorker.ready.then((reg) => {
-      reg.pushManager.getSubscription().then((sub) => {
-        setSubscription(sub);
-      }).catch(() => {});
-    }).catch(() => {});
+    const checkAndCleanSW = async () => {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          const isOurSW = (
+            (reg.active && reg.active.scriptURL.endsWith('/sw.js')) ||
+            (reg.installing && reg.installing.scriptURL.endsWith('/sw.js')) ||
+            (reg.waiting && reg.waiting.scriptURL.endsWith('/sw.js'))
+          );
+          if (!isOurSW) {
+            console.warn('Conflicting service worker detected on load. Unregistering...');
+            await reg.unregister();
+            return;
+          }
+          
+          if (reg.active) {
+            const sub = await reg.pushManager.getSubscription();
+            setSubscription(sub);
+          }
+        }
+      } catch (err) {
+        console.error('Error checking SW subscription on mount:', err);
+      }
+    };
+
+    checkAndCleanSW();
   }, []);
 
   const hasSyncedRef = useRef(false);
@@ -69,7 +90,18 @@ export default function PushNotificationManager() {
       // Helper function to safely wait for activation
       const ensureActiveSW = async (): Promise<ServiceWorkerRegistration> => {
           let reg = await navigator.serviceWorker.getRegistration();
-          if (!reg) {
+          
+          const isOurSW = reg && (
+              (reg.active && reg.active.scriptURL.endsWith('/sw.js')) ||
+              (reg.installing && reg.installing.scriptURL.endsWith('/sw.js')) ||
+              (reg.waiting && reg.waiting.scriptURL.endsWith('/sw.js'))
+          );
+
+          if (!reg || !isOurSW) {
+              if (reg) {
+                  console.warn('Conflicting service worker detected during registration. Unregistering...');
+                  await reg.unregister();
+              }
               reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
           }
           
@@ -182,7 +214,14 @@ export default function PushNotificationManager() {
 
     } catch (err: any) {
       console.error('Push subscription failed:', err);
-      showError('Notification Error', err.message || 'Unknown error');
+      let friendlyMessage = err.message || 'Unknown error';
+      if (friendlyMessage.toLowerCase().includes('push service not available') || friendlyMessage.toLowerCase().includes('service not registered')) {
+          friendlyMessage = 'Push service is not available or blocked in your browser.\n\n' +
+            '• If using Brave: Enable "Use Google services for push messaging" under Brave Settings → Privacy and Security.\n' +
+            '• If using Adblockers/VPN: Disable them temporarily as they can block push servers.\n' +
+            '• If on Localhost: Try unregistering old Service Workers in Chrome DevTools (Application → Service Workers) and hard refresh.';
+      }
+      showError('Notification Error', friendlyMessage);
     }
   }, []);
 

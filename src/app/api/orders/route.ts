@@ -216,7 +216,14 @@ export async function GET(req: NextRequest) {
                     ...(o.service ? [{ service: o.service._id || o.service }] : [])
                 ]
             });
-            return { ...o, isReviewed: !!hasReview };
+
+            // Check if the current user received a review for this order
+            const receivedReview = await Review.findOne({
+                target: decoded.userId,
+                order: o._id
+            }).select('rating comment createdAt');
+
+            return { ...o, isReviewed: !!hasReview, receivedReview };
         }));
 
         return NextResponse.json({

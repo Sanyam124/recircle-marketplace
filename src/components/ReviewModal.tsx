@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import useSWR from 'swr';
 import { showSuccess } from '@/lib/confirm';
+import { useAuth } from '@/context/AuthContext';
 
 interface ReviewModalProps {
   order: any;
@@ -12,9 +13,14 @@ interface ReviewModalProps {
 }
 
 export default function ReviewModal({ order, onClose, onSuccess }: ReviewModalProps) {
+  const { user } = useAuth();
   const item = order.product || order.service;
   const isProduct = order.orderType === 'Product';
-  const targetId = order.seller._id || order.seller;
+  const currentUserId = user?.id || (user as any)?._id;
+  const isSeller = currentUserId === (order.seller?._id || order.seller)?.toString();
+  const targetId = isSeller 
+    ? (order.buyer?._id || order.buyer)
+    : (order.seller?._id || order.seller);
   
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -65,10 +71,11 @@ export default function ReviewModal({ order, onClose, onSuccess }: ReviewModalPr
         <div className="p-6 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center bg-gray-50/50 dark:bg-zinc-800/50">
           <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-              {isProduct 
-                ? (order.transactionType === 'Rent' ? 'Review Rental Item' : 'Review Seller') 
-                : 'Review Service Provider'
-              }
+              {isSeller ? 'Review Buyer' : (
+                isProduct 
+                  ? (order.transactionType === 'Rent' ? 'Review Rental Item' : 'Review Seller') 
+                  : 'Review Service Provider'
+              )}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Share your experience with the community</p>
           </div>

@@ -479,7 +479,7 @@ export default function AuthPage() {
                                     <p className="text-sm text-indigo-800 dark:text-indigo-300 font-bold mb-1">Google account exists</p>
                                     <p className="text-xs text-indigo-600 dark:text-indigo-400">Please sign in using your Google account below.</p>
                                 </div>
-                                <div id="googleSignInBtnStep2" className="w-full"></div>
+                                <div id="googleSignInBtnStep2" className="w-full flex justify-center"></div>
                                 <div className="text-center pt-2">
                                     <button type="button" onClick={() => setUserAuthProvider('email')} className="text-xs text-gray-400 hover:text-indigo-600 dark:text-gray-500 dark:hover:text-indigo-400 font-medium uppercase tracking-wider transition-colors">
                                         Back to Manual Login
@@ -524,7 +524,7 @@ export default function AuthPage() {
                                 {userAuthProvider === 'both' && (
                                     <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
                                         <p className="text-center text-xs text-gray-500 mb-4 italic">or use your Google account</p>
-                                        <div id="googleSignInBtnStep2" className="w-full"></div>
+                                        <div id="googleSignInBtnStep2" className="w-full flex justify-center"></div>
                                     </div>
                                 )}
                             </>

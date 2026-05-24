@@ -38,8 +38,10 @@ export async function POST(req: NextRequest) {
 
         // 1. Verify eligibility (MUST have a completed order matching exactly what they are reviewing)
         const query: any = { 
-            buyer: user.userId, 
-            seller: targetId,
+            $or: [
+                { buyer: user.userId, seller: targetId },
+                { buyer: targetId, seller: user.userId }
+            ],
             status: 'Completed'
         };
 
@@ -58,16 +60,19 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Prevent duplicate reviews
-        // Case A: Item-specific review (Product/Service)
-        // Case B: Global Seller review (no item)
-        const duplicateQuery: any = { reviewer: user.userId, target: targetId };
+        const duplicateQuery: any = { reviewer: user.userId };
         
-        if (serviceId && isValidObjectId(serviceId)) {
+        if (orderId && isValidObjectId(orderId)) {
+            duplicateQuery.order = orderId;
+        } else if (serviceId && isValidObjectId(serviceId)) {
             duplicateQuery.service = serviceId;
+            duplicateQuery.target = targetId;
         } else if (productId && isValidObjectId(productId)) {
             duplicateQuery.product = productId;
+            duplicateQuery.target = targetId;
         } else {
             // Global seller review check (must NOT have an item associated)
+            duplicateQuery.target = targetId;
             duplicateQuery.service = { $exists: false };
             duplicateQuery.product = { $exists: false };
         }
@@ -75,7 +80,7 @@ export async function POST(req: NextRequest) {
         const existingReview = await Review.findOne(duplicateQuery);
         if (existingReview) {
             return NextResponse.json({ 
-                error: `You have already reviewed this ${(productId || serviceId) ? 'listing' : 'user'}. You can only rate each unique item once.` 
+                error: `You have already reviewed this transaction/listing.` 
             }, { status: 409 });
         }
 
@@ -202,8 +207,14 @@ export async function GET(req: NextRequest) {
                 }
 
                 if (targetId && targetId !== 'undefined' && currentUserId !== targetId) {
-                    // Eligibility: Completed order for this specific target/item
-                    const eligibilityQuery: any = { buyer: currentUserId, seller: targetId, status: 'Completed' };
+                    // Eligibility: Completed order for this specific target/item (buyer or seller)
+                    const eligibilityQuery: any = { 
+                        $or: [
+                            { buyer: currentUserId, seller: targetId },
+                            { buyer: targetId, seller: currentUserId }
+                        ],
+                        status: 'Completed' 
+                    };
                     if (serviceId) eligibilityQuery.service = serviceId;
                     else if (productId) eligibilityQuery.product = productId;
 

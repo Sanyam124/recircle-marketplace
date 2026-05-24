@@ -79,6 +79,7 @@ function OrdersPageContent() {
   const [otpCode, setOtpCode] = useState('');
   const [submittingOTP, setSubmittingOTP] = useState(false);
   const [reviewOrder, setReviewOrder] = useState<any | null>(null);
+  const [viewReviewData, setViewReviewData] = useState<{ rating: number, comment?: string, createdAt: Date } | null>(null);
 
   const buyerOrders = buyerData?.orders || [];
   const buyerTotalPages = buyerData?.pagination?.totalPages || 1;
@@ -198,7 +199,7 @@ function OrdersPageContent() {
               return (
                 <div className="space-y-4">
                   {buyerOrders.map((order: any) => (
-                    <OrderRow key={order._id} order={order} role="buyer" onCancel={() => handleCancelOrder(order._id, 'buyer')} onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'buyer', order })} onOpenReview={() => setReviewOrder(order)} />
+                    <OrderRow key={order._id} order={order} role="buyer" onCancel={() => handleCancelOrder(order._id, 'buyer')} onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'buyer', order })} onOpenReview={() => setReviewOrder(order)} onOpenReceivedReview={() => setViewReviewData(order.receivedReview)} />
                   ))}
                   <PaginationControls 
                     page={bPage} 
@@ -228,7 +229,7 @@ function OrdersPageContent() {
               return (
                 <div className="space-y-4">
                   {sellerOrders.map((order: any) => (
-                    <OrderRow key={order._id} order={order} role="seller" onCancel={() => handleCancelOrder(order._id, 'seller')} onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'seller', order })} onOpenReview={() => {}} />
+                    <OrderRow key={order._id} order={order} role="seller" onCancel={() => handleCancelOrder(order._id, 'seller')} onOpenOtpModal={() => setOtpModalData({ id: order._id, type: order.orderType, role: 'seller', order })} onOpenReview={() => {}} onOpenReceivedReview={() => setViewReviewData(order.receivedReview)} />
                   ))}
                   <PaginationControls 
                     page={sPage} 
@@ -249,6 +250,7 @@ function OrdersPageContent() {
 
       {otpModalData && <OTPModal data={otpModalData} code={otpCode} setCode={setOtpCode} onSubmit={submitOTP} onCancel={() => setOtpModalData(null)} submitting={submittingOTP} />}
       {reviewOrder && <ReviewModal order={reviewOrder} onClose={() => setReviewOrder(null)} onSuccess={() => { mutateBuyer(); mutateSeller(); setReviewOrder(null); }} />}
+      {viewReviewData && <ViewReviewModal data={viewReviewData} onCancel={() => setViewReviewData(null)} />}
     </div>
   );
 }
@@ -305,7 +307,7 @@ function OTPModal({ data, code, setCode, onSubmit, onCancel, submitting }: any) 
   );
 }
 
-function OrderRow({ order, role, onCancel, onOpenOtpModal, onOpenReview }: any) {
+function OrderRow({ order, role, onCancel, onOpenOtpModal, onOpenReview, onOpenReceivedReview }: any) {
   const item = order.product || order.service;
   const isProduct = order.orderType === 'Product';
   const otherParty = role === 'buyer' ? order.seller : order.buyer;
@@ -390,18 +392,33 @@ function OrderRow({ order, role, onCancel, onOpenOtpModal, onOpenReview }: any) 
 
       {order.status === 'Completed' && (
          <div className="bg-gray-50/50 dark:bg-gray-900/40 border-t md:border-l border-gray-100 dark:border-gray-800 p-6 w-full md:w-64 shrink-0 flex flex-col justify-center gap-4">
-            {role === 'buyer' && !order.isReviewed && (
+            {!order.isReviewed && (
                 <button 
                   onClick={onOpenReview} 
                   className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-emerald-100 dark:shadow-none active:scale-95 flex items-center justify-center gap-2 group"
                 >
                   <svg className="w-4 h-4 transition-transform group-hover:scale-125" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
                   <span>
-                    {isProduct 
+                    {role === 'seller' ? 'Review Buyer' : (isProduct 
                       ? (order.transactionType === 'Rent' ? 'Review Rental' : 'Review Seller') 
-                      : 'Review Service'
+                      : 'Review Service')
                     }
                   </span>
+                </button>
+            )}
+            {order.isReviewed && (
+                <div className="w-full py-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 text-emerald-600 dark:text-emerald-400 font-black text-xs uppercase tracking-widest rounded-2xl text-center flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                  Reviewed
+                </div>
+            )}
+            {order.receivedReview && (
+                <button 
+                  onClick={onOpenReceivedReview}
+                  className="w-full py-3.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 text-yellow-600 dark:text-yellow-400 font-black text-xs uppercase tracking-widest rounded-2xl text-center flex items-center justify-center gap-2 transition-all hover:bg-yellow-100 dark:hover:bg-yellow-900/40 shadow-sm active:scale-95 group"
+                >
+                  <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                  ⭐ Rated {order.receivedReview.rating}.0
                 </button>
             )}
             <Link 
@@ -412,6 +429,34 @@ function OrderRow({ order, role, onCancel, onOpenOtpModal, onOpenReview }: any) 
             </Link>
          </div>
       )}
+    </div>
+  );
+}
+
+function ViewReviewModal({ data, onCancel }: any) {
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md transition-all duration-300">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.3)] dark:shadow-[0_30px_90px_rgba(0,0,0,0.7)] w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-100 dark:border-gray-700">
+        <div className="p-8 border-b border-gray-50 dark:border-gray-700/50 flex justify-between items-center bg-gray-50/10 dark:bg-gray-900/10">
+          <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight uppercase italic opacity-80">Buyer Feedback</h3>
+          <button onClick={onCancel} className="p-2 -mr-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors bg-gray-50 dark:bg-gray-900/50 rounded-xl hover:rotate-90 transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>
+        <div className="p-10 text-center">
+          <div className="flex justify-center gap-2 mb-6">
+            {[1, 2, 3, 4, 5].map((star) => (
+               <svg key={star} className={`w-10 h-10 transition-transform ${data.rating >= star ? 'text-yellow-400 drop-shadow-md' : 'text-gray-200 dark:text-gray-700'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+            ))}
+          </div>
+          {data.comment ? (
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
+                <p className="text-gray-700 dark:text-gray-300 font-medium italic">"{data.comment}"</p>
+              </div>
+          ) : (
+              <p className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest text-xs italic">No written feedback</p>
+          )}
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-8">Received on {new Date(data.createdAt).toLocaleDateString()}</p>
+        </div>
+      </div>
     </div>
   );
 }

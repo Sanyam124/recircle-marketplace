@@ -195,6 +195,21 @@ function ExploreFiltersAndGrid() {
 
   return (
     <>
+      {/* Viewport-wide top progress/loading bar */}
+      {isValidating && (
+        <div className="fixed top-0 left-0 right-0 h-[4px] z-[9999] bg-transparent overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 shadow-[0_1px_10px_rgba(79,70,229,0.5)] w-full" style={{
+            animation: 'loading-bar-anim 1.2s infinite linear'
+          }} />
+          <style>{`
+            @keyframes loading-bar-anim {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(100%); }
+            }
+          `}</style>
+        </div>
+      )}
+
       {/* MOBILE STICKY ROW */}
       <div className="md:hidden bg-white/95 dark:bg-gray-800/95 backdrop-blur-md pb-2 pt-1.5 px-4 rounded-b-[1.5rem] border-b border-gray-200 dark:border-gray-700/50 flex flex-col items-center gap-1.5 sticky top-[64px] z-[40] -mx-4 shadow-md mb-4">
         <div className="w-full relative group">
@@ -293,7 +308,7 @@ function ExploreFiltersAndGrid() {
           ) : items.length === 0 ? (
             <div className="bg-white/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-[3rem] p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm"><div className="w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner"><svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div><h3 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">No Results Found</h3><p className="text-gray-500 dark:text-gray-400 mt-2 font-bold text-sm">Try using different filters or changing your search.</p></div>
           ) : (
-            <>
+            <div className={`transition-all duration-300 ${isValidating ? 'opacity-40 pointer-events-none blur-[1.5px]' : ''}`}>
               <div className={`grid gap-4 sm:gap-6 ${mobileCols === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${cols === 2 ? 'sm:grid-cols-2' : cols === 3 ? 'sm:grid-cols-3' : cols === 4 ? 'sm:grid-cols-4' : 'sm:grid-cols-5'}`}>
                 {items.map((item: any, index: number) => (
                   <div key={item._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -323,7 +338,7 @@ function ExploreFiltersAndGrid() {
                   <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 text-gray-400 disabled:opacity-20 hover:text-indigo-600 transition-all active:scale-95"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg></button>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
