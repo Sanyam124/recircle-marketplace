@@ -14,6 +14,7 @@ export interface IMessage extends Document {
         status: 'Pending' | 'Accepted' | 'Declined';
     };
     content: string;
+    image?: string;
     isRead: boolean;
     deletedBy: mongoose.Types.ObjectId[];
     createdAt: Date;
@@ -35,7 +36,7 @@ const MessageSchema: Schema<IMessage> = new Schema(
             status: { type: String, enum: ['Pending', 'Accepted', 'Declined'] },
             verificationCode: { type: String }
         },
-        content: { type: String, required: true, maxlength: 2000 },
+        content: { type: String, required: true, maxlength: 20000 },
         image: { type: String },
         isRead: { type: Boolean, default: false, index: true },
         deletedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
@@ -57,9 +58,12 @@ MessageSchema.index({ createdAt: 1 }, { expireAfterSeconds: 32 * 24 * 60 * 60 })
 MessageSchema.index({ recipient: 1, isRead: 1 });
 
 if (mongoose.models.Message) {
-    delete mongoose.models.Message;
+    const currentSchema = mongoose.models.Message.schema;
+    if (currentSchema.path('content').options.maxlength === 2000) {
+        delete mongoose.models.Message;
+    }
 }
 
-const Message: Model<IMessage> = mongoose.model<IMessage>('Message', MessageSchema);
+const Message: Model<IMessage> = mongoose.models.Message || mongoose.model<IMessage>('Message', MessageSchema);
 
 export default Message;

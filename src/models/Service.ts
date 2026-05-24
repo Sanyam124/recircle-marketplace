@@ -30,8 +30,8 @@ export interface IService extends Document {
 const ServiceSchema: Schema<IService> = new Schema(
     {
         provider: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-        title: { type: String, required: true, trim: true, maxlength: 80 },
-        description: { type: String, required: true, trim: true, maxlength: 2000 },
+        title: { type: String, required: true, trim: true, maxlength: 500 },
+        description: { type: String, required: true, trim: true, maxlength: 20000 },
         price: { type: Number, required: true, min: 0, max: 100000 },
         priceUnit: { type: String, trim: true, default: 'fixed', maxlength: 30 },
         category: { type: String, required: true, trim: true, index: true, maxlength: 50 },
@@ -64,6 +64,13 @@ ServiceSchema.index(
   { title: 'text', description: 'text', category: 'text' },
   { weights: { title: 10, category: 5, description: 1 }, name: "TextSearchIndex" }
 );
+
+if (mongoose.models.Service) {
+    const currentSchema = mongoose.models.Service.schema;
+    if (currentSchema.path('title').options.maxlength === 80) {
+        delete mongoose.models.Service;
+    }
+}
 
 const Service: Model<IService> =
     mongoose.models.Service || mongoose.model<IService>('Service', ServiceSchema);

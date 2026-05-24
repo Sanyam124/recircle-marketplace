@@ -45,28 +45,29 @@ export interface IUser extends Document {
     compactView: boolean;
     defaultCommunity?: mongoose.Types.ObjectId;
     defaultHostel?: string;
+    isDummy?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
 
 const UserSchema: Schema<IUser> = new Schema(
     {
-        name: { type: String, required: true, trim: true, minlength: 3, maxlength: 30 },
+        name: { type: String, required: true, trim: true, minlength: 3, maxlength: 500 },
         username: {
             type: String,
             unique: true,
             sparse: true,
             trim: true,
             minlength: 3,
-            maxlength: 20,
+            maxlength: 500,
             lowercase: true,
-            match: /^(?!.*\.\.)[a-z0-9_][a-z0-9._]{1,18}[a-z0-9_]$/
+            match: /^(?!.*\.\.)[a-z0-9_][a-z0-9._]{1,498}[a-z0-9_]$/
         },
         email: { type: String, required: true, unique: true, trim: true, lowercase: true },
         password: { type: String, select: false },
         profilePicture: { type: String },
         bannerImage: { type: String },
-        bio: { type: String, trim: true, maxlength: 500, default: '' },
+        bio: { type: String, trim: true, maxlength: 10000, default: '' },
         gender: { type: String, enum: ['male', 'female', 'other', 'none'], default: 'none', maxlength: 15 },
         allowEmailContact: { type: Boolean, default: false },
         phone: { type: String, trim: true, maxlength: 15 },
@@ -103,6 +104,7 @@ const UserSchema: Schema<IUser> = new Schema(
         defaultHostel: { type: String, maxlength: 50 },
         failedLoginAttempts: { type: Number, default: 0, select: false },
         lockUntil: { type: Date, select: false },
+        isDummy: { type: Boolean, default: false, index: true },
     },
     { timestamps: true }
 );
@@ -110,7 +112,7 @@ const UserSchema: Schema<IUser> = new Schema(
 // Workaround for Next.js HMR: Delete cached model if it lacks the new fields or has old constraints
 if (mongoose.models.User) {
     const currentSchema = mongoose.models.User.schema;
-    if (!currentSchema.path('pushSubscription') || !currentSchema.path('bannerImage') || !currentSchema.path('notifyNewsletter') || !currentSchema.path('notifySecurity') || !currentSchema.path('notifyOffers') || !currentSchema.path('notifyCommunity') || !currentSchema.path('notifyMessages') || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('status') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || !currentSchema.path('isOnVacation') || !currentSchema.path('showOnlineStatus') || !currentSchema.path('compactView') || !currentSchema.path('defaultCommunity') || !currentSchema.path('defaultHostel') || !currentSchema.path('state') || !currentSchema.path('city') || !currentSchema.path('landmark')) {
+    if (!currentSchema.path('isDummy') || !currentSchema.path('pushSubscription') || !currentSchema.path('bannerImage') || !currentSchema.path('notifyNewsletter') || !currentSchema.path('notifySecurity') || !currentSchema.path('notifyOffers') || !currentSchema.path('notifyCommunity') || !currentSchema.path('notifyMessages') || !currentSchema.path('phone') || !currentSchema.path('blockedUsers') || !currentSchema.path('status') || !currentSchema.path('isPhoneVerified') || !currentSchema.path('usernameChangeCount') || !currentSchema.path('isOnVacation') || !currentSchema.path('showOnlineStatus') || !currentSchema.path('compactView') || !currentSchema.path('defaultCommunity') || !currentSchema.path('defaultHostel') || !currentSchema.path('state') || !currentSchema.path('city') || !currentSchema.path('landmark')) {
         delete mongoose.models.User;
     }
 }

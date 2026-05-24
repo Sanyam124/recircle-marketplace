@@ -83,8 +83,10 @@ export async function POST(req: NextRequest) {
              if (rentPrice <= 0) return NextResponse.json({ error: 'Rent price must be greater than zero' }, { status: 400 });
         }
 
-        if (title.length > 80) return NextResponse.json({ error: 'Title must be 80 characters or less' }, { status: 400 });
-        if (description.length > 2000) return NextResponse.json({ error: 'Description must be 2000 characters or less' }, { status: 400 });
+        const maxTitleChars = siteConfig.maxProductNameChars || 80;
+        const maxDescChars = siteConfig.maxProductDescriptionChars || 2000;
+        if (title.length > maxTitleChars) return NextResponse.json({ error: `Title must be ${maxTitleChars} characters or less` }, { status: 400 });
+        if (description.length > maxDescChars) return NextResponse.json({ error: `Description must be ${maxDescChars} characters or less` }, { status: 400 });
 
         if (location) {
             if (location.city && location.city.length > 50) return NextResponse.json({ error: 'City name too long' }, { status: 400 });

@@ -12,21 +12,24 @@ import Report from '@/models/Report';
 /**
  * Validates profile update fields
  */
-export function validateProfileUpdate(body: any) {
+export function validateProfileUpdate(body: any, config?: any) {
     const { name, username, bio, phone, state, city, landmark } = body;
     const errors: string[] = [];
 
+    const maxUserName = config?.maxUserNameChars || 20;
+    const maxUserBio = config?.maxUserBioChars || 500;
+
     if (name !== undefined) {
         const trimmedName = name.trim();
-        if (trimmedName && (trimmedName.length < 3 || trimmedName.length > 30)) {
-            errors.push('Full name must be 3-30 characters');
+        if (trimmedName && (trimmedName.length < 3 || trimmedName.length > maxUserName)) {
+            errors.push(`Full name must be 3-${maxUserName} characters`);
         }
     }
 
     if (username !== undefined) {
         const newUsername = username.trim().toLowerCase();
-        if (newUsername && (newUsername.length < 3 || newUsername.length > 20)) {
-            errors.push('Username must be 3-20 characters');
+        if (newUsername && (newUsername.length < 3 || newUsername.length > maxUserName)) {
+            errors.push(`Username must be 3-${maxUserName} characters`);
         }
     }
 
@@ -41,8 +44,8 @@ export function validateProfileUpdate(body: any) {
     if (landmark !== undefined && landmark.length > 100) errors.push('Landmark/Area must be 100 characters or less');
 
 
-    if (bio !== undefined && bio.length > 500) {
-        errors.push('Bio must be 500 characters or less');
+    if (bio !== undefined && bio.length > maxUserBio) {
+        errors.push(`Bio must be ${maxUserBio} characters or less`);
     }
 
     return errors;

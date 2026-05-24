@@ -33,8 +33,8 @@ export interface IProduct extends Document {
 const ProductSchema: Schema<IProduct> = new Schema(
     {
         seller: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-        title: { type: String, required: true, trim: true, maxlength: 80 },
-        description: { type: String, required: true, trim: true, maxlength: 2000 },
+        title: { type: String, required: true, trim: true, maxlength: 500 },
+        description: { type: String, required: true, trim: true, maxlength: 20000 },
         forSell: { type: Boolean, default: true },
         forRent: { type: Boolean, default: false },
         price: { type: Number, min: 0, max: 1000000 },
@@ -84,7 +84,7 @@ ProductSchema.index(
 
 if (mongoose.models.Product) {
     const currentSchema = mongoose.models.Product.schema;
-    if (!currentSchema.path('forRent') || !currentSchema.path('rentPrice')) {
+    if (!currentSchema.path('forRent') || !currentSchema.path('rentPrice') || currentSchema.path('title').options.maxlength === 80) {
         delete mongoose.models.Product;
     }
 }

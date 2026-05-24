@@ -35,6 +35,8 @@ export default function CreateServicePage() {
   });
 
   const { data: siteConfigData } = useSWR('/api/site-config');
+  const maxTitleChars = siteConfigData?.maxServiceNameChars || 80;
+  const maxDescChars = siteConfigData?.maxServiceDescriptionChars || 2000;
 
   useEffect(() => {
     if (siteConfigData) {
@@ -214,79 +216,79 @@ export default function CreateServicePage() {
               </div>
 
               <div className="grid grid-cols-1 gap-y-8 gap-x-6 sm:grid-cols-6">
-            <div className="sm:col-span-4">
-              <div className="flex items-center justify-between mb-2">
-                <label htmlFor="title" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Service Title <span className="text-red-500 font-black">*</span></label>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.title.length >= 70 ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
-                  {formData.title.length}/80
-                </span>
-              </div>
-              <input
-                type="text"
-                name="title"
-                id="title"
-                required
-                maxLength={80}
-                placeholder="e.g. Calculus Tutoring, Graphic Design"
-                className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value.replace(/[\r\n]/g, '') })}
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label htmlFor="price" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Pricing <span className="text-red-500 font-black">*</span></label>
-              <div className="flex gap-2">
-                  <div className="relative flex-1 group">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</div>
-                      <input
-                        type="number"
-                        name="price"
-                        id="price"
-                        required
-                        min={siteConfigData?.minPrice || 5}
-                        max={siteConfigData?.maxPriceService || 100000}
-                        placeholder="0"
-                        className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-l-2xl rounded-r-none pl-8 pr-4 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-black text-xl"
-                        onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value.replace(/\D/g, '') })}
-                        value={formData.price}
-                      />
+                <div className="sm:col-span-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="title" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Service Title <span className="text-red-500 font-black">*</span></label>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.title.length >= (maxTitleChars - 10) ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
+                      {formData.title.length}/{maxTitleChars}
+                    </span>
                   </div>
-                    <select
-                    id="priceUnit"
-                    name="priceUnit"
-                    className="bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 font-bold px-3 rounded-r-2xl border-none outline-none appearance-none cursor-pointer hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
-                    value={formData.priceUnit}
-                    onChange={(e) => setFormData({ ...formData, priceUnit: e.target.value })}
-                    >
-                     <option value="per hour" className="dark:bg-zinc-900 dark:text-white">/ HR</option>
-                     <option value="per project" className="dark:bg-zinc-900 dark:text-white">/ PROJ</option>
-                     <option value="per session" className="dark:bg-zinc-900 dark:text-white">/ SESS</option>
-                     <option value="per day" className="dark:bg-zinc-900 dark:text-white">/ DAY</option>
-                   </select>
-              </div>
-            </div>
+                  <input
+                    type="text"
+                    name="title"
+                    id="title"
+                    required
+                    maxLength={maxTitleChars}
+                    placeholder="e.g. Calculus Tutoring, Graphic Design"
+                    className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value.replace(/[\r\n]/g, '') })}
+                  />
+                </div>
 
-            <div className="sm:col-span-6">
-              <div className="flex items-center justify-between mb-2">
-                <label htmlFor="description" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Service Details <span className="text-red-500 font-black">*</span></label>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.description.length >= 1900 ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
-                  {formData.description.length}/2000
-                </span>
-              </div>
-              <textarea
-                id="description"
-                name="description"
-                rows={5}
-                required
-                maxLength={2000}
-                placeholder="What exactly will you provide? Be specific to attract more clients..."
-                className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-3xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium resize-none"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              />
-            </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="price" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Pricing <span className="text-red-500 font-black">*</span></label>
+                  <div className="flex gap-2">
+                      <div className="relative flex-1 group">
+                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</div>
+                          <input
+                            type="number"
+                            name="price"
+                            id="price"
+                            required
+                            min={siteConfigData?.minPrice || 5}
+                            max={siteConfigData?.maxPriceService || 100000}
+                            placeholder="0"
+                            className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-l-2xl rounded-r-none pl-8 pr-4 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-black text-xl"
+                            onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
+                            onChange={(e) => setFormData({ ...formData, price: e.target.value.replace(/\D/g, '') })}
+                            value={formData.price}
+                          />
+                      </div>
+                        <select
+                        id="priceUnit"
+                        name="priceUnit"
+                        className="bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 font-bold px-3 rounded-r-2xl border-none outline-none appearance-none cursor-pointer hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+                        value={formData.priceUnit}
+                        onChange={(e) => setFormData({ ...formData, priceUnit: e.target.value })}
+                        >
+                         <option value="per hour" className="dark:bg-zinc-900 dark:text-white">/ HR</option>
+                         <option value="per project" className="dark:bg-zinc-900 dark:text-white">/ PROJ</option>
+                         <option value="per session" className="dark:bg-zinc-900 dark:text-white">/ SESS</option>
+                         <option value="per day" className="dark:bg-zinc-900 dark:text-white">/ DAY</option>
+                        </select>
+                  </div>
+                </div>
+
+                <div className="sm:col-span-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="description" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Service Details <span className="text-red-500 font-black">*</span></label>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.description.length >= (maxDescChars - 100) ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
+                      {formData.description.length}/{maxDescChars}
+                    </span>
+                  </div>
+                  <textarea
+                    id="description"
+                    name="description"
+                    rows={5}
+                    required
+                    maxLength={maxDescChars}
+                    placeholder="What exactly will you provide? Be specific to attract more clients..."
+                    className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-3xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium resize-none"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
 
             <div className="sm:col-span-3">
               <label htmlFor="category" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Category <span className="text-red-500 font-black">*</span></label>

@@ -21,8 +21,8 @@ export interface ICommunity extends Document {
 
 const CommunitySchema: Schema<ICommunity> = new Schema(
     {
-        name: { type: String, required: true, trim: true, unique: true, maxlength: 100 },
-        description: { type: String, trim: true, maxlength: 500 },
+        name: { type: String, required: true, trim: true, unique: true, maxlength: 500 },
+        description: { type: String, trim: true, maxlength: 10000 },
         location: {
             // GeoJSON format for the center of the community (e.g., center of campus)
             type: { type: String, enum: ['Point'], default: 'Point' },
@@ -39,6 +39,13 @@ const CommunitySchema: Schema<ICommunity> = new Schema(
     },
     { timestamps: true }
 );
+
+if (mongoose.models.Community) {
+    const currentSchema = mongoose.models.Community.schema;
+    if (currentSchema.path('name').options.maxlength === 100) {
+        delete mongoose.models.Community;
+    }
+}
 
 const Community: Model<ICommunity> = mongoose.models.Community || mongoose.model<ICommunity>('Community', CommunitySchema);
 

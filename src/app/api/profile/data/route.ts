@@ -51,7 +51,8 @@ export async function PUT(req: NextRequest) {
         delete body.role;
         delete body.verifiedCommunities;
         
-        const errors = validateProfileUpdate(body);
+        const configData = await SiteSettings.getSingleton();
+        const errors = validateProfileUpdate(body, configData);
         if (errors.length > 0) return NextResponse.json({ error: errors[0] }, { status: 400 });
 
         const user = await User.findById(decoded.userId);

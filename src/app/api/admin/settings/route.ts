@@ -85,6 +85,7 @@ export async function PUT(req: NextRequest) {
             'maintenanceMode', 'newRegistrationsEnabled', 'newListingsEnabled',
             'banEmailEnabled', 'otpEmailEnabled',
             'maxBoardPostChars', 'maxBoardReplyChars', 'maxSearchChars',
+            'maxProductNameChars', 'maxProductDescriptionChars', 'maxServiceNameChars', 'maxServiceDescriptionChars', 'maxMessageChars', 'maxUserNameChars', 'maxUserBioChars', 'maxCommunityNameChars', 'maxCommunityDescriptionChars',
             // Security & Rate Limits
             'loginMaxAttempts', 'loginLockoutMins', 'otpSendCooldownSecs', 'otpVerifyMaxAttempts', 'otpVerifyLockoutMins',
             'ipLimitLoginPerHour', 'ipLimitRegisterPerHour', 'ipLimitOtpSendPerHour', 'ipLimitOtpVerifyPerHour', 'ipLimitCheckEmailPerHour', 'ipLimitResetPasswordPerHour',

@@ -5,6 +5,7 @@ export interface IBoardPost extends Document {
     community: mongoose.Types.ObjectId;
     content: string;
     category: 'General' | 'LostFound' | 'Rides' | 'Tickets' | 'Housing' | 'Academic' | 'Opportunities' | 'Alerts';
+    image?: string;
     upvotes: mongoose.Types.ObjectId[];
     downvotes: mongoose.Types.ObjectId[];
     replies: {

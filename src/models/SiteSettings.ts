@@ -49,6 +49,16 @@ export interface ISiteSettings extends Document {
     maxSearchChars: number;
     autoRemoveThreshold: number;
 
+    maxProductNameChars: number;
+    maxProductDescriptionChars: number;
+    maxServiceNameChars: number;
+    maxServiceDescriptionChars: number;
+    maxMessageChars: number;
+    maxUserNameChars: number;
+    maxUserBioChars: number;
+    maxCommunityNameChars: number;
+    maxCommunityDescriptionChars: number;
+
     // Detailed Rate Limits (Dynamic)
     loginMaxAttempts: number;
     loginLockoutMins: number;
@@ -83,6 +93,7 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
                 { reportThreshold: 5, banDays: 7 },
                 { reportThreshold: 12, banDays: 30 },
                 { reportThreshold: 20, banDays: 90 },
+                { reportThreshold: 30, banDays: 99999 },
             ],
         },
         autoBanEnabled: { type: Boolean, default: true },
@@ -198,6 +209,16 @@ const SiteSettingsSchema: Schema<ISiteSettings> = new Schema(
         maxSearchChars: { type: Number, default: 100 },
         autoRemoveThreshold: { type: Number, default: 5 },
 
+        maxProductNameChars: { type: Number, default: 80 },
+        maxProductDescriptionChars: { type: Number, default: 2000 },
+        maxServiceNameChars: { type: Number, default: 80 },
+        maxServiceDescriptionChars: { type: Number, default: 2000 },
+        maxMessageChars: { type: Number, default: 2000 },
+        maxUserNameChars: { type: Number, default: 20 },
+        maxUserBioChars: { type: Number, default: 500 },
+        maxCommunityNameChars: { type: Number, default: 100 },
+        maxCommunityDescriptionChars: { type: Number, default: 500 },
+
         // Detailed Rate Limits (Dynamic)
         loginMaxAttempts: { type: Number, default: 5 },
         loginLockoutMins: { type: Number, default: 15 },
@@ -232,12 +253,40 @@ SiteSettingsSchema.statics.getSingleton = async function () {
         settings.defaultBanners = settings.defaultBanners.filter((url: string) => url !== "https://res.cloudinary.com/dq3sl82at/image/upload/v1775884934/recircle/defaults/banners/ulb2vmptaa6e6gayhzxu.jpg");
         await settings.save();
     }
+    // Dynamic on-the-fly migration: Auto-insert the 30-report permanent ban rule if missing in the existing DB record
+    if (settings.autoBanRules && !settings.autoBanRules.some((r: any) => r.reportThreshold === 30)) {
+        settings.autoBanRules.push({ reportThreshold: 30, banDays: 99999 });
+        settings.autoBanRules.sort((a: any, b: any) => a.reportThreshold - b.reportThreshold);
+        await settings.save();
+    }
+    // Dynamic migration for new character limits if they are missing
+    let needsSave = false;
+    const defaults = {
+        maxProductNameChars: 80,
+        maxProductDescriptionChars: 2000,
+        maxServiceNameChars: 80,
+        maxServiceDescriptionChars: 2000,
+        maxMessageChars: 2000,
+        maxUserNameChars: 20,
+        maxUserBioChars: 500,
+        maxCommunityNameChars: 100,
+        maxCommunityDescriptionChars: 500
+    };
+    for (const [key, value] of Object.entries(defaults)) {
+        if ((settings as any)[key] === undefined) {
+            (settings as any)[key] = value;
+            needsSave = true;
+        }
+    }
+    if (needsSave) {
+        await settings.save();
+    }
     return settings;
 };
 
 if (mongoose.models.SiteSettings) {
     const currentSchema = mongoose.models.SiteSettings.schema;
-    if (!currentSchema.path('autoBanRules') || !currentSchema.path('defaultAvatars') || !currentSchema.path('defaultBanners') || !currentSchema.path('maintenanceMode') || !currentSchema.path('serviceAvailability') || !currentSchema.path('ipLimitLoginPerHour') || !currentSchema.path('globalDailyOtpLimit')) {
+    if (!currentSchema.path('maxProductNameChars') || !currentSchema.path('autoBanRules') || !currentSchema.path('defaultAvatars') || !currentSchema.path('defaultBanners') || !currentSchema.path('maintenanceMode') || !currentSchema.path('serviceAvailability') || !currentSchema.path('ipLimitLoginPerHour') || !currentSchema.path('globalDailyOtpLimit')) {
         delete mongoose.models.SiteSettings;
     }
 }

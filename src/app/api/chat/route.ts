@@ -156,7 +156,10 @@ export async function POST(req: NextRequest) {
         }
 
         if (recipientId && !isValidObjectId(recipientId)) return NextResponse.json({ error: 'Invalid Recipient ID' }, { status: 400 });
-        if (content && content.length > 2000) return NextResponse.json({ error: 'Message too long (max 2000 chars)' }, { status: 400 });
+        const SiteSettings = (await import('@/models/SiteSettings')).default;
+        const siteConfig = await SiteSettings.getSingleton();
+        const maxMessageChars = siteConfig.maxMessageChars || 2000;
+        if (content && content.length > maxMessageChars) return NextResponse.json({ error: `Message too long (max ${maxMessageChars} chars)` }, { status: 400 });
 
         let imageUrl = undefined;
         if (image) {

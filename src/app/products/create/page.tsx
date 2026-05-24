@@ -38,6 +38,8 @@ export default function CreateProductPage() {
   });
 
   const { data: siteConfig } = useSWR('/api/site-config');
+  const maxTitleChars = siteConfig?.maxProductNameChars || 80;
+  const maxDescChars = siteConfig?.maxProductDescriptionChars || 2000;
 
   useEffect(() => {
     if (siteConfig) {
@@ -208,8 +210,8 @@ export default function CreateProductPage() {
                 <div className="sm:col-span-4">
                   <div className="flex items-center justify-between mb-2">
                     <label htmlFor="title" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Item Title <span className="text-red-500 font-black">*</span></label>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.title.length >= 70 ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
-                      {formData.title.length}/80
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.title.length >= (maxTitleChars - 10) ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
+                      {formData.title.length}/{maxTitleChars}
                     </span>
                   </div>
                   <input
@@ -217,7 +219,7 @@ export default function CreateProductPage() {
                     name="title"
                     id="title"
                     required
-                    maxLength={80}
+                    maxLength={maxTitleChars}
                     placeholder="What are you selling?"
                     className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium"
                     value={formData.title}
@@ -317,8 +319,8 @@ export default function CreateProductPage() {
             <div className="sm:col-span-6">
               <div className="flex items-center justify-between mb-2">
                 <label htmlFor="description" className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Detailed Description <span className="text-red-500 font-black">*</span></label>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.description.length >= 1900 ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
-                  {formData.description.length}/2000
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${formData.description.length >= (maxDescChars - 100) ? 'bg-red-100 text-red-600' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
+                  {formData.description.length}/{maxDescChars}
                 </span>
               </div>
               <textarea
@@ -326,7 +328,7 @@ export default function CreateProductPage() {
                 name="description"
                 rows={5}
                 required
-                maxLength={2000}
+                maxLength={maxDescChars}
                 placeholder="Describe your item... (features, age, defects, etc.)"
                 className="w-full bg-gray-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-3xl px-5 py-4 text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all font-medium resize-none"
                 value={formData.description}

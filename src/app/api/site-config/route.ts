@@ -31,6 +31,15 @@ export async function GET(_req: NextRequest) {
             maxBoardPostChars: settings.maxBoardPostChars,
             maxBoardReplyChars: settings.maxBoardReplyChars,
             maxSearchChars: settings.maxSearchChars,
+            maxProductNameChars: settings.maxProductNameChars,
+            maxProductDescriptionChars: settings.maxProductDescriptionChars,
+            maxServiceNameChars: settings.maxServiceNameChars,
+            maxServiceDescriptionChars: settings.maxServiceDescriptionChars,
+            maxMessageChars: settings.maxMessageChars,
+            maxUserNameChars: settings.maxUserNameChars,
+            maxUserBioChars: settings.maxUserBioChars,
+            maxCommunityNameChars: settings.maxCommunityNameChars,
+            maxCommunityDescriptionChars: settings.maxCommunityDescriptionChars,
         }, { status: 200 });
     } catch (error) {
         console.error('Site Config Error:', error);
@@ -120,6 +129,15 @@ export async function GET(_req: NextRequest) {
             maxBoardPostChars: 500,
             maxBoardReplyChars: 300,
             maxSearchChars: 100,
+            maxProductNameChars: 80,
+            maxProductDescriptionChars: 2000,
+            maxServiceNameChars: 80,
+            maxServiceDescriptionChars: 2000,
+            maxMessageChars: 2000,
+            maxUserNameChars: 20,
+            maxUserBioChars: 500,
+            maxCommunityNameChars: 100,
+            maxCommunityDescriptionChars: 500,
         }, { status: 200 });
     }
 }

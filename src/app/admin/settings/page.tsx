@@ -37,6 +37,16 @@ interface Settings {
     defaultAvatars: string[];
     defaultBanners: string[];
 
+    maxProductNameChars: number;
+    maxProductDescriptionChars: number;
+    maxServiceNameChars: number;
+    maxServiceDescriptionChars: number;
+    maxMessageChars: number;
+    maxUserNameChars: number;
+    maxUserBioChars: number;
+    maxCommunityNameChars: number;
+    maxCommunityDescriptionChars: number;
+
     // Detailed Rate Limits (Dynamic)
     loginMaxAttempts: number;
     loginLockoutMins: number;
@@ -493,6 +503,15 @@ export default function AdminSettingsPage() {
                             <NumberField label="Board Post (Chars)" value={settings.maxBoardPostChars} onChange={v => update({ maxBoardPostChars: v })} min={100} max={2000} />
                             <NumberField label="Board Reply (Chars)" value={settings.maxBoardReplyChars} onChange={v => update({ maxBoardReplyChars: v })} min={50} max={1000} />
                             <NumberField label="Search Box (Chars)" value={settings.maxSearchChars} onChange={v => update({ maxSearchChars: v })} min={10} max={500} />
+                            <NumberField label="Product Name (Chars)" value={settings.maxProductNameChars} onChange={v => update({ maxProductNameChars: v })} min={10} max={200} />
+                            <NumberField label="Product Desc (Chars)" value={settings.maxProductDescriptionChars} onChange={v => update({ maxProductDescriptionChars: v })} min={100} max={10000} />
+                            <NumberField label="Service Title (Chars)" value={settings.maxServiceNameChars} onChange={v => update({ maxServiceNameChars: v })} min={10} max={200} />
+                            <NumberField label="Service Desc (Chars)" value={settings.maxServiceDescriptionChars} onChange={v => update({ maxServiceDescriptionChars: v })} min={100} max={10000} />
+                            <NumberField label="Chat Message (Chars)" value={settings.maxMessageChars} onChange={v => update({ maxMessageChars: v })} min={100} max={10000} />
+                            <NumberField label="User Name (Chars)" value={settings.maxUserNameChars} onChange={v => update({ maxUserNameChars: v })} min={5} max={100} />
+                            <NumberField label="User Bio (Chars)" value={settings.maxUserBioChars} onChange={v => update({ maxUserBioChars: v })} min={50} max={2000} />
+                            <NumberField label="Circle Name (Chars)" value={settings.maxCommunityNameChars} onChange={v => update({ maxCommunityNameChars: v })} min={10} max={200} />
+                            <NumberField label="Circle Desc (Chars)" value={settings.maxCommunityDescriptionChars} onChange={v => update({ maxCommunityDescriptionChars: v })} min={50} max={2000} />
                         </div>
                     </div>
                 </div>
