@@ -14,7 +14,7 @@ const SERVICES_TEMPLATE = require('./seed-data/services');
 const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/recircle';
 
 // Schemas
-const UserSchema = new mongoose.Schema({ name: String, username: String, email: String, password: String, profilePicture: String, role: { type: String, default: 'user' }, status: { type: String, default: 'Active' }, isVerified: { type: Boolean, default: false }, isPhoneVerified: { type: Boolean, default: false }, verifiedCommunities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Community' }], isOnVacation: { type: Boolean, default: false }, wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }], authProvider: { type: String, default: 'email' } }, { timestamps: true });
+const UserSchema = new mongoose.Schema({ name: String, username: String, email: String, password: String, profilePicture: String, role: { type: String, default: 'user' }, status: { type: String, default: 'Active' }, isVerified: { type: Boolean, default: false }, isPhoneVerified: { type: Boolean, default: false }, verifiedCommunities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Community' }], isOnVacation: { type: Boolean, default: false }, wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }], authProvider: { type: String, default: 'email' }, isDummy: { type: Boolean, default: false } }, { timestamps: true });
 const CommunitySchema = new mongoose.Schema({ name: String, description: String, location: { type: { type: String, default: 'Point' }, coordinates: [Number] }, gpsRadius: { type: Number, default: 1000 }, emailDomains: [String], hostels: [String], isActive: { type: Boolean, default: true } }, { timestamps: true });
 CommunitySchema.index({ location: '2dsphere' });
 const ProductSchema = new mongoose.Schema({ seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, title: String, description: String, forSell: Boolean, forRent: Boolean, price: Number, rentPrice: Number, rentUnit: String, images: [String], category: String, condition: String, status: { type: String, default: 'Available' }, community: { type: mongoose.Schema.Types.ObjectId, ref: 'Community' }, visibility: String, location: { city: String, state: String, coordinates: [Number], hostel: String, room: Number, bed: Number } }, { timestamps: true });
@@ -60,6 +60,7 @@ async function seed() {
     verifiedCommunities: u.communityIdx !== null && u.isVerified ? [communities[u.communityIdx]._id] : [],
     status: u.status || 'Active',
     isOnVacation: u.isOnVacation || false,
+    isDummy: u.role === 'user' && !u.username.startsWith('sanyam'),
   }));
   const users = await User.insertMany(userDocs);
   console.log(`👤 Seeded ${users.length} users`);

@@ -112,6 +112,7 @@ async function seed() {
             emailDomains: PU_COMMUNITY.domains,
             description: PU_COMMUNITY.desc,
             isActive: true,
+            hostels: [...BOYS_HOSTELS, ...GIRLS_HOSTELS],
             createdAt: new Date('2025-01-01T00:00:00Z')
         });
 

@@ -10,6 +10,7 @@ const CommunitySchema = new mongoose.Schema({
     description: { type: String },
     emailDomains: [{ type: String }],
     isActive: { type: Boolean, default: true },
+    hostels: [{ type: String }]
 }, { timestamps: true });
 
 const UserSchema = new mongoose.Schema({
@@ -24,6 +25,7 @@ const UserSchema = new mongoose.Schema({
     status: { type: String, default: 'Active' },
     gender: { type: String, enum: ['male', 'female', 'other', 'none'], default: 'none' },
     profilePicture: { type: String },
+    isDummy: { type: Boolean, default: false }
 }, { timestamps: true });
 
 const ProductSchema = new mongoose.Schema({
@@ -72,6 +74,8 @@ const BoardPostSchema = new mongoose.Schema({
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     community: { type: mongoose.Schema.Types.ObjectId, ref: 'Community' },
     content: { type: String, required: true },
+    category: { type: String },
+    image: { type: String },
     upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     replies: [{
         author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -158,7 +162,8 @@ async function seed() {
                 isPhoneVerified: true,
                 verifiedCommunities: [parulUni._id],
                 gender: i % 2 === 0 ? 'male' : 'female',
-                profilePicture: `https://i.pravatar.cc/150?u=${name}${i}`
+                profilePicture: `https://i.pravatar.cc/150?u=${name}${i}`,
+                isDummy: !name.toLowerCase().startsWith('sanyam')
             });
             parulUsers.push(u);
         }
@@ -180,7 +185,8 @@ async function seed() {
                 isPhoneVerified: true,
                 verifiedCommunities: [lpuUni._id],
                 gender: i % 2 === 0 ? 'male' : 'female',
-                profilePicture: `https://i.pravatar.cc/150?u=${name}${i+10}`
+                profilePicture: `https://i.pravatar.cc/150?u=${name}${i+10}`,
+                isDummy: true
             });
             lpuUsers.push(u);
         }

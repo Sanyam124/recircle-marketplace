@@ -17,6 +17,7 @@ const CommunitySchema = new mongoose.Schema({
     description: { type: String },
     emailDomains: [{ type: String }],
     isActive: { type: Boolean, default: true },
+    hostels: [{ type: String }]
 }, { timestamps: true });
 
 const UserSchema = new mongoose.Schema({
@@ -73,6 +74,8 @@ const BoardPostSchema = new mongoose.Schema({
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     community: { type: mongoose.Schema.Types.ObjectId, ref: 'Community' },
     content: { type: String, required: true },
+    category: { type: String },
+    image: { type: String },
     upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     replies: [{
         author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

@@ -41,7 +41,8 @@ const UserSchema = new mongoose.Schema({
   notifySecurity: { type: Boolean, default: true },
   showOnlineStatus: { type: Boolean, default: true },
   compactView: { type: Boolean, default: false },
-  usernameChangeCount: { type: Number, default: 0 }
+  usernameChangeCount: { type: Number, default: 0 },
+  isDummy: { type: Boolean, default: false }
 }, { timestamps: true });
 
 const ProductSchema = new mongoose.Schema({
@@ -101,7 +102,8 @@ const CommunitySchema = new mongoose.Schema({
   name: { type: String, required: true },
   emailDomains: [{ type: String, required: true }],
   description: { type: String },
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+  hostels: [{ type: String }]
 }, { timestamps: true });
 
 const ReviewSchema = new mongoose.Schema({
@@ -133,6 +135,7 @@ const BoardPostSchema = new mongoose.Schema({
     enum: ['General', 'LostFound', 'Rides', 'Tickets', 'Housing', 'Academic', 'Opportunities', 'Alerts'],
     default: 'General'
   },
+  image: { type: String },
   upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   replies: [{
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -300,6 +303,7 @@ cloudinary.config({
 
 // Clean fallback data matching the Cloudinary folder exactly in case of offline seeding
 const OFFLINE_FALLBACK_IMAGES = [
+  // acoustic_guitar_mprs14 RESERVED for Board Posts only
   { public_id: 'acoustic_guitar_mprs14', secure_url: 'https://res.cloudinary.com/dq3sl82at/image/upload/v1779094585/acoustic_guitar_mprs14.png' },
   { public_id: 'acrylic_paints___brushes_kit_ecvr10', secure_url: 'https://res.cloudinary.com/dq3sl82at/image/upload/v1779094586/acrylic_paints___brushes_kit_ecvr10.png' },
   { public_id: 'arduino_project_kit_1_umebsx', secure_url: 'https://res.cloudinary.com/dq3sl82at/image/upload/v1779094586/arduino_project_kit_1_umebsx.png' },
@@ -367,53 +371,56 @@ const SERVICES_IMAGES = [
 ];
 
 // Metadata Mappings for all Products
+// These image keys are RESERVED for Board Posts and must NOT appear in product/service maps:
+// acoustic_guitar_mprs14, canvas_painting_handmade_art_iwqhqo, kashmiri_willow_cricket_bat___tennis_ball_iblgl7,
+// laptop_travel_backpack_mssj5x, darshan_raval_fan_pit_pass_paruluniversity_picajk, red_designer_kurta_lnjefx,
+// scooty_ride_share_2_helmets_idjrdo
 const PRODUCT_METADATA_MAP = {
-  acoustic_guitar_mprs14: { title: "Juarez Acoustic Guitar (Sunburst Blue)", price: 1800, category: "Musical Instruments", description: "Juarez 38 Inch Acoustic Cutaway Guitar. Perfect for beginners or hobbyists in the hostel. Comes with a guitar bag, strap, and 2 extra picks. Worn sparingly.", gender: "neutral" },
-  acrylic_paints___brushes_kit_ecvr10: { title: "Camel Acrylic Paint Set & Brushes", price: 350, category: "Art Supplies", description: "A set of 12 vibrant acrylic tubes along with 4 high-quality nylon brushes. Perfect for architecture or design course lab works. Used only once.", gender: "neutral" },
-  arduino_project_kit_1_umebsx: { title: "Arduino Uno IoT Project Starter Kit", price: 750, category: "Microcontrollers & Sensors", description: "Complete micro-controller set containing Arduino Uno, premium transparent breadboard, multi-color jumper wire pack, sensors, and LEDs. Essential for CS/IT/EC students.", gender: "neutral" },
-  arduino_project_kit_ow7f0h: { title: "Arduino Advanced Hardware Sensor Kit", price: 850, category: "Microcontrollers & Sensors", description: "Advanced IoT sensor kit featuring temperature sensor, RFID reader, servo motor, and a broad range of standard resistors. Pristine condition.", gender: "neutral" },
-  aluminium_ergonomic_laptop_stand_pne06l: { title: "Folding Aluminium Laptop Stand", price: 400, category: "Accessories", description: "Highly robust, lightweight aluminium laptop stand with anti-slip silicone guards. Adjusts seamlessly for hostel desk posture correction.", gender: "neutral" },
-  bedding_wia1nr: { title: "Cozy Single Bed Warm Comforter & Sheet", price: 650, category: "Hostel Essentials", description: "Super comfortable single-size comforter and a cotton bedsheet designed to fit standard Parul University hostel beds perfectly. Clean and washed.", gender: "neutral" },
-  boat_bluetooth_earbuds_wireless_1_euib3t: { title: "boAt Airdopes 141 True Wireless Earbuds", price: 800, category: "Gadgets", description: "Incredibly fast-charging boAt wireless earbuds with 42 hours playback time and deep bass. Fully cleaned and sanitized.", gender: "neutral" },
-  boat_bluetooth_earbuds_wireless_o8imq9: { title: "boAt Noise-Cancelling Earbuds", price: 900, category: "Gadgets", description: "Active noise-canceling true wireless earbuds. Fits perfectly, excellent audio quality for online lectures or gaming. Sanitized.", gender: "neutral" },
-  boat_headphone_ialfij: { title: "boAt Rockerz 450 Bluetooth Headphone", price: 950, category: "Gadgets", description: "Comfortable on-ear wireless headphones with super powerful battery life. Cozy cushions and foldable design. Very minor scuffs.", gender: "neutral" },
-  campus_placement_preparation_kit_yikkve: { title: "Premium Campus Placement Preparation Kit", price: 300, category: "Exam Survival Kits", description: "Complete book set for cracking interviews. Includes Quantitative Aptitude by RS Aggarwal, technical coding notes, and aptitude booklets.", gender: "neutral" },
-  casio_scientific_calculator_d2gsdq: { title: "Casio Classwiz fx-991EX Scientific Calculator", price: 850, category: "Electronics", description: "High-performance non-programmable scientific calculator. Essential for engineering labs, math exams, and midsems. Works flawlessly.", gender: "neutral" },
-  clothing_stream_iron_wjrpdh: { title: "Philips Garment Steamer / Steam Iron", price: 1200, category: "Appliances", description: "Lightweight and powerful portable garment steam iron. Gets creases out of formal shirts and traditional ethnic wear in seconds.", gender: "neutral" },
-  collapsible_mesh_laundry_basket_pymd8t: { title: "Mesh Collapsible Laundry Basket", price: 150, category: "Organizers", description: "High-capacity breathable mesh laundry basket. Folds flat to save space in shared rooms. Very sturdy wire frame.", gender: "neutral" },
-  competitive_exam_guides_ektim7: { title: "GATE & Competitive CSE Exam Guides", price: 450, category: "Textbooks", description: "Set of highly descriptive GATE computer science study guides with previous years solved question papers (PYQs). No torn pages.", gender: "neutral" },
-  canvas_painting_handmade_art_iwqhqo: { title: "Handmade Landscape Acrylic Canvas Art", price: 500, category: "Art Supplies", description: "Stunning acrylic sunset landscape painting on canvas board. Made by a design student. Best decoration for your room wall.", gender: "neutral" },
-  crocs_casual_slides_nq4ycg: { title: "Classic Unisex Crocs Clogs (Navy Blue)", price: 900, category: "Footwear", description: "Extremely comfortable and water-resistant classic Crocs clogs. Light wear, perfect for walking down to the campus mess.", gender: "neutral" },
-  crocs_casual_slides_1_x7ip9j: { title: "Comfortable Sports Casual Slides", price: 400, category: "Footwear", description: "Waterproof anti-skid casual hostel slides. Very durable, size UK 8. Sanitized and ready for use.", gender: "neutral" },
-  designer_lehenga_r1stk9: { title: "Pink Designer Ethnic Lehenga (Rent)", price: 1500, category: "Traditional & Ethnic", description: "Gorgeous heavily embroidered designer pink lehenga available for rental. Worn only once for ethnic day. Size S-M. Dry-cleaned.", gender: "female" },
-  dumbbells_xtoujo: { title: "Cast Iron 5KG Hex Dumbbells (Pair)", price: 700, category: "Fitness Gear", description: "Solid cast iron pair of 5kg hex dumbbells. Safe flat edges to prevent rolling on hostel floors. Excellent grip.", gender: "neutral" },
-  ethnic_wear_g0tzi4: { title: "Traditional Yellow Silk Anarkali Suit (Rent)", price: 800, category: "Traditional & Ethnic", description: "Beautiful yellow silk traditional suit available for rent. Ideal for college cultural events and hostel programs.", gender: "female" },
-  fest_pass_bhy51v: { title: "VIP Cultural Fest Concert Entry Pass", price: 600, category: "Event Passes & Tickets", description: "Exclusive front-row VIP entry pass for the upcoming big campus concert. Direct stage-view access.", gender: "neutral" },
-  freshers_fest_pass_ym7rdo: { title: "Parul University Freshers Welcome Fest Ticket", price: 350, category: "Event Passes & Tickets", description: "Standard entry ticket for the freshers welcome DJ night event. Fully authorized ticket with barcode.", gender: "neutral" },
-  egg_boiler_multi_cooker_nqo3lb: { title: "Kent Instant Egg Boiler & Multi-Cooker", price: 600, category: "Appliances", description: "Compact electric multi-cooker. Can boil up to 7 eggs at once or quickly make soup/Maggi in your room. Safe auto-off.", gender: "neutral" },
-  engineering_drawing_board___drafter_bjjrvb: { title: "Solid Wood Imperial Drawing Board & Drafter", price: 1100, category: "Drafting Tools", description: "High-quality engineering drawing board (23x32 inch) complete with a sturdy, metal mini-drafter tool. Ideal for first-year design courses.", gender: "neutral" },
-  football_soccer_ball___cleats_yq8y8s: { title: "Nivia Football & Ground Grip Cleats (Size 8)", price: 800, category: "Sports Equipment", description: "Genuine Nivia football along with solid studs soccer cleats. Great grip and traction, perfect for college turf match.", gender: "neutral" },
-  gym_shaker_bottle_stainless_steel_gamnxi: { title: "Insulated Stainless Steel Shaker (700ml)", price: 350, category: "Fitness Gear", description: "Premium quality insulated leak-proof protein shaker bottle. Keeps shakes cool and maintains freshness.", gender: "neutral" },
-  hair_dryer___grooming_trimmer_kit_qhllik: { title: "Nova Trimmer & Professional Hair Dryer Kit", price: 650, category: "Appliances", description: "Excellent grooming kit containing a foldable 1200W hot air hair dryer and a cordless beard trimmer. Works perfectly.", gender: "neutral" },
-  indian_bicycle_cyh4id: { title: "Hero Gearless Campus Bicycle", price: 2800, category: "Bicycles", description: "Highly reliable single speed Hero bicycle with a sturdy front basket and heavy-duty rear carrier. Commute around campus easily.", gender: "neutral" },
-  indian_textbooks_wslxao: { title: "1st Year Engineering Physics & Chemistry Books", price: 250, category: "Textbooks", description: "Official syllabus textbooks for first-year engineering. Mint condition, no pen marks or missing pages.", gender: "neutral" },
-  keyboard_mouse_bjww70: { title: "RGB Mechanical Keyboard & Gaming Mouse", price: 1300, category: "Gaming", description: "Super tactile wired mechanical keyboard with customized RGB patterns and a high DPI optical gaming mouse.", gender: "neutral" },
-  kashmiri_willow_cricket_bat___tennis_ball_iblgl7: { title: "Kashmiri Willow Cricket Bat + Tennis Ball", price: 950, category: "Sports Equipment", description: "Premium Kashmiri willow cricket bat with a durable rubber grip. Includes high-quality heavy tennis ball for hostel matches.", gender: "neutral" },
-  lab_safety_kit_ronuov: { title: "Engineering/Chemistry Lab Safety Kit", price: 300, category: "Lab Equipment", description: "Includes a clean, white, full-sleeve lab coat along with chemical splash resistant protective safety goggles.", gender: "neutral" },
-  maggi_and_kettle_c8owm9: { title: "Prestige Stainless Steel 1.5L Kettle", price: 450, category: "Appliances", description: "Quick boiling electric kettle. Essential for late-night hostel study sessions. Very clean interior, works perfectly.", gender: "neutral" },
-  maggi_and_kettle_1_p3hjnr: { title: "Stainless Steel Cordless Electric Kettle", price: 400, category: "Appliances", description: "1.5 Litre electric kettle with auto shut-off function. Perfect condition, used only for hot tea and instant noodles.", gender: "neutral" },
-  maggi_and_kettle_2_lblcfn: { title: "Rapid Boiling Multi-Purpose Kettle", price: 450, category: "Appliances", description: "High-capacity kettle, rapid boil technology. Well maintained and fully clean inside.", gender: "neutral" },
-  mini_induction_cooktop___tea_pot_dqoz74: { title: "Pigeon 1800W Induction Cooktop & Pan", price: 1400, category: "Appliances", description: "Compact digital induction cooktop with touch buttons. Includes a solid stainless steel tea saucepan. Hostel-friendly wattage.", gender: "neutral" },
-  mens_oversized_animestreetwear_t_Shirt_s8kf3a: { title: "Japanese Anime Streetwear Oversized T-Shirt (M)", price: 450, category: "Men's Wear", description: "High-density pure cotton oversized black t-shirt with premium wash-resistant graphic back print. Super comfortable.", gender: "male" },
-  navratri_free_style_garba_zone_pass_paruluniversity_xfzg6p: { title: "Parul University Garba VIP Entry Pass", price: 500, category: "Event Passes & Tickets", description: "Premium all-night entry pass for the university grand Navratri celebration. Access to the premium food zone.", gender: "neutral" },
-  darshan_raval_fan_pit_pass_paruluniversity_picajk: { title: "Darshan Raval Fan Pit Concert Pass", price: 700, category: "Event Passes & Tickets", description: "Fan Pit zone ticket for Darshan Raval live concert at Parul University. Front stage access.", gender: "neutral" },
+  acrylic_paints___brushes_kit_ecvr10: { title: "Camel Acrylic Paint Set & Brushes", price: 350, category: "Art Supplies", description: "A set of 12 vibrant acrylic tubes along with 4 high-quality nylon brushes. Perfect for architecture or design lab submissions. Used only once. Can hand over near the Design Building Canteen.", gender: "neutral" },
+  arduino_project_kit_1_umebsx: { title: "Arduino Uno IoT Project Starter Kit", price: 750, category: "Microcontrollers & Sensors", description: "Complete micro-controller set containing Arduino Uno, premium transparent breadboard, multi-color jumper wire pack, sensors, and LEDs. Essential for CS/IT/EC students. Meet at PU Circle or PPT Food Area.", gender: "neutral" },
+  arduino_project_kit_ow7f0h: { title: "Arduino Advanced Hardware Sensor Kit", price: 850, category: "Microcontrollers & Sensors", description: "Advanced IoT sensor kit featuring temperature sensor, RFID reader, servo motor, and a broad range of standard resistors. Pristine condition. Meet at PU Circle or Kalam Bhawan.", gender: "neutral" },
+  aluminium_ergonomic_laptop_stand_pne06l: { title: "Folding Aluminium Laptop Stand", price: 400, category: "Accessories", description: "Highly robust, lightweight aluminium laptop stand with anti-slip silicone guards. Adjusts seamlessly for hostel desk posture correction. Meet near Architecture Canteen.", gender: "neutral" },
+  bedding_wia1nr: { title: "Cozy Single Bed Warm Comforter & Sheet", price: 650, category: "Hostel Essentials", description: "Super comfortable single-size comforter and a cotton bedsheet designed to fit standard Parul University hostel beds perfectly. Clean and washed. Pick up at Kalam Bhawan – C.", gender: "neutral" },
+  boat_bluetooth_earbuds_wireless_1_euib3t: { title: "boAt Airdopes 141 True Wireless Earbuds", price: 800, category: "Gadgets", description: "Incredibly fast-charging boAt wireless earbuds with 42 hours playback time and deep bass. Fully cleaned and sanitized. Can meet at New Food Court.", gender: "neutral" },
+  boat_bluetooth_earbuds_wireless_o8imq9: { title: "boAt Noise-Cancelling Earbuds", price: 900, category: "Gadgets", description: "Active noise-canceling true wireless earbuds. Fits perfectly, excellent audio quality for online lectures or gaming. Sanitized. Meet at Medical Canteen.", gender: "neutral" },
+  boat_headphone_ialfij: { title: "boAt Rockerz 450 Bluetooth Headphone", price: 950, category: "Gadgets", description: "Comfortable on-ear wireless headphones with super powerful battery life. Cozy cushions and foldable design. Very minor scuffs. Meet at Shastri Bhawan lobby.", gender: "neutral" },
+  campus_placement_preparation_kit_yikkve: { title: "Premium Campus Placement Preparation Kit", price: 300, category: "Exam Survival Kits", description: "Complete book set for cracking interviews. Includes Quantitative Aptitude by RS Aggarwal, technical coding notes, and aptitude booklets. Meet at Central Admin Auditorium.", gender: "neutral" },
+  casio_scientific_calculator_d2gsdq: { title: "Casio Classwiz fx-991EX Scientific Calculator", price: 850, category: "Electronics", description: "High-performance non-programmable scientific calculator. Essential for engineering labs, math exams, and midsems. Works flawlessly. Handoff near PU Circle.", gender: "neutral" },
+  clothing_stream_iron_wjrpdh: { title: "Philips Garment Steamer / Steam Iron", price: 1200, category: "Appliances", description: "Lightweight and powerful portable garment steam iron. Gets creases out of formal shirts and traditional ethnic wear in seconds. Handoff at Utopia Food Court.", gender: "neutral" },
+  collapsible_mesh_laundry_basket_pymd8t: { title: "Mesh Collapsible Laundry Basket", price: 150, category: "Organizers", description: "High-capacity breathable mesh laundry basket. Folds flat to save space in shared rooms. Very sturdy wire frame. Pick up at Tagore Bhawan A.", gender: "neutral" },
+  competitive_exam_guides_ektim7: { title: "GATE & Competitive CSE Exam Guides", price: 450, category: "Textbooks", description: "Set of highly descriptive GATE computer science study guides with previous years solved question papers (PYQs). No torn pages. Meet at Central Admin.", gender: "neutral" },
+  // canvas_painting_handmade_art_iwqhqo: RESERVED for Board Posts
+  crocs_casual_slides_nq4ycg: { title: "Classic Unisex Crocs Clogs (Navy Blue)", price: 900, category: "Footwear", description: "Extremely comfortable and water-resistant classic Crocs clogs. Light wear, perfect for walking down to the campus mess. Meet near Greenzy Food Court.", gender: "neutral" },
+  crocs_casual_slides_1_x7ip9j: { title: "Comfortable Sports Casual Slides", price: 400, category: "Footwear", description: "Waterproof anti-skid casual hostel slides. Very durable, size UK 8. Sanitized and ready for use. Pick up at Shastri B.", gender: "neutral" },
+  designer_lehenga_r1stk9: { title: "Pink Designer Ethnic Lehenga (Rent)", price: 1500, category: "Traditional & Ethnic", description: "Gorgeous heavily embroidered designer pink lehenga available for rental. Worn only once for ethnic day. Size S-M. Dry-cleaned. Handover at BBA Green Tunnel.", gender: "female" },
+  dumbbells_xtoujo: { title: "Cast Iron 5KG Hex Dumbbells (Pair)", price: 700, category: "Fitness Gear", description: "Solid cast iron pair of 5kg hex dumbbells. Safe flat edges to prevent rolling on hostel floors. Excellent grip. Pick up at Atal Bhawan A1.", gender: "neutral" },
+  ethnic_wear_g0tzi4: { title: "Traditional Yellow Silk Anarkali Suit (Rent)", price: 800, category: "Traditional & Ethnic", description: "Beautiful yellow silk traditional suit available for rent. Ideal for college cultural events and hostel programs. Handoff near Sarojini Bhawan.", gender: "female" },
+  fest_pass_bhy51v: { title: "VIP Cultural Fest Concert Entry Pass", price: 600, category: "Event Passes & Tickets", description: "Exclusive front-row VIP entry pass for the upcoming big campus concert. Direct stage-view access. Handoff at Utopia Food Court.", gender: "neutral" },
+  freshers_fest_pass_ym7rdo: { title: "Parul University Freshers Welcome Fest Ticket", price: 350, category: "Event Passes & Tickets", description: "Standard entry ticket for the freshers welcome DJ night event. Fully authorized ticket with barcode. Handoff at PU Circle.", gender: "neutral" },
+  egg_boiler_multi_cooker_nqo3lb: { title: "Kent Instant Egg Boiler & Multi-Cooker", price: 600, category: "Appliances", description: "Compact electric multi-cooker. Can boil up to 7 eggs at once or quickly make soup/Maggi in your room. Safe auto-off. Pick up at Kalam B.", gender: "neutral" },
+  engineering_drawing_board___drafter_bjjrvb: { title: "Solid Wood Imperial Drawing Board & Drafter", price: 1100, category: "Drafting Tools", description: "High-quality engineering drawing board (23x32 inch) complete with a sturdy, metal mini-drafter tool. Ideal for first-year design courses. Handoff near Design Building.", gender: "neutral" },
+  football_soccer_ball___cleats_yq8y8s: { title: "Nivia Football & Ground Grip Cleats (Size 8)", price: 800, category: "Sports Equipment", description: "Genuine Nivia football along with solid studs soccer cleats. Great grip and traction, perfect for college turf match. Handoff at BBA Ground.", gender: "neutral" },
+  gym_shaker_bottle_stainless_steel_gamnxi: { title: "Insulated Stainless Steel Shaker (700ml)", price: 350, category: "Fitness Gear", description: "Premium quality insulated leak-proof protein shaker bottle. Keeps shakes cool and maintains freshness. Meet at Main Cricket Ground.", gender: "neutral" },
+  hair_dryer___grooming_trimmer_kit_qhllik: { title: "Nova Trimmer & Professional Hair Dryer Kit", price: 650, category: "Appliances", description: "Excellent grooming kit containing a foldable 1200W hot air hair dryer and a cordless beard trimmer. Works perfectly. Meet at Tilak Bhawan A.", gender: "neutral" },
+  indian_bicycle_cyh4id: { title: "Hero Gearless Campus Bicycle", price: 2800, category: "Bicycles", description: "Highly reliable single speed Hero bicycle with a sturdy front basket and heavy-duty rear carrier. Currently parked near BBA Ground. Commute around campus easily.", gender: "neutral" },
+  indian_textbooks_wslxao: { title: "1st Year Engineering Physics & Chemistry Books", price: 250, category: "Textbooks", description: "Official syllabus textbooks for first-year engineering. Mint condition, no pen marks or missing pages. Handoff near Architecture Canteen.", gender: "neutral" },
+  keyboard_mouse_bjww70: { title: "RGB Mechanical Keyboard & Gaming Mouse", price: 1300, category: "Gaming", description: "Super tactile wired mechanical keyboard with customized RGB patterns and a high DPI optical gaming mouse. Meet at Dhyan Bhawan.", gender: "neutral" },
+  // kashmiri_willow_cricket_bat___tennis_ball_iblgl7: RESERVED for Board Posts
+  lab_safety_kit_ronuov: { title: "Engineering/Chemistry Lab Safety Kit", price: 300, category: "Lab Equipment", description: "Includes a clean, white, full-sleeve lab coat along with chemical splash resistant protective safety goggles. Handoff near Medical Canteen.", gender: "neutral" },
+  maggi_and_kettle_c8owm9: { title: "Prestige Stainless Steel 1.5L Kettle", price: 450, category: "Appliances", description: "Quick boiling electric kettle. Essential for late-night hostel study sessions. Very clean interior, works perfectly. Pick up at Shastri B.", gender: "neutral" },
+  maggi_and_kettle_1_p3hjnr: { title: "Stainless Steel Cordless Electric Kettle", price: 400, category: "Appliances", description: "1.5 Litre electric kettle with auto shut-off function. Perfect condition, used only for hot tea and instant noodles. Pick up at Kalam C.", gender: "neutral" },
+  maggi_and_kettle_2_lblcfn: { title: "Rapid Boiling Multi-Purpose Kettle", price: 450, category: "Appliances", description: "High-capacity kettle, rapid boil technology. Well maintained and fully clean inside. Pick up at Sarojini C.", gender: "neutral" },
+  mini_induction_cooktop___tea_pot_dqoz74: { title: "Pigeon 1800W Induction Cooktop & Pan", price: 1400, category: "Appliances", description: "Compact digital induction cooktop with touch buttons. Includes a solid stainless steel tea saucepan. Hostel-friendly wattage. Pick up at Sardar Bhawan.", gender: "neutral" },
+  mens_oversized_animestreetwear_t_Shirt_s8kf3a: { title: "Japanese Anime Streetwear Oversized T-Shirt (M)", price: 450, category: "Men's Wear", description: "High-density pure cotton oversized black t-shirt with premium wash-resistant graphic back print. Super comfortable. Meet at Capitol Food Court.", gender: "male" },
+  navratri_free_style_garba_zone_pass_paruluniversity_xfzg6p: { title: "Parul University Garba VIP Entry Pass", price: 500, category: "Event Passes & Tickets", description: "Premium all-night entry pass for the university grand Navratri celebration. Access to the premium food zone. Handoff at PU Circle.", gender: "neutral" },
+  // darshan_raval_fan_pit_pass_paruluniversity_picajk: RESERVED for Board Posts
   multimeter___resistor_set_ljtpy1: { title: "DT830D Digital Multimeter & Resistors", price: 500, category: "Microcontrollers & Sensors", description: "Includes high accuracy digital multimeter with battery and probes, plus a massive pack of 100+ standard carbon resistors.", gender: "neutral" },
   nike_shoes_pnxfdh: { title: "Nike Renew Active Running Shoes (Size 9)", price: 2400, category: "Footwear", description: "Authentic Nike running shoes. Mesh upper for breathability and highly responsive foam cushioning. Extremely comfortable.", gender: "neutral" },
   multiple_socket_extension_spike_guard_sbpb1y: { title: "4-Socket Heavy Duty Extension Board", price: 300, category: "Hostel Essentials", description: "4-socket extension power strip with individual toggles, safety shutters, and status indicators. 2-meter long cable.", gender: "neutral" },
   portable_room_heater_winter_season_vqvwcu: { title: "Orpat 2000W Quick Fan Room Heater", price: 900, category: "Appliances", description: "Compact high-capacity room heater with dual heat settings. Best for chilly winter nights in the hostel.", gender: "neutral" },
   portable_power_bank_qcvfud: { title: "Mi 20000mAh 18W Fast Charging Power Bank", price: 1100, category: "Electronics", description: "Robust grey metallic power bank with dual USB outputs. Easily charges your phone multiple times. Super fast charging.", gender: "neutral" },
   premium_color_pencil___sketching_kit_bg7jdp: { title: "Faber-Castell Color Pencils & Sketchbook", price: 400, category: "Art Supplies", description: "Set of 24 triangular premium color pencils along with a high-GSM sketching cartridge book. Best for hobbyist artists.", gender: "neutral" },
-  red_designer_kurta_lnjefx: { title: "Men's Red Silk Traditional Kurta (Size M)", price: 900, category: "Traditional & Ethnic", description: "Premium red silk ethnic kurta. Elegant rich texture, perfect for cultural fests, ethnic days, or weddings. Worn once.", gender: "male" },
+  // red_designer_kurta_lnjefx: RESERVED for Board Posts
   red_varsity_college_jacket_qmcq2l: { title: "Varsity College Sports Fleece Jacket", price: 950, category: "Men's Wear", description: "Cool crimson red and white varsity sports jacket with comfy warm lining. Perfect for winter campus wear.", gender: "male" },
   medical_court_q82tne: { title: "Medical Lab White Doctor Coat (Size L)", price: 250, category: "Lab Equipment", description: "High-grade white lab coat for medical/biology lab classes. Half back belt with two front pockets. Clean and ironed.", gender: "neutral" },
   paruluniversity_box_kj9vdc: { title: "Official Parul University Souvenir Gift Box", price: 300, category: "Other", description: "Collectible official university velvet souvenir packaging box. Excellent gift option for outstanding graduates.", gender: "neutral" },
@@ -424,7 +431,7 @@ const PRODUCT_METADATA_MAP = {
   extension_power_strip_pmvd0y: { title: "Belkin 3-Way Extension Power Strip", price: 450, category: "Hostel Essentials", description: "Heavy-duty extension cord with 3 Indian sockets, individual switch controls, and built-in surge protection. Long 1.8m cable, perfect for hosteler desks.", gender: "neutral" },
   scientific_calculator_ejdkon: { title: "Casio Scientific Calculator fx-82MS", price: 400, category: "Electronics", description: "Authentic non-programmable 2-line scientific calculator. Extremely helpful for engineering math, physics labs, and diploma exams.", gender: "neutral" },
   wireless_over_ear_headphones_v1jjgf: { title: "JBL Tune 510BT Wireless Over-Ear Headphones", price: 1200, category: "Gadgets", description: "Comfortable JBL wireless headphones with signature Pure Bass sound. 40 hours battery life, foldable design. Fully sanitized.", gender: "neutral" },
-  laptop_travel_backpack_mssj5x: { title: "Wildcraft 35L Water-Resistant Laptop Backpack", price: 800, category: "Accessories", description: "Heavy-duty outdoor and travel laptop backpack. Ergonomic back support, multi-pocket organizer, fully water-resistant padding. Ideal for weekend travels home.", gender: "neutral" },
+  // laptop_travel_backpack_mssj5x: RESERVED for Board Posts
   blue_portable_bluetooth_speaker_yweqz8: { title: "boAt Stone 200 Portable Bluetooth Speaker", price: 650, category: "Gadgets", description: "IPX6 waterproof robust outdoor speaker. Rich audio output, deep bass, handy strap. Best companion for hostel room gatherings.", gender: "neutral" },
   playbeat_aqua_deodorant_spray_ww3hxu: { title: "PlayBeat Aqua Intense Body Deodorant Spray", price: 120, category: "Other", description: "Refreshing and long-lasting aqua fragrance body spray. 150ml bottle, around 90% product remaining. Completely clean.", gender: "neutral" },
   transparent_tape_dispenser_roll_eukpmc: { title: "Desktop Transparent Tape Dispenser with 2 Rolls", price: 80, category: "Art Supplies", description: "Weighted desktop tape dispenser, very convenient for architecture and design model building. Includes two heavy-duty adhesive tape rolls.", gender: "neutral" },
@@ -459,26 +466,26 @@ const PRODUCT_METADATA_MAP = {
   soldering_iron___wire_reel_ftv4l7: { title: "25W Soldering Iron & Flux Wire Reel Kit", price: 300, category: "Microcontrollers & Sensors", description: "Engineering project soldering kit containing high-heat iron rod, standard wire reel, soldering stand, and paste flux.", gender: "neutral" },
   red_women_saree_fzwfte: { title: "Crimson Red Georgette Embroidered Saree (Rent)", price: 700, category: "Traditional & Ethnic", description: "Beautiful elegant red saree with premium borders available for rental. Very light and easy to drape, perfect for farewells.", gender: "female" },
   sandwich_maker_toaster_kghgh5: { title: "Prestige Non-Stick Grill Sandwich Toaster", price: 650, category: "Appliances", description: "Fast heating non-stick grill sandwich plates. Safe cool-touch body, indicator neon lights. Ideal for quick late-night hostel sandwiches.", gender: "neutral" },
-  heavy_duty_resistance_bands_set_fyitrc: { title: "Premium Latex Fitness Resistance Bands (5 Set)", price: 350, category: "Fitness Gear", description: "Set of 5 color-coded gym resistance bands with varying tension levels (10lbs to 30lbs). Includes handles, door anchor, and carry pouch.", gender: "neutral" },
-  ChatGPT_Image_May_18_2026_01_51_14_PM_2_b3pcpq: { title: "Parul University Tech-Fest Projections Pass", price: 400, category: "Event Passes & Tickets", description: "Exclusive authorized entry ticket pass for the biggest state level technical event Projections. Gates close at 6:00 PM.", gender: "neutral" }
+  heavy_duty_resistance_bands_set_fyitrc: { title: "Premium Latex Fitness Resistance Bands (5 Set)", price: 350, category: "Fitness Gear", description: "Set of 5 color-coded gym resistance bands with varying tension levels (10lbs to 30lbs). Includes handles, door anchor, and carry pouch.", gender: "neutral" }
 };
 
 // Metadata Mappings for all Services
 const SERVICE_METADATA_MAP = {
-  DSLR_camera_rental_service_njdhau: { title: "DSLR Camera Rental & Event Shoots", price: 400, category: "Photography", description: "High-quality professional Canon DSLR camera with 18-55mm lens available for rent. Also taking bookings for campus events and birthday shoots." },
-  college_event_photography_service_q7xljz: { title: "College Event & Fest Photography", price: 500, category: "Photography", description: "Professional photography for cultural programs, events, fests, and group portraits at Parul University. Quick delivery of edited photos." },
+  DSLR_camera_rental_service_njdhau: { title: "DSLR Camera Rental & Event Shoots", price: 400, category: "Photography", description: "High-quality professional Canon DSLR camera with 18-55mm lens available for rent. Also taking bookings for campus events. Shoot locations include BBA Green Tunnel, PU Circle, and Design Building." },
+  college_event_photography_service_q7xljz: { title: "College Event & Fest Photography", price: 500, category: "Photography", description: "Professional photography for cultural programs, events, fests, and group portraits at Parul University (PU Circle, BBA Ground, Canteen areas). Quick delivery of edited photos." },
   graphic_design___video_editing_service_l7d9hn: { title: "Pro Video Editing & Presentation Design", price: 300, category: "Graphic Design", description: "I will edit high-quality Reels/YouTube videos and design premium professional PowerPoint slides for your assignments and minor projects." },
   hostel_room_cleaning_service_lsrqer: { title: "Deep Room Scrubbing & Cleaning Service", price: 150, category: "Room Cleaning", description: "Reliable room deep cleaning, bathroom sanitization, shelf dust wiping, and waste disposal. Available on weekend mornings." },
-  high_speed_printing___photocopying_service_gcytzx: { title: "High-Speed Document Printing & Lobby Delivery", price: 50, category: "Delivery Services", description: "Send me your exam notes/syllabus PDFs. I will print them at high quality (₹1 per page black & white) and deliver directly to your hostel lobby." },
+  high_speed_printing___photocopying_service_gcytzx: { title: "High-Speed Document Printing & Lobby Delivery", price: 50, category: "Delivery Services", description: "Send me your exam notes/syllabus PDFs. I will print them at high quality (₹1 per page black & white) and deliver directly to your hostel lobby (Shastri, Kalam, Atal, Sarojini etc.)." },
   packing___moving_service_r3dmj8: { title: "Hostel Packing & Luggage Moving Help", price: 350, category: "Packing Services", description: "Complete assistance with sturdy packing boxes, packing tape, bubble wrap, and lifting loading support when changing rooms or vacating." },
   packing___moving_service_1_pvgaid: { title: "Express Hostel Luggage Relocation Service", price: 300, category: "Packing Services", description: "Prompt moving support with two helpers. Secure packaging and fast luggage transfer between hostel blocks." },
   python_tutoring_fchc5v: { title: "Python Programming & DSA Lab Tutoring", price: 250, category: "Tutoring", description: "Personal tutoring for computer science labs. I will explain python basics, data structures, and debug your lab coding assignments." },
   professional_laundry___ironing_service_b7pyhw: { title: "Express Steam Ironing & Laundry Service", price: 100, category: "Laundry Services", description: "Hygiene detergent washing, soft tumble drying, and crisp garment steam ironing. Free pickup and drop back within 24 hours." },
   roomsharing_fpmxhs: { title: "Double-Sharing Roommate Matching Assistance", price: 100, category: "Roommate Matching", description: "We will help you locate compatible, friendly, clean, and academic-focused roommates inside Parul University hostels." },
-  ride_sharing_jf6sv4: { title: "Campus Scooter Pillion Ride Sharing", price: 50, category: "Carpooling & Rides", description: "Frequent commuting on my Activa scooter from Parul campus to Vadodara railway station and back. Pocket-friendly pillion sharing." },
-  scooty_ride_share_2_helmets_idjrdo: { title: "Campus Scooter Ride Share (2 Helmets)", price: 60, category: "Carpooling & Rides", description: "Scooty pillion ride share with 2 clean helmets, safe driving on campus. Available for internal commutes or rail station dropoffs." },
-  professional_presentation___resume_review_service_ozba7l: { title: "Minor Project PPT & Resume Review Help", price: 200, category: "Tutoring", description: "Professional PowerPoint slide design, custom project templates, resume formatting, and mock interview preparation by a final year CS student." }
+  ride_sharing_jf6sv4: { title: "Campus Scooter Pillion Ride Sharing", price: 50, category: "Carpooling & Rides", description: "Frequent commuting on my Activa scooter from PU Circle to Vadodara railway station and back. Pocket-friendly pillion sharing." },
+  // scooty_ride_share_2_helmets_idjrdo: RESERVED for Board Posts
+  professional_presentation___resume_review_service_ozba7l: { title: "Minor Project PPT & Resume Review Help", price: 200, category: "Tutoring", description: "Professional PowerPoint slide design, custom project templates, resume formatting, and mock interview preparation by a final year CS student. Can meet at Design Building Canteen or PU Circle." }
 };
+
 
 // ================= ================= =================
 // DETERMINISTIC STUDENT PORTFOLIO MAPS TO DEFINE COHERENT PERSONAS
@@ -486,7 +493,7 @@ const SERVICE_METADATA_MAP = {
 const BOY_DETERMINISTIC_PORTFOLIOS = [
   // Aarav Sharma (Index 0): The Musical Sportsman
   {
-    products: ['acoustic_guitar_mprs14', 'kashmiri_willow_cricket_bat___tennis_ball_iblgl7'],
+    products: ['ukulele_instrument_qifcet', 'yonex_badminton_wcfcbg'],
     service: 'ride_sharing_jf6sv4'
   },
   // Vihaan Kumar (Index 1): The CS IoT Geek
@@ -506,7 +513,7 @@ const BOY_DETERMINISTIC_PORTFOLIOS = [
   },
   // Kabir Joshi (Index 4): The Traditional & Active Guy
   {
-    products: ['red_designer_kurta_lnjefx', 'crocs_casual_slides_nq4ycg'],
+    products: ['crocs_casual_slides_nq4ycg'],
     service: 'high_speed_printing___photocopying_service_gcytzx'
   },
   // Riyan Mehta (Index 5): The Active Athlete
@@ -569,7 +576,7 @@ const GIRL_DETERMINISTIC_PORTFOLIOS = [
   },
   // Kiara Sharma (Index 1): The Artist
   {
-    products: ['acrylic_paints___brushes_kit_ecvr10', 'canvas_painting_handmade_art_iwqhqo'],
+    products: ['acrylic_paints___brushes_kit_ecvr10', 'premium_color_pencil___sketching_kit_bg7jdp'],
     service: 'graphic_design___video_editing_service_l7d9hn'
   },
   // Prisha Gupta (Index 2): The Neat Dorm Girl
@@ -638,12 +645,8 @@ function getAvailabilityForService(category) {
   }
 }
 
-async function seed() {
+async function runSeedingProcess() {
   try {
-    console.log('🚀 Connecting to MongoDB:', MONGODB_URI);
-    await mongoose.connect(MONGODB_URI);
-    console.log('✅ Connected.');
-
     console.log('🧹 Cleaning existing database...');
     await Promise.all([
       User.deleteMany({}),
@@ -731,6 +734,7 @@ async function seed() {
         role: 'user',
         isVerified: true,
         gender: 'male',
+        isDummy: true,
         profilePicture: MALE_AVATARS[i % MALE_AVATARS.length],
         bannerImage: MALE_BANNERS[i % MALE_BANNERS.length],
         verifiedCommunities: [puCommunity._id],
@@ -754,6 +758,7 @@ async function seed() {
         role: 'user',
         isVerified: true,
         gender: 'female',
+        isDummy: true,
         profilePicture: FEMALE_AVATARS[i % FEMALE_AVATARS.length],
         bannerImage: FEMALE_BANNERS[i % FEMALE_BANNERS.length],
         verifiedCommunities: [puCommunity._id],
@@ -1133,109 +1138,221 @@ async function seed() {
     
     const REALISTIC_POSTS = [
       {
-        category: 'LostFound',
-        content: 'I left my scientific calculator in the reading room at Shastri Bhawan – B. If anyone found it, please let me know!',
+        category: 'Alerts',
+        content: 'Bhai log sunlo, Shastri Bhawan – B me random checking chal rahi hai abhi! Warden 2nd floor pe hai aur guard ke sath do dogs bhi hain sniffing ke liye. Cupboards bhi khol ke check kar rahe hain, apna kettle aur induction jaldi chupa do sab! Mera roommate ka cooktop pakda gaya, scene bohot kharab hai. Jaldi karo!! 😭🚨',
+        imageKey: null,
         replies: [
-          'Check with the warden, someone deposited a calculator yesterday.',
-          'Is it the Casio 991EX? I think I saw it near table 4.'
+          'Wtf do dogs?? Kettle rakhna kabse crime ban gaya yaar, ye admin log pagal hain fr.',
+          'Thanks bro, saved my induction at floor 3. Ek chai udhaar rhi tumhari! ☕',
+          'Shastri A me bhi aayenge kya ye log? Mera toaster table par hi pada hai 💀'
         ]
       },
       {
         category: 'Rides',
-        content: 'Anyone going to Vadodara Station this Friday afternoon from Kalam Bhawan – A? Let\'s split a cab.',
+        content: 'Monsoon me Hathni Mata Waterfall ka scene ekdum lit hai yaar! Is Sunday subah subah ride pe chalte hain. 6:30 AM ko PU Circle se nikalenge. Activa pe ek seat khali hai aur extra helmet bhi hai mere paas. Boring hostel mess se escape chahiye toh chal lo, hmu jaldi! Petrol cost split kar lenge dw 🛵💨',
+        imageKey: 'scooty_ride_share_2_helmets_idjrdo',
         replies: [
-          'I am! What time are you leaving?',
-          'My train is at 5 PM, so leaving around 3:30. Let me DM you.'
+          'Bhai main chalunga! Hathni Mata ka waterfall check karna hai. Seat khali hai na abhi?',
+          'Barish me road bohot slippery ho jata hai, thoda safely drive karna please.',
+          'Chalo WhatsApp group banao iska, sabko add krlo fatfat! 🏞️'
         ]
       },
       {
-        category: 'Housing',
-        content: 'Looking for a flatmate for a 2BHK near campus. I am currently in Sardar Bhawan – C and moving out next month.',
+        category: 'Rides',
+        content: 'Guys, next Saturday hum log Zarwani Waterfall aur Statue of Unity ja rahe hain. Subah 6:00 baje Central Admin Auditorium se cab nikalegi. Total Ertiga booking cost split kar lenge, per person around ₹650 padega. Abhi 2 seats khali hain, koi chalega kya hamare sath? Pls jaldi DM karo, seats confirm karni hain! 🚗✨',
+        imageKey: null,
         replies: [
-          'What is the expected rent?',
-          'Around 4k per head. Hit me up if you want details.'
+          'Bhai ek seat mere liye reserve krdo! Ekdum perfect road trip scene hai.',
+          'Tbh count me in, main bhi camera leke aaunga. Statue of Unity cover ho jayega.',
+          'Zarwani me abhi entry allowed hai na bathing ke liye? Ya ban hai monsoons me?'
+        ]
+      },
+      {
+        category: 'Rides',
+        content: 'Pavagadh hill pe Kalika Mata Temple ja rha hu this Sunday. BBA Ground se 5:00 AM nikalenge bike pe, ropeway ki bheed se bachna hai early jaake. Fuel cost share karne ke liye pillion rider chahiye. Endsems se pehle thoda aashirwad le lete hain yaar, warna math paper lag jayega! 🙏🍃',
+        imageKey: null,
+        replies: [
+          'Pavagadh ki morning absolute bliss hai bhai. Par subah 5 baje is too early, main so rha hu tab 😂',
+          'Aashirwad are needed fr, math paper is going to cook us otherwise. Count me in!'
+        ]
+      },
+      {
+        category: 'Rides',
+        content: 'Friday evening Vadodara movie chalte hain yaar, 6:30 PM ka show. Yaha campus se city 15 km door hai aur auto wale bohot loot rahe hain. 5:15 PM ko PU Circle se Uber share karenge. 2 seats empty hain fare split ke liye. Koi chalega kya movie dekhne? 🍿🎬',
+        imageKey: null,
+        replies: [
+          'Bhai PVR Transcube chalenge na? Ticket sath me book kar lete hain.',
+          'Transcube is fine, WhatsApp pe coordinate karte hain jaldi.'
+        ]
+      },
+      {
+        category: 'General',
+        content: 'Utopia Food Court me aaj raat 8:00 baje acoustic jam session hai yaar! Sab log aao retro Bollywood gaate hain aur chill karte hain hot waffle ke sath. Guitar ya ukulele hai kisi ke paas toh le aana. Ekdum mast vibe banayenge, last time itna fun aaya tha ki 2 ghante baith gaye the sab 🎸🎶❤️',
+        imageKey: 'acoustic_guitar_mprs14',
+        replies: [
+          'Mera ukulele ekdum ready hai! Aaj toh old school Bollywood loops chalenge.',
+          'Utopia has the best crowd fr, main bhi aaunga pure hostel gang ke sath.',
+          'Bhai waffle ki treat teri taraf se toh done hai na? 😂'
+        ]
+      },
+      {
+        category: 'General',
+        content: 'Navratri coming soon guys! Capitol Food Court me aaj sham 5:30 baje Garba flash mob ki practice ho rhi hai. Steps seekhne hain toh bina sharme aajaao, yaha sab beginners hi hain. Practice ke baad Capitol ki special garam chai peeyenge! Traditional wear pehen ke aana ho toh even better vibes aayengi 💃🔥',
+        imageKey: 'red_designer_kurta_lnjefx',
+        replies: [
+          'Dodhiya steps seekhne hain, bilkul aaunga bhai! Capitol ki chai > everything.',
+          'Traditional ethnic wear pehen ke aana hai kya practice me? Mere paas kurta hai!',
+          'Capitol mein garba practice aur chai, perfect combo honestly 🫖'
         ]
       },
       {
         category: 'Academic',
-        content: 'Does anyone have the previous year question papers for Data Structures? Need them urgently for mid-sems.',
+        content: 'Design building walo dhyan do! 🎨 Art exhibition aur live canvas sketching workshop tomorrow at the BBA Green Tunnel from 10:00 AM to 3:00 PM. Design Building ke seniors ne organize kiya hai. Sketching material aur canvas free me milega waha pe. Come paint your heart out, sabko welcome hai beginners bhi! 🌿',
+        imageKey: 'canvas_painting_handmade_art_iwqhqo',
         replies: [
-          'Yes, I have the PDF. DM me your number.',
-          'Check the library portal, they uploaded the last 3 years.',
-          'Can you send them to me too?'
+          'BBA green tunnel is the most aesthetic spot on campus, ekdum sahi jagah choose ki hai exhibition ke liye.',
+          'Bhai first years bhi display kar sakte hain kya artwork? Mere paas kuch design sheets ready hain.'
+        ]
+      },
+      {
+        category: 'General',
+        content: 'Hostel boys, ready ho jaao! Semi-finals of the Inter-Hostel Cricket Tournament today at the Main Cricket Ground! Shastri Bhawan – A vs Kalam Bhawan – C. Match 4:30 PM start hai under the floodlights. Come support your hostel team, energy bohot insane hone wali hai! Greenzy se samose leke aana cheering ke liye 🏏🏆',
+        imageKey: 'kashmiri_willow_cricket_bat___tennis_ball_iblgl7',
+        replies: [
+          'Shastri A hi jeetega pakka! Aarav bhai is in full form, last match me 50 mara tha 🔥',
+          'Abey Kalam C ke bowlers match nikal lenge, dekh lena pitch pe bro!'
         ]
       },
       {
         category: 'LostFound',
-        content: 'Found a silver Titan watch near the mess in Indira Bhawan – A. Tell me the brand to claim it.',
+        content: 'Bhai log, mera black laptop travel backpack PPT Food Area me ghum gaya hai kal raat 8 baje ke aas-paas. Usme drawing sheets, room keys aur Casio calculator tha. Mera submission kal hi hai, scene ekdum cooked hai mera! Agar kisi ko mila ho toh please return kar do yaar, Greenzy pe mast party dunga pakka! 😭🙏',
+        imageKey: 'laptop_travel_backpack_mssj5x',
         replies: [
-          'Is it a Fastrack?',
-          'No, read the post carefully lol.',
-          'I lost a Titan watch! DMing you now.'
+          'Drawing sheets ghumna is nightmare level. Upvoting for visibility, hope jaldi mil jaye.',
+          'PPT area me juice stall wale bhaiya se pucha? Log waha bhool jate hain aksar.'
         ]
       },
       {
-        category: 'General',
-        content: 'Is the wifi working in Teresa Bhawan – C? My connection keeps dropping since morning.',
+        category: 'LostFound',
+        content: 'Medical Canteen me lunch ke time mera boat earbuds ghum gaya. Black silicone case me tha outdoor tables ke pass. Pocket money bacha ke liya tha, bohot dukh ho rha hai yaar... Kisi ko mila ho toh please batado, reward bhi de dunga. 💔',
+        imageKey: null,
         replies: [
-          'Same issue in D block. It\'s a server issue.',
-          'Working fine for me in A block.'
+          'Library wale official group me kisi ne earbuds ki photo daali thi, check karo jaldi!',
+          'Oh really? Bahut shukriya bhai, abhi check karta hu!'
         ]
       },
       {
         category: 'Tickets',
-        content: 'Selling 1 pass for the upcoming DJ night at the main ground. Bought for 500, selling for 400. DM.',
+        content: 'Mere paas Darshan Raval fan pit VIP pass pada hai purana, concert ho chuka hai. Kisi ko old passes collect karne ka shauk hai toh le lo, free me de dunga. DM karo bas 🎫',
+        imageKey: 'darshan_raval_fan_pit_pass_paruluniversity_picajk',
         replies: [
-          'Hey, I want it! Still available?',
-          'Can you do 350?'
+          'Bhai mujhe chahiye! DM kiya hai check karo.',
+          'Nice collectible hai ye, Darshan Raval ka concert lit tha!'
         ]
       },
       {
-        category: 'Opportunities',
-        content: 'Looking for someone who knows React and Node.js for a minor project collaboration. I am from Atal Bhawan – A1.',
+        category: 'LostFound',
+        content: 'Found a Casio Classwiz fx-991EX scientific calculator on seat Row G in the Central Admin Auditorium after the morning seminar. Maine security desk pe de diya hai. Midsems next week hain toh owner ko jaldi chahiye hoga ye, please share karo guys!',
+        imageKey: null,
         replies: [
-          'I can help with the frontend (React). DM me!',
-          'What\'s the project about?'
+          'Super work bhai! My friend was searching for this calculator everywhere, usko bolunga jaake le aaye.'
+        ]
+      },
+      {
+        category: 'Academic',
+        content: 'First year engineering guys sunlo: mera clean chemistry/physics lab safety kit bech rha hu (white lab coat size L + safety goggles). Architecture Canteen me aaj 2 PM to 4 PM tak rahunga agar kisi ko lena hai toh aa jao. Sirf ₹200 me de rha hu, almost naya hai, wash karke iron kiya hua.',
+        imageKey: null,
+        replies: [
+          'Lab coat clean hai na bhai? Lab class has strict guidelines about stains.',
+          'Haan bro, ekdum spotless hai. Architecture canteen aa jao, wahi baitha hu.'
         ]
       },
       {
         category: 'Alerts',
-        content: 'Avoid the road near Azad Bhawan – A, there\'s some construction going on and it\'s fully blocked.',
+        content: 'Kalam Bhawan – B walo dhyan do! Curfew timing (10:00 PM) ke baad strict checking hone wali hai aaj raat. Warden gusse me ghum rha hai kyuki log New Food Court se late aa rhe hain. Gate pe do security guard aur dogs khade hain checking ke liye, late mat aana nahi toh fine lagega! ⚠️',
+        imageKey: null,
         replies: [
-          'Thanks for the heads up!',
-          'Oh no, I usually take that route to classes.'
+          'Warden Kalam B is always on power trip fr, daily ka scene hai ye.',
+          'Thanks for the update bhai, library se jaldi nikalna padega aaj. 📚'
+        ]
+      },
+      {
+        category: 'Alerts',
+        content: 'Girls alert 🚨 Sarojini Bhawan – C me surprise checking chal rhi hai floor 4 pe abhi! Guard log ke sath do security dogs bhi hain common lobby me. Apne kettles aur room heaters chupa lo sab jaldi se, strictly inspect kar rhe hain. Hair straightener bhi rakh lo dhyan se!',
+        imageKey: null,
+        replies: [
+          'Omg, hide the straightener too! They took my friend\'s iron last time 😤',
+          'Inko exam times pe hi checkings karni hoti hai, so annoying yaar!'
         ]
       },
       {
         category: 'General',
-        content: 'Best place to get midnight snacks near Kalpana Bhawan – A? Everything seems closed.',
+        content: 'Naya campus music band banana hai, acoustic guitar player hu main. Ek professional vocalist aur drummer chahiye. Design Building Canteen ya BBA Green Tunnel me free time me jam karenge. Serious log hi DM karo, jam session regular rakhni hai weekly. Let\'s create something amazing together! 🎵🤘',
+        imageKey: null,
         replies: [
-          'There\'s a Maggi stall right outside the main gate that stays open till 2 AM.',
-          'Order online, delivery comes till the security gate.'
+          'Vocalist here! I do pop/rock, Sarojini me rehti hu. Design canteen this Friday chalega?',
+          'Cajon player here from Shastri B. Bhai let\'s make this band happen!'
+        ]
+      },
+      {
+        category: 'LostFound',
+        content: 'Lost a red Honda keychain with some keys near the BBA Ground basketball court. Room keys aur scooty keys dono isme hain. Agar kisi ko mila ho toh please return kar do, bohot zaruri hai. Super worried right now 😭',
+        imageKey: null,
+        replies: [
+          'Bhai BBA ground spectator bench ke paas around 4 PM dekha tha keys, jaake jaldi check karo!',
+          'Haan abhi checking right now, thanks bro! 🙏'
+        ]
+      },
+      {
+        category: 'Housing',
+        content: 'Moving out ho rha hai hostel se. Mera single bed comforter aur blue bedsheet set bechna hai, sirf 3 months use kiya hai, washed and clean hai. Kalam Bhawan – C floor 2 se pick up kar lena. DM for price, bohot sasta dunga kyuki jaldi nikalna hai.',
+        imageKey: null,
+        replies: [
+          'Interested bhai! Kitna price hai? Need it for my Kalam room.',
+          'Check your DM, price details send kar diya.'
+        ]
+      },
+      {
+        category: 'Rides',
+        content: 'Daily PU Circle se Vadodara Station commute karta hu bike pe. Agar kisi ko pillion ride chahiye toh fuel cost share kar lenge, bohot pocket friendly padega. Safely drive karta hu aur spare helmet bhi hai mere paas. Regular commuters ko preference. DM karo! 🏍️',
+        imageKey: null,
+        replies: [
+          'Hey, Saturday mornings bhi travel karta hai kya? Mere train ke liye drop chahiye.',
+          'Haan bhai, Saturday 8:00 AM nikalunga. DM karo confirm karne ke liye.'
         ]
       }
     ];
 
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < REALISTIC_POSTS.length; i++) {
+      const postTemplate = REALISTIC_POSTS[i];
       const author = randomItem(createdUsers);
-      const postTemplate = randomItem(REALISTIC_POSTS);
       const authorJoinTime = new Date(author.createdAt).getTime();
       const possibleStartTime = Math.max(authorJoinTime, POST_START.getTime());
       
-      // Ensure the post is created AFTER the author joined AND within the last 30 days
       const postDate = randomDate(new Date(possibleStartTime), MAX_DATE);
       const expiresAt = new Date(postDate.getTime() + 30 * 24 * 60 * 60 * 1000);
       
+      let postImage = undefined;
+      if (postTemplate.imageKey) {
+        postImage = urlLookup[postTemplate.imageKey] || undefined;
+      }
+
       boardPosts.push({
         author: author._id,
         community: puCommunity._id,
         content: postTemplate.content,
         category: postTemplate.category,
+        image: postImage,
         upvotes: createdUsers.slice(0, Math.floor(Math.random() * 8)).map(u => u._id),
         replies: postTemplate.replies.map(replyContent => {
             const replyDate = randomDate(postDate, MAX_DATE);
+            let replyAuthor;
+            do {
+              replyAuthor = randomItem(createdUsers);
+            } while (replyAuthor._id.toString() === author._id.toString());
+
             return {
-                author: randomItem(createdUsers)._id,
+                author: replyAuthor._id,
                 content: replyContent,
                 createdAt: replyDate
             }
@@ -1246,56 +1363,80 @@ async function seed() {
       });
     }
     await BoardPost.insertMany(boardPosts);
-    console.log(`✅ Seeded ${boardPosts.length} Circle Board student threads.`);
+    console.log(`✅ Seeded ${boardPosts.length} Circle Board student threads with attached images where relevant.`);
 
     // 5. Create random Completed orders and matching reviews for EACH AND EVERY listing
-    // This gives between 1 to 7 reviews randomly per item
-    console.log('🤝 Seeding historical transactions & randomized ratings (1 to 7 reviews per listing)...');
+    // This gives between 1 to 5 reviews randomly per item, ensuring no duplicates by same user
+    console.log('🤝 Seeding historical transactions & unique ratings (1 to 5 reviews per listing)...');
     
-    const PRODUCT_REVIEWS = [
-      'Excellent product! Worked exactly as described.',
-      'Very clean and well maintained. Highly recommend the seller.',
-      'Smooth deal! Met on campus/nearby and bought it within 10 minutes.',
-      'Decent value for money. Minor wear and tear but acceptable.',
-      'Friendly seller, very helpful and polite.',
-      'Works perfectly. Worth the price!',
-      'Super fast transaction, highly satisfied.',
-      'Very cooperative student. Product is in mint condition.',
-      'Excellent quality, exactly what I was looking for!',
-      'Fast communication and clean product. Recommended!'
-    ];
+    function generateProductReviewComment(title, rating, isRent) {
+      const positiveRent = [
+        `Rented this ${title} for my lab work and it was in great shape. Smooth return.`,
+        `Really convenient rental! The owner kept the ${title} very clean and was easy to meet.`,
+        `Renting this was a lifesaver for the exams. Worked perfectly, no issues.`,
+        `Super smooth transaction for renting ${title}. Highly recommended student deal.`,
+        `Needed this ${title} temporarily and renting was so much better than buying. Great experience.`
+      ];
+      const positiveBuy = [
+        `Bought this ${title} and it's in mint condition as described. Clean transaction.`,
+        `Met the seller near their hostel block to get this ${title}. Very polite and quick.`,
+        `Great deal for the price. The ${title} works exactly as expected. Thanks!`,
+        `Highly satisfied with this purchase. The ${title} is almost brand new.`,
+        `Excellent campus buy. Decent price and very good condition.`
+      ];
+      const averageReviews = [
+        `Decent condition. The ${title} had some minor scratch marks but works fine.`,
+        `Okay deal. The seller was a bit late to meet but the ${title} is fine.`,
+        `Fair price for this ${title}. Helpful for my semester studies.`,
+        `Item is fine, has standard wear and tear. Serves the purpose.`
+      ];
 
-    const SERVICE_REVIEWS = [
-      'Superb experience! Highly skilled and extremely professional.',
-      'Very punctual and did a fantastic job.',
-      'Great communication, completed the task ahead of time.',
-      'Extremely helpful session. Cleared all my doubts!',
-      'Highly recommended! Worth every single rupee.',
-      'Friendly, neat and quick service.',
-      'Professional work quality. Will definitely hire again.',
-      'Very good experience. Professional and polite.',
-      'Outstanding work! Exceeded all my expectations.',
-      'Quick response and highly reliable provider.'
-    ];
+      if (rating >= 4) {
+        return isRent ? randomItem(positiveRent) : randomItem(positiveBuy);
+      } else {
+        return randomItem(averageReviews);
+      }
+    }
+
+    function generateServiceReviewComment(title, rating) {
+      const positiveService = [
+        `Highly skilled! Help with ${title} was exceptional and completed on time.`,
+        `Extremely helpful session for ${title}. Guided me through all steps clearly.`,
+        `Professional service for ${title}. Punctual and very cooperative.`,
+        `Great experience booking this for ${title}. Saved me a lot of time.`,
+        `Highly recommend their ${title} service. Very reliable and neat work.`
+      ];
+      const averageService = [
+        `Decent work for ${title}. Handled standard requirements fine.`,
+        `Okay service. Got the job done for ${title} though communication was slightly slow.`,
+        `Satisfied with the ${title} help. Good value for money.`,
+        `Completed the work. A bit of delay but overall fine.`
+      ];
+
+      if (rating >= 4) {
+        return randomItem(positiveService);
+      } else {
+        return randomItem(averageService);
+      }
+    }
 
     let totalOrdersCreated = 0;
     let totalReviewsCreated = 0;
 
     // We process products
     for (const prod of products) {
-      const reviewCount = Math.floor(Math.random() * 7) + 1; // 1 to 7
+      const potentialBuyers = createdUsers.filter(u => u._id.toString() !== prod.seller.toString());
+      const maxReviewsPossible = Math.min(5, potentialBuyers.length);
+      const reviewCount = Math.floor(Math.random() * maxReviewsPossible) + 1; // 1 to 5 reviews
+      
+      const shuffledBuyers = [...potentialBuyers].sort(() => Math.random() - 0.5);
+      
       for (let r = 0; r < reviewCount; r++) {
-        // Choose a buyer other than the seller
-        let buyer;
-        do {
-          buyer = randomItem(createdUsers);
-        } while (buyer._id.toString() === prod.seller.toString());
-
+        const buyer = shuffledBuyers[r];
         const orderDate = randomDate(new Date(prod.createdAt), MAX_DATE);
-        
         const finalPrice = prod.price !== undefined && prod.price !== null ? prod.price : (prod.rentPrice || 100);
 
-        await Order.create({
+        const order = await Order.create({
           buyer: buyer._id,
           seller: prod.seller,
           product: prod._id,
@@ -1309,12 +1450,16 @@ async function seed() {
         totalOrdersCreated++;
 
         const isBuyOnly = prod.forSell && !prod.forRent;
+        const rating = randomItem([4, 5, 4, 5, 3]);
+        const comment = generateProductReviewComment(prod.title, rating, !isBuyOnly);
+
         await Review.create({
           reviewer: buyer._id,
           target: prod.seller,
+          order: order._id,
           product: isBuyOnly ? undefined : prod._id,
-          rating: randomItem([4, 5, 4, 5, 3]), // slightly weighted to 4 & 5 stars
-          comment: randomItem(PRODUCT_REVIEWS),
+          rating,
+          comment,
           createdAt: randomDate(orderDate, MAX_DATE)
         });
         totalReviewsCreated++;
@@ -1323,16 +1468,17 @@ async function seed() {
 
     // We process services
     for (const serv of services) {
-      const reviewCount = Math.floor(Math.random() * 7) + 1; // 1 to 7
+      const potentialBuyers = createdUsers.filter(u => u._id.toString() !== serv.provider.toString());
+      const maxReviewsPossible = Math.min(5, potentialBuyers.length);
+      const reviewCount = Math.floor(Math.random() * maxReviewsPossible) + 1; // 1 to 5 reviews
+      
+      const shuffledBuyers = [...potentialBuyers].sort(() => Math.random() - 0.5);
+      
       for (let r = 0; r < reviewCount; r++) {
-        let buyer;
-        do {
-          buyer = randomItem(createdUsers);
-        } while (buyer._id.toString() === serv.provider.toString());
-
+        const buyer = shuffledBuyers[r];
         const orderDate = randomDate(new Date(serv.createdAt), MAX_DATE);
         
-        await Order.create({
+        const order = await Order.create({
           buyer: buyer._id,
           seller: serv.provider,
           service: serv._id,
@@ -1345,12 +1491,16 @@ async function seed() {
         });
         totalOrdersCreated++;
 
+        const rating = randomItem([4, 5, 4, 5, 3]);
+        const comment = generateServiceReviewComment(serv.title, rating);
+
         await Review.create({
           reviewer: buyer._id,
           target: serv.provider,
+          order: order._id,
           service: serv._id,
-          rating: randomItem([4, 5, 4, 5, 3]),
-          comment: randomItem(SERVICE_REVIEWS),
+          rating,
+          comment,
           createdAt: randomDate(orderDate, MAX_DATE)
         });
         totalReviewsCreated++;
@@ -1358,14 +1508,10 @@ async function seed() {
     }
 
     console.log(`✅ Seeded ${totalOrdersCreated} Completed Orders and ${totalReviewsCreated} Ratings/Reviews.`);
-
-    console.log('\n⭐ DATABASE SEEDING COMPLETED SUCCESSFULLY ⭐');
-    console.log(`📌 Please see '${RECORD_PATH}' for all 40 generated logins.`);
-    process.exit(0);
-
+    console.log('\n⭐ DATABASE SEEDING PROCESS COMPLETED FOR CURRENT URI ⭐');
   } catch (err) {
-    console.error('❌ SEEDING FAILED:', err);
-    process.exit(1);
+    console.error('❌ SEEDING PROCESS FAILED:', err);
+    throw err;
   }
 }
 
@@ -1387,6 +1533,30 @@ async function fetchCloudinaryImages() {
     console.warn('⚠️ Cloudinary Search API rejected/failed. Falling back to robust offline URLs.', err.message);
   }
   return [];
+}
+
+async function seed() {
+  const URIs = [
+    'mongodb://127.0.0.1:27017/recircle',
+    '***REDACTED_MONGODB_URI***'
+  ];
+  for (const uri of URIs) {
+    try {
+      console.log('\n======================================');
+      console.log('🚀 Connecting to MongoDB:', uri);
+      await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
+      console.log('✅ Connected.');
+      await runSeedingProcess();
+      await mongoose.disconnect();
+      console.log('🔌 Disconnected from', uri);
+    } catch (err) {
+      console.error(`❌ Seeding failed for ${uri}:`, err.message);
+      try {
+        await mongoose.disconnect();
+      } catch (e) {}
+    }
+  }
+  process.exit(0);
 }
 
 seed();
