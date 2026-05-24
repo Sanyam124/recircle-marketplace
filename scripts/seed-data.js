@@ -1538,7 +1538,7 @@ async function fetchCloudinaryImages() {
 async function seed() {
   const URIs = [
     'mongodb://127.0.0.1:27017/recircle',
-    '***REDACTED_MONGODB_URI***'
+    ...(process.env.MONGODB_URI ? [process.env.MONGODB_URI] : [])
   ];
   for (const uri of URIs) {
     try {
