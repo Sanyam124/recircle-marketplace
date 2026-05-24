@@ -354,8 +354,27 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             const channel = pusherClient.subscribe(channelName);
             
             channel.bind('new-message', (newMsg: any) => {
-                if (newMsg.sender === userId || newMsg.recipient === userId) {
-                    setMessages((prev) => {
+                // Ensure message belongs to the current conversation between these two users
+                const isCorrectUser = (
+                    (newMsg.sender?.toString() === userId && newMsg.recipient?.toString() === currentUserId) ||
+                    (newMsg.sender?.toString() === currentUserId && newMsg.recipient?.toString() === userId)
+                );
+                if (!isCorrectUser) return;
+
+                // Ensure message matches the active item-specific (product or service) context
+                const incomingProductId = typeof newMsg.product === 'object' ? newMsg.product?._id?.toString() : newMsg.product?.toString();
+                const incomingServiceId = typeof newMsg.service === 'object' ? newMsg.service?._id?.toString() : newMsg.service?.toString();
+
+                if (productId) {
+                    if (incomingProductId !== productId) return;
+                } else if (serviceId) {
+                    if (incomingServiceId !== serviceId) return;
+                } else {
+                    // General chat context (no product or service)
+                    if (incomingProductId || incomingServiceId) return;
+                }
+
+                setMessages((prev) => {
                         // Check for existing message by real ID (status updates like Accepted/Declined)
                         const existingIndex = prev.findIndex(m => m._id === newMsg._id);
                         if (existingIndex !== -1) {
@@ -394,7 +413,6 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                     if (newMsg.sender !== currentUserId && newMsg.sender?.toString() !== currentUserId) {
                         fetchHistory(null, true);
                     }
-                }
             });
         }
 
