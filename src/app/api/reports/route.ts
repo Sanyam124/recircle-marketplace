@@ -112,8 +112,11 @@ export async function POST(req: NextRequest) {
                             { $pull: { wishlist: itemId, wishlistedServices: itemId } }
                         );
 
-                        // 3. Purge all reports for this item
-                        await Report.deleteMany({ itemId: new Types.ObjectId(itemId) });
+                        // 3. Archive all reports for this item to preserve the seller's lifetime report count
+                        await Report.updateMany(
+                            { itemId: new Types.ObjectId(itemId) },
+                            { $set: { status: 'Reviewed' } }
+                        );
 
                         // 4. Purge all offers for this item
                         const Offer = (await import('@/models/Offer')).default;
@@ -180,8 +183,14 @@ export async function POST(req: NextRequest) {
                             console.error('Auto-Ban Email Error:', emailErr);
                         }
                     }
+
+                    // Reset active reports counter so they don't get trapped in a re-ban loop when they return
+                    await Report.updateMany(
+                        { targetUser: targetUserId, status: 'Pending' },
+                        { $set: { status: 'Reviewed' } }
+                    );
                     
-                    console.log(`[Auto-Ban] User ${userToBan.username} banned for ${banDays} days (${uniqueReportCount} unique reports).`);
+                    console.log(`[Auto-Ban] User ${userToBan.username} banned for ${banDays} days (${uniqueReportCount} unique reports). All active reports resolved.`);
                 }
             }
         }

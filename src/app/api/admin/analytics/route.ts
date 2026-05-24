@@ -22,46 +22,53 @@ export async function GET(req: NextRequest) {
 
         await connectToDatabase();
 
+        const dummyUsers = await User.find({ isDummy: true }).select('_id').lean();
+        const dummyUserIds = dummyUsers.map(u => u._id);
+
         // 2. User Metrics
-        const totalUsers = await User.countDocuments();
-        const verifiedUsers = await User.countDocuments({ isVerified: true });
+        const totalUsers = await User.countDocuments({ isDummy: { $ne: true } });
+        const verifiedUsers = await User.countDocuments({ isDummy: { $ne: true }, isVerified: true });
 
         // Calculate new signups in the last 7 days
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const recentSignups = await User.countDocuments({ createdAt: { $gte: sevenDaysAgo } });
+        const recentSignups = await User.countDocuments({ isDummy: { $ne: true }, createdAt: { $gte: sevenDaysAgo } });
 
         // 3. Marketplace Inventory Health
-        const totalProducts = await Product.countDocuments();
-        const activeProducts = await Product.countDocuments({ status: 'Available' });
-        const soldProductsCount = await Product.countDocuments({ status: 'Sold' });
-        const reservedProducts = await Product.countDocuments({ status: 'Reserved' });
+        const totalProducts = await Product.countDocuments({ seller: { $nin: dummyUserIds } });
+        const activeProducts = await Product.countDocuments({ seller: { $nin: dummyUserIds }, status: 'Available' });
+        const soldProductsCount = await Product.countDocuments({ seller: { $nin: dummyUserIds }, status: 'Sold' });
+        const reservedProducts = await Product.countDocuments({ seller: { $nin: dummyUserIds }, status: 'Reserved' });
 
-        const totalServices = await Service.countDocuments();
-        const activeServices = await Service.countDocuments({ status: 'Active' });
-        const inactiveServices = await Service.countDocuments({ status: 'Inactive' });
+        const totalServices = await Service.countDocuments({ provider: { $nin: dummyUserIds } });
+        const activeServices = await Service.countDocuments({ provider: { $nin: dummyUserIds }, status: 'Active' });
+        const inactiveServices = await Service.countDocuments({ provider: { $nin: dummyUserIds }, status: 'Inactive' });
 
         // 4. Transaction Volume & GTV (Gross Transaction Value)
-        const totalOrders = await Order.countDocuments();
-        const totalProductOrders = await Order.countDocuments({ orderType: 'Product' });
-        const totalServiceOrders = await Order.countDocuments({ orderType: 'Service_Appointment' });
+        const orderFilter = {
+            buyer: { $nin: dummyUserIds },
+            seller: { $nin: dummyUserIds }
+        };
+        const totalOrders = await Order.countDocuments(orderFilter);
+        const totalProductOrders = await Order.countDocuments({ ...orderFilter, orderType: 'Product' });
+        const totalServiceOrders = await Order.countDocuments({ ...orderFilter, orderType: 'Service_Appointment' });
 
-        const completedOrdersCount = await Order.countDocuments({ status: 'Completed' });
-        const completedProductOrders = await Order.countDocuments({ status: 'Completed', orderType: 'Product' });
-        const completedServiceOrders = await Order.countDocuments({ status: 'Completed', orderType: 'Service_Appointment' });
+        const completedOrdersCount = await Order.countDocuments({ ...orderFilter, status: 'Completed' });
+        const completedProductOrders = await Order.countDocuments({ ...orderFilter, status: 'Completed', orderType: 'Product' });
+        const completedServiceOrders = await Order.countDocuments({ ...orderFilter, status: 'Completed', orderType: 'Service_Appointment' });
 
-        const cancelledOrdersCount = await Order.countDocuments({ status: 'Cancelled' });
-        const cancelledProductOrders = await Order.countDocuments({ status: 'Cancelled', orderType: 'Product' });
-        const cancelledServiceOrders = await Order.countDocuments({ status: 'Cancelled', orderType: 'Service_Appointment' });
+        const cancelledOrdersCount = await Order.countDocuments({ ...orderFilter, status: 'Cancelled' });
+        const cancelledProductOrders = await Order.countDocuments({ ...orderFilter, status: 'Cancelled', orderType: 'Product' });
+        const cancelledServiceOrders = await Order.countDocuments({ ...orderFilter, status: 'Cancelled', orderType: 'Service_Appointment' });
 
         const pendingStatuses = ['Scheduled'];
-        const pendingOrdersCount = await Order.countDocuments({ status: { $in: pendingStatuses } });
-        const pendingProductOrders = await Order.countDocuments({ status: { $in: pendingStatuses }, orderType: 'Product' });
-        const pendingServiceOrders = await Order.countDocuments({ status: { $in: pendingStatuses }, orderType: 'Service_Appointment' });
+        const pendingOrdersCount = await Order.countDocuments({ ...orderFilter, status: { $in: pendingStatuses } });
+        const pendingProductOrders = await Order.countDocuments({ ...orderFilter, status: { $in: pendingStatuses }, orderType: 'Product' });
+        const pendingServiceOrders = await Order.countDocuments({ ...orderFilter, status: { $in: pendingStatuses }, orderType: 'Service_Appointment' });
 
         // Calculate GTV using aggregation
         const gtvPipeline = await Order.aggregate([
-            { $match: { status: 'Completed' } },
+            { $match: { ...orderFilter, status: 'Completed' } },
             { $group: { _id: null, totalValue: { $sum: '$totalAmount' } } }
         ]);
         const gtv = gtvPipeline.length > 0 ? gtvPipeline[0].totalValue : 0;
@@ -69,13 +76,16 @@ export async function GET(req: NextRequest) {
         // 5. Removed Liquidity logic; moved product counts to 'Marketplace Inventory Health'
 
         // 6. Moderation Backlog (Requires Attention)
-        // Dispute model not yet implemented
-        const openDisputes = 0;
-        const pendingReports = await Report.countDocuments({ status: 'Pending' });
+        const openDisputes = await Order.countDocuments({ ...orderFilter, status: 'Dispute_Pending' });
+        const pendingReports = await Report.countDocuments({
+            status: 'Pending',
+            reporter: { $nin: dummyUserIds },
+            targetUser: { $nin: dummyUserIds }
+        });
 
         // 7. Recent Activity Streams (Last 5)
-        const latestUsers = await User.find().sort({ createdAt: -1 }).limit(5).select('name email role createdAt');
-        const latestOrders = await Order.find()
+        const latestUsers = await User.find({ isDummy: { $ne: true } }).sort({ createdAt: -1 }).limit(5).select('name email role createdAt');
+        const latestOrders = await Order.find(orderFilter)
             .populate('buyer', 'name')
             .populate('seller', 'name')
             .populate('product', 'title')
@@ -88,7 +98,7 @@ export async function GET(req: NextRequest) {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
         const dailySignups = await User.aggregate([
-            { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+            { $match: { isDummy: { $ne: true }, createdAt: { $gte: thirtyDaysAgo } } },
             { $group: {
                 _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
                 count: { $sum: 1 },
@@ -102,7 +112,7 @@ export async function GET(req: NextRequest) {
         twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
         twelveMonthsAgo.setDate(1);
         const monthlySignups = await User.aggregate([
-             { $match: { createdAt: { $gte: twelveMonthsAgo } } },
+             { $match: { isDummy: { $ne: true }, createdAt: { $gte: twelveMonthsAgo } } },
              { $group: {
                  _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
                  count: { $sum: 1 },

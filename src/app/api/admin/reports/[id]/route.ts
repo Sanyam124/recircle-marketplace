@@ -50,6 +50,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 bannedUntil
             });
 
+            // Auto-cleanup: Archive all pending reports targeting this user
+            await Report.updateMany(
+                { targetUser: targetUser._id, status: 'Pending' },
+                { $set: { status: 'Reviewed' } }
+            );
+
             // Auto-cleanup: Cancel all active deals involving the banned user
             const activeDeals = await Order.find({
                 $or: [{ buyer: targetUser._id }, { seller: targetUser._id }],
@@ -98,6 +104,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             }
         } 
         else if (actionType === 'delete_content' && report.itemType !== 'none' && report.itemId) {
+            // 1. Remove from all wishlists
+            await User.updateMany(
+                { }, 
+                { $pull: { wishlist: report.itemId, wishlistedServices: report.itemId } }
+            );
+
+            // 2. Archive all pending reports for this item
+            await Report.updateMany(
+                { itemId: report.itemId, status: 'Pending' },
+                { $set: { status: 'Reviewed' } }
+            );
+
+            // 3. Purge all offers for this item
+            const Offer = (await import('@/models/Offer')).default;
+            await Offer.deleteMany({
+                $or: [
+                    { product: report.itemId },
+                    { service: report.itemId }
+                ]
+            });
+
             let item: any = null;
             if (report.itemType === 'product') {
                 const Product = (await import('@/models/Product')).default;

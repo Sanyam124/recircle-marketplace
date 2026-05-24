@@ -25,10 +25,13 @@ export async function GET(req: NextRequest, context: any) {
         const Product = (await import('@/models/Product')).default;
         const Service = (await import('@/models/Service')).default;
         
+        const dummyUsers = await User.find({ isDummy: true }).select('_id').lean();
+        const dummyUserIds = dummyUsers.map(u => u._id);
+        
         const [memberCount, productCount, serviceCount] = await Promise.all([
-            User.countDocuments({ verifiedCommunities: id }),
-            Product.countDocuments({ community: id }),
-            Service.countDocuments({ community: id })
+            User.countDocuments({ verifiedCommunities: id, isDummy: { $ne: true } }),
+            Product.countDocuments({ community: id, seller: { $nin: dummyUserIds } }),
+            Service.countDocuments({ community: id, provider: { $nin: dummyUserIds } })
         ]);
 
         return NextResponse.json({ 

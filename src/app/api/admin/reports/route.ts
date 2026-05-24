@@ -30,7 +30,17 @@ export async function GET(req: NextRequest) {
         const limit = 15;
         const status = searchParams.get('status') || 'Pending';
 
-        const query = status === 'all' ? {} : { status };
+        const dummyUsers = await User.find({ isDummy: true }).select('_id').lean();
+        const dummyUserIds = dummyUsers.map(u => u._id);
+
+        const query: any = {
+            reporter: { $nin: dummyUserIds },
+            targetUser: { $nin: dummyUserIds }
+        };
+        if (status !== 'all') {
+            query.status = status;
+        }
+
         const total = await Report.countDocuments(query);
         const reports = await Report.find(query)
             .populate('reporter', 'name username email')

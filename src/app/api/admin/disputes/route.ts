@@ -30,10 +30,19 @@ export async function GET(req: NextRequest) {
         const limit = Math.min(requestedLimit, 50);
         const skip = (page - 1) * limit;
 
-        const totalDisputes = await Order.countDocuments({ status: 'Dispute_Pending' });
+        const dummyUsers = await User.find({ isDummy: true }).select('_id').lean();
+        const dummyUserIds = dummyUsers.map(u => u._id);
+
+        const query = {
+            status: 'Dispute_Pending',
+            buyer: { $nin: dummyUserIds },
+            seller: { $nin: dummyUserIds }
+        };
+
+        const totalDisputes = await Order.countDocuments(query);
         const totalPages = Math.ceil(totalDisputes / limit);
 
-        const disputes = await Order.find({ status: 'Dispute_Pending' })
+        const disputes = await Order.find(query)
             .populate('buyer', 'name email')
             .populate('seller', 'name email')
             .populate('product', 'title images')
