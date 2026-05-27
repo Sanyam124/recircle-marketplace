@@ -77,6 +77,12 @@ export async function POST(req: NextRequest) {
             });
             const uniqueReportCount = uniqueReporters.length;
 
+            const uniqueReviewedReporters = await Report.distinct('reporter', { 
+                targetUser: targetUserId, 
+                status: 'Reviewed' 
+            });
+            const reviewedReportCount = uniqueReviewedReporters.length;
+
             // --- [NEW] AUTO-REMOVE LISTING LOGIC ---
             if (itemType !== 'none' && itemId) {
                 const threshold = siteConfig.autoRemoveThreshold || 5;
@@ -153,8 +159,11 @@ export async function POST(req: NextRequest) {
             let banDays = 0;
             for (const rule of [...siteConfig.autoBanRules].reverse()) {
                 if (uniqueReportCount >= rule.reportThreshold) {
-                    banDays = rule.banDays;
-                    break;
+                    // Only apply the ban if the user hasn't already crossed/served this threshold in their reviewed reports
+                    if (reviewedReportCount < rule.reportThreshold) {
+                        banDays = rule.banDays;
+                        break;
+                    }
                 }
             }
 
