@@ -97,13 +97,21 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Create the request
-        const request = await VerificationRequest.create({
-            user: decoded.userId,
-            community: communityId,
-            idProof: idProofUrl,
-            status: 'Pending'
-        });
+        let request;
+        try {
+            request = await VerificationRequest.create({
+                user: decoded.userId,
+                community: communityId,
+                idProof: idProofUrl,
+                status: 'Pending'
+            });
+        } catch (dbError: any) {
+            if (idProofUrl && idProofUrl.startsWith('http')) {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await deleteFromCloudinary(idProofUrl).catch(() => null);
+            }
+            throw dbError;
+        }
 
         return NextResponse.json({ success: true, request }, { status: 201 });
 

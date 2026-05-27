@@ -255,8 +255,23 @@ export async function DELETE(req: NextRequest) {
             ]
         };
 
+        // Retrieve images that are about to be permanently deleted to clean up Cloudinary storage
+        const messagesWithImages = await Message.find({
+            ...deleteQuery,
+            image: { $exists: true, $ne: null }
+        }).select('image').lean();
+
+        if (messagesWithImages.length > 0) {
+            const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+            await Promise.all(
+                messagesWithImages.map(msg => 
+                    deleteFromCloudinary(msg.image).catch(e => console.error('Cloudinary cleanup error during conversation purge:', e))
+                )
+            );
+        }
+
         const deleteResult = await Message.deleteMany(deleteQuery);
-        console.log(`Smart Purge: Deleted ${deleteResult.deletedCount} messages permanently.`);
+        console.log(`Smart Purge: Deleted ${deleteResult.deletedCount} messages permanently (${messagesWithImages.length} images cleaned up from Cloudinary).`);
 
         return NextResponse.json({ success: true, purged: deleteResult.deletedCount > 0 }, { status: 200 });
     } catch (error) {

@@ -152,7 +152,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 }
             } else if (report.itemType === 'board-post') {
                 const BoardPost = (await import('@/models/BoardPost')).default;
-                await BoardPost.findByIdAndDelete(report.itemId);
+                const post = await BoardPost.findById(report.itemId);
+                if (post) {
+                    if (post.image) {
+                        const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                        try { await deleteFromCloudinary(post.image); } catch (e) {}
+                    }
+                    await BoardPost.findByIdAndDelete(report.itemId);
+                }
             }
             report.status = 'Reviewed';
         }

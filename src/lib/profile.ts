@@ -69,9 +69,11 @@ export async function performAccountDeletion(userId: string) {
     const pendingReportsAgainstUser = await Report.countDocuments({ targetUser: userId, status: 'Pending' });
 
     // 3. Identify images for cleanup
-    const [userProducts, userServices] = await Promise.all([
+    const [userProducts, userServices, userPosts, userMessages] = await Promise.all([
         Product.find({ seller: userId }).select('images'),
-        Service.find({ provider: userId }).select('images')
+        Service.find({ provider: userId }).select('images'),
+        BoardPost.find({ author: userId, image: { $exists: true, $ne: null } }).select('image'),
+        Message.find({ sender: userId, image: { $exists: true, $ne: null } }).select('image')
     ]);
 
     const imagesToDelete: string[] = [];
@@ -79,6 +81,8 @@ export async function performAccountDeletion(userId: string) {
     if (userObj.bannerImage) imagesToDelete.push(userObj.bannerImage);
     userProducts.forEach(p => p.images?.forEach((img: string) => imagesToDelete.push(img)));
     userServices.forEach(s => s.images?.forEach((img: string) => imagesToDelete.push(img)));
+    userPosts.forEach(p => { if (p.image) imagesToDelete.push(p.image); });
+    userMessages.forEach(m => { if (m.image) imagesToDelete.push(m.image); });
 
     // 4. Parallel Delete Operations
     const dbOperations: Promise<any>[] = [
