@@ -83,15 +83,16 @@ export default function ExploreSidebar({
     closeOverlays();
     if (e) {
         const rect = e.currentTarget.getBoundingClientRect();
-        const sidebar = document.getElementById('desktop-sidebar-inner');
+        const sidebar = document.getElementById(isMobileOpen ? 'mobile-sidebar-inner' : 'desktop-sidebar-inner');
         if (sidebar) {
             const sidebarRect = sidebar.getBoundingClientRect();
-            setToastTop(rect.top - sidebarRect.top);
+            const scrollTop = isMobileOpen ? sidebar.scrollTop : 0;
+            setToastTop(rect.top - sidebarRect.top + scrollTop);
         }
     }
     setActiveOverlay('guest');
     toastTimeoutRef.current = setTimeout(closeOverlays, 3000);
-  }, [closeOverlays]);
+  }, [closeOverlays, isMobileOpen]);
 
   const { user, userLocation, refreshLocation } = useAuth();
 
@@ -196,7 +197,7 @@ export default function ExploreSidebar({
                 </div>
              </div>
              {/* Scrolling Content Container */}
-             <div className="absolute top-16 bottom-[80px] left-0 right-0 overflow-y-auto px-7 py-6 z-20">
+             <div id="mobile-sidebar-inner" className="absolute top-16 bottom-[80px] left-0 right-0 overflow-y-auto px-7 py-6 z-20">
                 <FilterElements 
                    filters={filters} handleChange={handleChange} setFilters={setFilters}
                    productDocsOpen={productDocsOpen} setProductDocsOpen={setProductDocsOpen}
@@ -209,6 +210,13 @@ export default function ExploreSidebar({
                    activeOverlay={activeOverlay} setActiveOverlay={setActiveOverlay} closeOverlays={closeOverlays}
                    locationStats={locationDataResp?.stats || {}}
                  />
+                 {activeOverlay === 'guest' && (
+                    <div className="absolute left-[20px] right-[20px] z-[200] animate-in fade-in zoom-in-95" style={{ top: `${toastTop}px`, transform: 'translateY(-100%)' }}>
+                       <div className="bg-gray-950 text-white p-5 rounded-2xl shadow-2xl border border-white/20">
+                         <p className="text-[10px] font-bold leading-relaxed">Sign in with your <span className="text-indigo-400 italic font-black">college email</span> to unlock campus listings and hostel filters.</p>
+                       </div>
+                    </div>
+                 )}
              </div>
              {/* Absolute Locked Footer */}
              <div className="absolute bottom-0 left-0 right-0 h-[80px] px-6 py-3.5 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex items-center gap-4 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-30">
