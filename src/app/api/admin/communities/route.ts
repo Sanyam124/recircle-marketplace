@@ -134,11 +134,14 @@ export async function DELETE(req: NextRequest) {
         // --- CASCADE CLEANUP ---
         const Product = (await import('@/models/Product')).default;
         const Service = (await import('@/models/Service')).default;
+        const BoardPost = (await import('@/models/BoardPost')).default;
 
         // Collect all images from items in this community to prevent storage leaks
-        const [commProducts, commServices] = await Promise.all([
+        const [commProducts, commServices, commPosts, commVerifications] = await Promise.all([
             Product.find({ community: id }).select('images').lean(),
-            Service.find({ community: id }).select('images').lean()
+            Service.find({ community: id }).select('images').lean(),
+            BoardPost.find({ community: id, image: { $exists: true, $ne: null } }).select('image').lean(),
+            VerificationRequest.find({ community: id }).select('idProof').lean()
         ]);
 
         const imagesToDelete: string[] = [];
@@ -147,6 +150,8 @@ export async function DELETE(req: NextRequest) {
         }
         commProducts.forEach((p: any) => p.images?.forEach((img: string) => imagesToDelete.push(img)));
         commServices.forEach((s: any) => s.images?.forEach((img: string) => imagesToDelete.push(img)));
+        commPosts.forEach((p: any) => { if (p.image) imagesToDelete.push(p.image); });
+        commVerifications.forEach((v: any) => { if (v.idProof) imagesToDelete.push(v.idProof); });
 
         await Promise.all([
             // 1. Pull community from all Users' verified profiles
@@ -157,7 +162,11 @@ export async function DELETE(req: NextRequest) {
             // 2. Delete all products and services in this community
             Product.deleteMany({ community: id }),
             Service.deleteMany({ community: id }),
-            // 3. Finally delete the community
+            // 3. Delete all board posts in this community
+            BoardPost.deleteMany({ community: id }),
+            // 4. Delete all verification requests in this community
+            VerificationRequest.deleteMany({ community: id }),
+            // 5. Finally delete the community
             Community.findByIdAndDelete(id)
         ]);
 

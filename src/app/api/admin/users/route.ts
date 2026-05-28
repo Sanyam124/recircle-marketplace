@@ -269,11 +269,12 @@ export async function DELETE(req: NextRequest) {
         } catch (e) { }
 
         // Step 1: Collect targets
-        const [productsFetched, servicesFetched, postsFetched, messagesFetched] = await Promise.all([
+        const [productsFetched, servicesFetched, postsFetched, messagesFetched, verificationsFetched] = await Promise.all([
             Product.find({ seller: userId }).select('images'),
             Service.find({ provider: userId }).select('images'),
             BoardPost.find({ author: userId, image: { $exists: true, $ne: null } }).select('image'),
-            Message.find({ sender: userId, image: { $exists: true, $ne: null } }).select('image')
+            Message.find({ sender: userId, image: { $exists: true, $ne: null } }).select('image'),
+            VerificationRequest.find({ user: userId }).select('idProof')
         ]);
         
         const imagesToDelete: string[] = [];
@@ -283,6 +284,7 @@ export async function DELETE(req: NextRequest) {
         servicesFetched.forEach(s => s.images?.forEach((img: string) => imagesToDelete.push(img)));
         postsFetched.forEach(p => { if (p.image) imagesToDelete.push(p.image); });
         messagesFetched.forEach(m => { if (m.image) imagesToDelete.push(m.image); });
+        verificationsFetched.forEach(v => { if (v.idProof) imagesToDelete.push(v.idProof); });
 
         // Step 2: Shared Records Lifecycle Checks
         const [privateOrders, privateMessages] = await Promise.all([

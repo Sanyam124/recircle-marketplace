@@ -52,9 +52,6 @@ BoardPostSchema.index({ community: 1, category: 1, createdAt: -1 });
 BoardPostSchema.index({ community: 1, createdAt: -1 });
 BoardPostSchema.index({ author: 1, createdAt: -1 });
 
-// TTL Index: Deletes the document precisely when the `expiresAt` date is reached
-BoardPostSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-
 const BoardPost: Model<IBoardPost> = mongoose.models.BoardPost || mongoose.model<IBoardPost>('BoardPost', BoardPostSchema);
 
 
