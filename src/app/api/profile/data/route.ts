@@ -111,6 +111,10 @@ export async function PUT(req: NextRequest) {
         }
 
         try {
+            const updatedUser = await User.findByIdAndUpdate(decoded.userId, { $set: body }, { new: true, runValidators: true })
+                .populate('verifiedCommunities', 'name image isActive hostels');
+
+            // Cleanup old images ONLY after DB update is successful
             if (body.profilePicture && body.profilePicture !== user.profilePicture && isUserUpload(user.profilePicture)) {
                 const { deleteFromCloudinary } = await import('@/lib/cloudinary');
                 await deleteFromCloudinary(user.profilePicture).catch(() => null);
@@ -119,9 +123,6 @@ export async function PUT(req: NextRequest) {
                 const { deleteFromCloudinary } = await import('@/lib/cloudinary');
                 await deleteFromCloudinary(user.bannerImage).catch(() => null);
             }
-
-            const updatedUser = await User.findByIdAndUpdate(decoded.userId, { $set: body }, { new: true, runValidators: true })
-                .populate('verifiedCommunities', 'name image isActive hostels');
 
             return NextResponse.json({ message: 'Profile updated', user: updatedUser }, { status: 200 });
         } catch (dbError) {

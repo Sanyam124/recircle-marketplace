@@ -105,12 +105,9 @@ export async function POST(req: NextRequest) {
                     }
 
                     if (item) {
-                        // 1. Cleanup Images (Cloudinary)
-                        if (item.images && item.images.length > 0) {
-                            for (const imgUrl of item.images) {
-                                await deleteFromCloudinary(imgUrl);
-                            }
-                        }
+                        // 1. Final Deletion first
+                        if (itemType === 'product') await Product.findByIdAndDelete(itemId);
+                        else await Service.findByIdAndDelete(itemId);
 
                         // 2. Remove from ALL User Wishlists
                         await User.updateMany(
@@ -145,9 +142,12 @@ export async function POST(req: NextRequest) {
                             });
                         }
 
-                        // 6. Final Deletion
-                        if (itemType === 'product') await Product.findByIdAndDelete(itemId);
-                        else await Service.findByIdAndDelete(itemId);
+                        // 6. Cleanup Images (Cloudinary) only after DB operations successfully complete
+                        if (item.images && item.images.length > 0) {
+                            for (const imgUrl of item.images) {
+                                await deleteFromCloudinary(imgUrl).catch(() => null);
+                            }
+                        }
 
                         console.log(`[Auto-Remove] ${itemType} ${itemId} purged from DB & Storage due to ${uniqueItemReporters.length} community reports.`);
                     }

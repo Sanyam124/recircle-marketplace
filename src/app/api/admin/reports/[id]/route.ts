@@ -130,35 +130,35 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 const Product = (await import('@/models/Product')).default;
                 item = await Product.findById(report.itemId);
                 if (item) {
+                    await Product.findByIdAndDelete(report.itemId);
                     if (item.images && item.images.length > 0) {
                         const { deleteFromCloudinary } = await import('@/lib/cloudinary');
                         for (const img of item.images) {
                             try { await deleteFromCloudinary(img); } catch (e) {}
                         }
                     }
-                    await Product.findByIdAndDelete(report.itemId);
                 }
             } else if (report.itemType === 'service') {
                 const Service = (await import('@/models/Service')).default;
                 item = await Service.findById(report.itemId);
                 if (item) {
+                    await Service.findByIdAndDelete(report.itemId);
                     if (item.images && item.images.length > 0) {
                         const { deleteFromCloudinary } = await import('@/lib/cloudinary');
                         for (const img of item.images) {
                             try { await deleteFromCloudinary(img); } catch (e) {}
                         }
                     }
-                    await Service.findByIdAndDelete(report.itemId);
                 }
             } else if (report.itemType === 'board-post') {
                 const BoardPost = (await import('@/models/BoardPost')).default;
                 const post = await BoardPost.findById(report.itemId);
                 if (post) {
+                    await BoardPost.findByIdAndDelete(report.itemId);
                     if (post.image) {
                         const { deleteFromCloudinary } = await import('@/lib/cloudinary');
                         try { await deleteFromCloudinary(post.image); } catch (e) {}
                     }
-                    await BoardPost.findByIdAndDelete(report.itemId);
                 }
             }
             report.status = 'Reviewed';

@@ -98,8 +98,9 @@ export async function POST(req: NextRequest) {
         const newlyUploadedUrls: string[] = [];
 
         if (images && Array.isArray(images)) {
-            if (images.length > 5) {
-                return NextResponse.json({ error: 'Maximum 5 images allowed per product listing' }, { status: 400 });
+            const maxImages = siteConfig.maxProductImages || 5;
+            if (images.length > maxImages) {
+                return NextResponse.json({ error: `Maximum ${maxImages} images allowed per product listing` }, { status: 400 });
             }
             for (const img of images) {
                 if (typeof img !== 'string') {

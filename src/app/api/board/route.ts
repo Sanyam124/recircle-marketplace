@@ -410,6 +410,8 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized to delete this post' }, { status: 403 });
         }
 
+        await BoardPost.findByIdAndDelete(postId);
+
         if (post.image) {
             try {
                 const { deleteFromCloudinary } = await import('@/lib/cloudinary');
@@ -418,8 +420,6 @@ export async function DELETE(req: NextRequest) {
                 console.error("Failed to delete image from cloudinary", err);
             }
         }
-
-        await BoardPost.findByIdAndDelete(postId);
         return NextResponse.json({ success: true, message: 'Post deleted' }, { status: 200 });
 
     } catch (error: any) {

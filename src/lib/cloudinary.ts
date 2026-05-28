@@ -36,6 +36,9 @@ export async function uploadToCloudinary(file: string, folder: string = 'recircl
 export async function deleteFromCloudinary(url: string | null | undefined): Promise<void> {
     if (!url || !url.includes('cloudinary.com')) return;
     
+    // Safeguard default shared avatars and banners from deletion
+    if (url.includes('/defaults/')) return;
+    
     // Safety check for keys
     if (!process.env.CLOUDINARY_API_KEY || !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) return;
 

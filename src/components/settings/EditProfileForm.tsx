@@ -204,7 +204,7 @@ export default function EditProfileForm({ form, setForm, onSubmit, submitting, u
                         <div className="flex items-center justify-between px-2">
                             <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/60 italic">Full Name</label>
                             <span className={`text-[9px] font-bold ${form.name.length < 3 ? 'text-rose-500' : 'text-zinc-400'}`}>
-                                {form.name.length}/30
+                                {form.name.length}/50
                             </span>
                         </div>
                         <input 
@@ -212,7 +212,7 @@ export default function EditProfileForm({ form, setForm, onSubmit, submitting, u
                             required 
                             value={form.name} 
                             minLength={3} 
-                            maxLength={30} 
+                            maxLength={50} 
                             onChange={(e) => setForm((p:any) => ({ ...p, name: e.target.value }))} 
                             className="w-full bg-zinc-50 dark:bg-zinc-950 rounded-2xl py-4 px-5 text-[11px] font-black outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-zinc-900 dark:text-white border border-transparent focus:border-indigo-100" 
                         />

@@ -261,6 +261,9 @@ export async function DELETE(req: NextRequest) {
             image: { $exists: true, $ne: null }
         }).select('image').lean();
 
+        const deleteResult = await Message.deleteMany(deleteQuery);
+        console.log(`Smart Purge: Deleted ${deleteResult.deletedCount} messages permanently (${messagesWithImages.length} images cleaned up from Cloudinary).`);
+
         if (messagesWithImages.length > 0) {
             const { deleteFromCloudinary } = await import('@/lib/cloudinary');
             await Promise.all(
@@ -269,9 +272,6 @@ export async function DELETE(req: NextRequest) {
                 )
             );
         }
-
-        const deleteResult = await Message.deleteMany(deleteQuery);
-        console.log(`Smart Purge: Deleted ${deleteResult.deletedCount} messages permanently (${messagesWithImages.length} images cleaned up from Cloudinary).`);
 
         return NextResponse.json({ success: true, purged: deleteResult.deletedCount > 0 }, { status: 200 });
     } catch (error) {

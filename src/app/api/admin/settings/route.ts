@@ -92,6 +92,9 @@ export async function PUT(req: NextRequest) {
             'maxOtpPerEmailPerHour', 'globalDailyOtpLimit', 'activeSmtpIndex', 'maxListingsPerUser'
         ];
 
+        const newlyUploadedUrls: string[] = [];
+        const removedImageUrls: string[] = [];
+
         for (const field of allowedFields) {
             if (body[field] !== undefined) {
                 // Special handling for image arrays (Avatars and Banners)
@@ -101,20 +104,25 @@ export async function PUT(req: NextRequest) {
                     
                     if (!Array.isArray(newList)) continue;
                     
-                    const { uploadToCloudinary, deleteFromCloudinary } = await import('@/lib/cloudinary');
+                    const { uploadToCloudinary } = await import('@/lib/cloudinary');
                     const folder = field === 'defaultAvatars' ? 'recircle/defaults/avatars' : 'recircle/defaults/banners';
 
-                    // 1. Find images that were removed (in current list, but not in new list)
-                    const removedImages = currentList.filter(url => !newList.includes(url) && url.includes('cloudinary.com'));
-                    for (const url of removedImages) {
-                        try { await deleteFromCloudinary(url); } catch (e) { console.error(`Failed to delete ${url}`, e); }
-                    }
+                    // 1. Collect removed images (do not delete yet!)
+                    const removed = currentList.filter(url => !newList.includes(url) && url.includes('cloudinary.com'));
+                    removedImageUrls.push(...removed);
 
                     // 2. Upload any new base64 images
                     const processedList = await Promise.all(newList.map(async (item) => {
                         if (item.startsWith('data:image')) {
-                            try { return await uploadToCloudinary(item, folder); }
-                            catch (e) { console.error('Failed to upload image', e); return null; }
+                            try {
+                                const url = await uploadToCloudinary(item, folder);
+                                newlyUploadedUrls.push(url);
+                                return url;
+                            }
+                            catch (e) {
+                                console.error('Failed to upload image', e);
+                                return null;
+                            }
                         }
                         return item;
                     }));
@@ -126,33 +134,55 @@ export async function PUT(req: NextRequest) {
             }
         }
 
-        // Validate auto-ban rules
-        if (body.autoBanRules) {
-            const rules = body.autoBanRules;
-            if (!Array.isArray(rules)) {
-                return NextResponse.json({ error: 'autoBanRules must be an array' }, { status: 400 });
+        let savedSuccess = false;
+        try {
+            // Validate auto-ban rules
+            if (body.autoBanRules) {
+                const rules = body.autoBanRules;
+                if (!Array.isArray(rules)) {
+                    return NextResponse.json({ error: 'autoBanRules must be an array' }, { status: 400 });
+                }
+                for (const rule of rules) {
+                    if (!rule.reportThreshold || !rule.banDays || rule.reportThreshold < 1 || rule.banDays < 1) {
+                        return NextResponse.json({ error: 'Each ban rule needs valid reportThreshold and banDays (≥1)' }, { status: 400 });
+                    }
+                }
+                // Sort by threshold ascending
+                settings.autoBanRules = rules.sort((a: any, b: any) => a.reportThreshold - b.reportThreshold);
             }
-            for (const rule of rules) {
-                if (!rule.reportThreshold || !rule.banDays || rule.reportThreshold < 1 || rule.banDays < 1) {
-                    return NextResponse.json({ error: 'Each ban rule needs valid reportThreshold and banDays (≥1)' }, { status: 400 });
+
+            // Validate categories (must have at least 1)
+            if (body.productCategories && (!Array.isArray(body.productCategories) || body.productCategories.length === 0)) {
+                return NextResponse.json({ error: 'At least one product category is required' }, { status: 400 });
+            }
+            if (body.serviceCategories && (!Array.isArray(body.serviceCategories) || body.serviceCategories.length === 0)) {
+                return NextResponse.json({ error: 'At least one service category is required' }, { status: 400 });
+            }
+            if (body.productConditions && (!Array.isArray(body.productConditions) || body.productConditions.length === 0)) {
+                return NextResponse.json({ error: 'At least one product condition is required' }, { status: 400 });
+            }
+
+            await settings.save();
+            savedSuccess = true;
+        } finally {
+            if (!savedSuccess) {
+                // Rollback newly uploaded images
+                if (newlyUploadedUrls.length > 0) {
+                    const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                    for (const url of newlyUploadedUrls) {
+                        await deleteFromCloudinary(url).catch(() => null);
+                    }
+                }
+            } else {
+                // Deletions of removed images ONLY after save succeeded
+                if (removedImageUrls.length > 0) {
+                    const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                    for (const url of removedImageUrls) {
+                        await deleteFromCloudinary(url).catch(() => null);
+                    }
                 }
             }
-            // Sort by threshold ascending
-            settings.autoBanRules = rules.sort((a: any, b: any) => a.reportThreshold - b.reportThreshold);
         }
-
-        // Validate categories (must have at least 1)
-        if (body.productCategories && (!Array.isArray(body.productCategories) || body.productCategories.length === 0)) {
-            return NextResponse.json({ error: 'At least one product category is required' }, { status: 400 });
-        }
-        if (body.serviceCategories && (!Array.isArray(body.serviceCategories) || body.serviceCategories.length === 0)) {
-            return NextResponse.json({ error: 'At least one service category is required' }, { status: 400 });
-        }
-        if (body.productConditions && (!Array.isArray(body.productConditions) || body.productConditions.length === 0)) {
-            return NextResponse.json({ error: 'At least one product condition is required' }, { status: 400 });
-        }
-
-        await settings.save();
         return NextResponse.json({ settings, message: 'Settings updated successfully' }, { status: 200 });
 
     } catch (error) {

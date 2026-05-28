@@ -100,14 +100,7 @@ export async function DELETE(req: NextRequest) {
         if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
         const community = await Community.findById(id);
-        if (community && community.image) {
-            try {
-                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
-                await deleteFromCloudinary(community.image);
-            } catch (e) {
-                console.error('Failed to cleanup community image:', e);
-            }
-        }
+        if (!community) return NextResponse.json({ error: 'Community not found' }, { status: 404 });
 
         // --- SAFETY GUARDS ---
         const Order = (await import('@/models/Order')).default;
@@ -148,27 +141,35 @@ export async function DELETE(req: NextRequest) {
             Service.find({ community: id }).select('images').lean()
         ]);
 
-        const leakedImages: string[] = [];
-        commProducts.forEach((p: any) => p.images?.forEach((img: string) => leakedImages.push(img)));
-        commServices.forEach((s: any) => s.images?.forEach((img: string) => leakedImages.push(img)));
+        const imagesToDelete: string[] = [];
+        if (community.image) {
+            imagesToDelete.push(community.image);
+        }
+        commProducts.forEach((p: any) => p.images?.forEach((img: string) => imagesToDelete.push(img)));
+        commServices.forEach((s: any) => s.images?.forEach((img: string) => imagesToDelete.push(img)));
 
         await Promise.all([
-            // 1. Delete all images from Cloudinary
-            ...(leakedImages.length > 0 
-                ? [import('@/lib/cloudinary').then(m => Promise.all(leakedImages.map(img => m.deleteFromCloudinary(img).catch(() => null))))] 
-                : []
-            ),
-            // 2. Pull community from all Users' verified profiles
+            // 1. Pull community from all Users' verified profiles
             User.updateMany(
                 { verifiedCommunities: id },
                 { $pull: { verifiedCommunities: id } }
             ),
-            // 3. Delete all products and services in this community
+            // 2. Delete all products and services in this community
             Product.deleteMany({ community: id }),
             Service.deleteMany({ community: id }),
-            // 4. Finally delete the community
+            // 3. Finally delete the community
             Community.findByIdAndDelete(id)
         ]);
+
+        // Cleanup Cloudinary Storage only after DB operations succeed
+        if (imagesToDelete.length > 0) {
+            try {
+                const { deleteFromCloudinary } = await import('@/lib/cloudinary');
+                await Promise.all(imagesToDelete.map(img => deleteFromCloudinary(img).catch(() => null)));
+            } catch (e) {
+                console.error('Failed to cleanup community or listing images from Cloudinary:', e);
+            }
+        }
 
         return NextResponse.json({ message: 'Community and its listings purged successfully' });
     } catch (error: any) {

@@ -21,8 +21,8 @@ export function validateProfileUpdate(body: any, config?: any) {
 
     if (name !== undefined) {
         const trimmedName = name.trim();
-        if (trimmedName && (trimmedName.length < 3 || trimmedName.length > maxUserName)) {
-            errors.push(`Full name must be 3-${maxUserName} characters`);
+        if (trimmedName && (trimmedName.length < 3 || trimmedName.length > 50)) {
+            errors.push('Full name must be 3-50 characters');
         }
     }
 

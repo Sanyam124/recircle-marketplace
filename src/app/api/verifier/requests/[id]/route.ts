@@ -64,7 +64,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             link: '/settings'
         });
 
-        // Zero-Retention & Privacy: Burn the ID proof from Cloudinary and wipe the entire request record.
+        // Final step: Delete the request record entirely
+        await VerificationRequest.findByIdAndDelete(id);
+
+        // Zero-Retention & Privacy: Burn the ID proof from Cloudinary
         if (request.idProof && request.idProof.startsWith('http')) {
             try {
                 const { deleteFromCloudinary } = await import('@/lib/cloudinary');
@@ -73,9 +76,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 console.error('Cloudinary cleanup failed during verification processing:', e);
             }
         }
-
-        // Final step: Delete the request record entirely
-        await VerificationRequest.findByIdAndDelete(id);
 
         return NextResponse.json({ success: true, message: `Request ${status} and record purged.` }, { status: 200 });
 

@@ -31,12 +31,12 @@ export async function GET(request: Request) {
         let messageDbCount = 0;
 
         for (const msg of expiredMessages) {
+            await Message.deleteOne({ _id: msg._id });
+            messageDbCount++;
             if (msg.image) {
                 await deleteFromCloudinary(msg.image).catch(e => console.error('Cloudinary cleanup error (msg):', e));
                 messageImageCount++;
             }
-            await Message.deleteOne({ _id: msg._id });
-            messageDbCount++;
         }
 
         // 2. Cleanup old BoardPosts
@@ -49,12 +49,12 @@ export async function GET(request: Request) {
         let postDbCount = 0;
 
         for (const post of expiredBoardPosts) {
+            await BoardPost.deleteOne({ _id: post._id });
+            postDbCount++;
             if (post.image) {
                 await deleteFromCloudinary(post.image).catch(e => console.error('Cloudinary cleanup error (post):', e));
                 postImageCount++;
             }
-            await BoardPost.deleteOne({ _id: post._id });
-            postDbCount++;
         }
 
         console.log(`[CRON CLEANUP] Messages: ${messageDbCount} deleted (${messageImageCount} images). BoardPosts: ${postDbCount} deleted (${postImageCount} images).`);
