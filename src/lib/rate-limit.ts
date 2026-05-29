@@ -41,7 +41,6 @@ export async function checkRateLimit(ip: string, path: string, limit: number, wi
 
     // Increment count
     log.count += 1;
-    log.lastRequest = now;
     await log.save();
 
     return { success: true, remaining: limit - log.count };

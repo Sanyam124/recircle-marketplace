@@ -87,10 +87,10 @@ async function sendMailWithActive(options: any) {
           // If in new 24h window, reset, else increment
           if (now.getTime() - new Date(log.lastRequest).getTime() > 24 * 60 * 60 * 1000) {
               log.count = 1;
+              log.lastRequest = now;
           } else {
               log.count += 1;
           }
-          log.lastRequest = now;
           await log.save();
       }
       
