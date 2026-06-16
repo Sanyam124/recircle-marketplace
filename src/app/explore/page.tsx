@@ -14,7 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 
 
 function ExploreFiltersAndGrid() {
-  const { user, userLocation, authFetch } = useAuth();
+  const { user, loading: authLoading, userLocation, authFetch } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -151,14 +151,13 @@ function ExploreFiltersAndGrid() {
     return `/api/explore?${params.toString()}`;
   };
 
-  const { data, error, isLoading, isValidating, mutate } = useSWR(getQueryUrl(), fetcher, { 
+  const { data, error, isLoading, isValidating, mutate } = useSWR(authLoading ? null : getQueryUrl(), fetcher, { 
     keepPreviousData: true,
-    revalidateOnFocus: true,
-    refreshInterval: 15000,
+    revalidateOnFocus: false,
     shouldRetryOnError: (err) => err.status !== 429 
   });
 
-  const loading = !data && isLoading; 
+  const loading = (!data && isLoading) || authLoading; 
   const isFetchingFiltered = isValidating && data; 
   const items = data?.items || [];
   const totalPages = data?.pagination?.totalPages || 1;

@@ -148,7 +148,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
   const { data, error, isLoading, isValidating, mutate } = useSWR(id ? getQueryUrl() : null, fetcher, {
     keepPreviousData: true,
-    revalidateOnFocus: true,
+    revalidateOnFocus: false,
   });
 
   const isRateLimited = error?.status === 429;
